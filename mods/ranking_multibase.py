@@ -627,9 +627,26 @@ def mesclar_fontes(
     (Open Targets) e "DONEPEZIL HYDROCHLORIDE" (ChEMBL) são o mesmo
     medicamento mas não bateriam por string. Só cai para nome normalizado
     quando a entrada não tem ID ChEMBL (caso do DrugCentral e do openFDA).
+
+    CUIDADO com um caso de borda real: a MESMA droga pode aparecer numa
+    fonte COM ID (ex: ChEMBL) e em outra SEM ID (ex: openFDA) para o mesmo
+    nome exato (ex: "PREGABALIN"). Se cada uma caísse na sua própria chave
+    (uma por ID, outra por nome), a droga virava duas entradas duplicadas
+    no conjunto de referência -- isso realmente aconteceu em execuções
+    reais do projeto. Para evitar isso, mantemos um índice nome -> chave
+    canônica usada até agora, e funde os dois lados não importa a ordem em
+    que as fontes cheguem:
+      - Se o nome já apontava para uma chave (de uma fonte anterior sem ID)
+        e agora chega uma entrada COM ID para o mesmo nome, a entrada
+        antiga é fundida na nova chave por ID.
+      - Se o nome já foi visto com uma chave por ID, e chega uma entrada
+        SEM ID para o mesmo nome, ela usa a chave por ID já existente, em
+        vez de criar uma chave por nome separada.
+
     Retorna {chave: {nome, chembl_id, smiles, fontes}}.
     """
     mesclado: dict[str, dict] = {}
+    nome_para_chave: dict[str, str] = {}
 
     for origem_nome, dicionario in (
         ("opentargets", resultado_opentargets),
@@ -640,9 +657,29 @@ def mesclar_fontes(
         for info in dicionario.values():
             chembl_id = (info.get("chembl_id") or "").strip().upper()
             nome = (info.get("nome") or "").strip()
-            chave = chembl_id or nome.lower()
-            if not chave:
+            nome_norm = nome.lower()
+            if not chembl_id and not nome_norm:
                 continue
+
+            chave_conhecida_pelo_nome = nome_para_chave.get(nome_norm)
+
+            if chembl_id:
+                chave = chembl_id
+                # Já existia uma entrada por NOME (de uma fonte sem ID) para
+                # esse mesmo nome? Funde essa entrada antiga na nova chave.
+                if chave_conhecida_pelo_nome and chave_conhecida_pelo_nome != chave and chave_conhecida_pelo_nome in mesclado:
+                    antiga = mesclado.pop(chave_conhecida_pelo_nome)
+                    item = mesclado.setdefault(chave, {"nome": nome or chave, "fontes": set()})
+                    item["fontes"] |= antiga["fontes"]
+                    if antiga.get("smiles") and not item.get("smiles"):
+                        item["smiles"] = antiga["smiles"]
+                    for n, c in nome_para_chave.items():
+                        if c == chave_conhecida_pelo_nome:
+                            nome_para_chave[n] = chave
+            else:
+                # Sem ID: usa a chave já associada a esse nome (pode já ser
+                # um ID ChEMBL de uma fonte anterior), senão usa o nome.
+                chave = chave_conhecida_pelo_nome or nome_norm
 
             item = mesclado.setdefault(chave, {"nome": nome or chave, "fontes": set()})
             item["fontes"].add(origem_nome)
@@ -654,6 +691,8 @@ def mesclar_fontes(
             # com capitalização normal; ChEMBL às vezes só tem o ID como nome).
             if nome and nome.upper() != nome and item["nome"].upper() == item["nome"]:
                 item["nome"] = nome
+
+            nome_para_chave[nome_norm] = chave
 
     # Sem corte aqui: cada fonte ja trouxe so as suas top_n mais relevantes,
     # entao o total final e naturalmente pequeno (no maximo a soma das 3).
