@@ -47,20 +47,19 @@ def _ler_tabela_lazy(caminho):
         problemas.append(Problema(
             1, "arquivo", "arquivo .csv aceito, mas o formato e TSV: nomes com "
             "virgula quebram a leitura; prefira .tsv", "aviso"))
-    f = open(caminho, newline="", encoding="utf-8-sig")
-    leitor = csv.reader(f, delimiter="," if csv_ else "\t")
-    cabecalho: list[str] = []
-    for celulas in leitor:
-        if any(c.strip() for c in celulas):
-            cabecalho = [c.strip() for c in celulas]
-            break
-    if not cabecalho:
-        f.close()
-        problemas.append(Problema(1, "arquivo", "arquivo vazio", "erro"))
-        return cabecalho, (x for x in ()), problemas
-
     def gerar():
-        with f:
+        # O arquivo pertence ao gerador: close() do gerador fecha o arquivo.
+        # O primeiro item produzido e o cabecalho (lido logo abaixo).
+        with open(caminho, newline="", encoding="utf-8-sig") as f:
+            leitor = csv.reader(f, delimiter="," if csv_ else "\t")
+            cabecalho: list[str] = []
+            for celulas in leitor:
+                if any(c.strip() for c in celulas):
+                    cabecalho = [c.strip() for c in celulas]
+                    break
+            yield cabecalho
+            if not cabecalho:
+                return
             for celulas in leitor:
                 if not any(c.strip() for c in celulas):
                     continue
@@ -73,7 +72,11 @@ def _ler_tabela_lazy(caminho):
                     continue
                 yield leitor.line_num, dict(zip(cabecalho, celulas))
 
-    return cabecalho, gerar(), problemas
+    gerador = gerar()
+    cabecalho = next(gerador)
+    if not cabecalho:
+        problemas.append(Problema(1, "arquivo", "arquivo vazio", "erro"))
+    return cabecalho, gerador, problemas
 
 
 def _ler_tabela(caminho) -> tuple[list[str], list[tuple[int, dict]], list[Problema]]:
@@ -100,9 +103,6 @@ def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[P
     vistos: dict[str, str] = {}  # inchikey_parental -> primeiro nome
     descartados: dict[str, list[str]] = {}
     for n, linha in linhas:
-        if limite is not None and len(ligantes) >= limite:
-            linhas.close()
-            break
         nome, smiles = texto(linha.get("nome")), texto(linha.get("smiles"))
         if not nome:
             problemas.append(Problema(n, "nome", "nome ausente", "erro"))
@@ -131,6 +131,9 @@ def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[P
             continue
         vistos[chave_parental] = nome
         ligantes.append(registro)
+        if limite is not None and len(ligantes) >= limite:
+            break  # nao puxa a proxima linha: ela nao pode gerar problema
+    linhas.close()
     for chave, nomes in descartados.items():
         problemas.append(Problema(
             0, "nome", f"ligante duplicado pela forma parental ({chave}): mantido "

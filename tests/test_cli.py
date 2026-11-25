@@ -101,3 +101,40 @@ def test_limite_corta_durante_a_leitura(tmp_path):
     c = ler_manifesto(tmp_path / "manifesto.json")["contagens"]
     assert c["ligantes"] == 1
     assert c["problemas_ligantes"] == 0
+
+
+def test_limite_nao_le_linha_malformada_apos_o_ultimo_aceito(tmp_path):
+    from mods.evidencias.entrada import ler_ligantes
+    arq = tmp_path / "lig.tsv"
+    arq.write_text(
+        "nome\tsmiles\n"
+        "aspirina\tCC(=O)Oc1ccccc1C(=O)O\n"
+        "linha_larga\tCCO\textra\tmais\n"      # largura errada, logo apos o 1o
+        "etanol\tCCO\n", encoding="utf-8")
+    ligantes, problemas = ler_ligantes(arq, limite=1)
+    assert [l["nome"] for l in ligantes] == ["aspirina"]
+    assert problemas == []
+    # sem limite a linha malformada e relatada (prova que o caso e alcancavel)
+    _, problemas = ler_ligantes(arq)
+    assert any(p.campo == "linha" for p in problemas)
+
+
+def test_limite_ainda_relata_duplicados_vistos_antes_do_corte(tmp_path):
+    from mods.evidencias.entrada import ler_ligantes
+    arq = tmp_path / "lig.tsv"
+    arq.write_text(
+        "nome\tsmiles\n"
+        "duloxetina base\tCNCCC(Oc1cccc2ccccc12)c1cccs1\n"
+        "cloridrato\tCNCCC(Oc1cccc2ccccc12)c1cccs1.Cl\n"
+        "aspirina\tCC(=O)Oc1ccccc1C(=O)O\n", encoding="utf-8")
+    ligantes, problemas = ler_ligantes(arq, limite=2)
+    assert [l["nome"] for l in ligantes] == ["duloxetina base", "aspirina"]
+    assert any("duplicado" in p.mensagem for p in problemas)
+
+
+def test_leitura_fecha_o_arquivo_quando_falta_coluna(tmp_path, recwarn):
+    import gc
+    from mods.evidencias.entrada import ler_ligantes
+    ler_ligantes("tests/dados/ligantes_sem_coluna.tsv")
+    gc.collect()
+    assert not [w for w in recwarn if issubclass(w.category, ResourceWarning)]
