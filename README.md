@@ -832,6 +832,17 @@ Targets são CC0 e não exigem nada.
 python -m pytest tests/        # nenhum teste usa a rede
 ```
 
+A suíte precisa de `requirements-opcionais.txt` (traz o `torch`):
+
+```bash
+pip install -r requirements-opcionais.txt
+python -m pytest tests/
+```
+
+Sem o `torch` o `pytest` **se recusa a rodar** (código de saída 2, com a
+mensagem dizendo o que instalar), em vez de pular os testes da evidência
+prevista, incluindo o guarda de largura do checkpoint, e relatar sucesso.
+
 Cobertura do painel, dita sem enfeite:
 
 - A lógica que ele exibe (`mods/evidencias/resumo.py`) tem testes unitários (`tests/test_resumo.py`).

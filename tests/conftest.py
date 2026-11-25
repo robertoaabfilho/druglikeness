@@ -5,6 +5,21 @@ import pytest
 N_ALVOS_FALSO = 6
 
 
+def pytest_sessionstart(session):
+    """Sem torch a suite NAO e parcial, e inutilizavel: o painel, o CLI e a
+    evidencia prevista dependem dele, e o resultado seria dezenas de falhas
+    espurias (ou um INTERNALERROR no import) ou, pior, um 'passed' que omite
+    os testes de regressao, como o do guarda de largura do checkpoint. Falhar
+    cedo, com o remedio dito, e o unico resultado que nao engana."""
+    import importlib.util
+    if importlib.util.find_spec("torch") is None:
+        pytest.exit(
+            "torch NAO esta instalado: a suite completa (incluindo os testes da "
+            "evidencia prevista e o guarda de largura do checkpoint) nao pode "
+            "rodar. Instale com: pip install -r requirements-opcionais.txt",
+            returncode=2)
+
+
 @pytest.fixture(autouse=True)
 def sem_rede(monkeypatch):
     """Nenhum teste fala com a rede: conectar um socket de internet falha o
