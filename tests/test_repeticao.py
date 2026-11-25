@@ -294,3 +294,22 @@ def test_enriquecimento_real_repetido_so_do_cache_e_entrada_alterada_recusa(
     err = capsys.readouterr().err
     assert codigo == 2 and "sintomas_md5" in err and "ligantes_md5" not in err
     assert not (rep3 / "enr.tsv").exists()
+
+
+def test_manifesto_sem_hash_de_entrada_recusa_a_repeticao(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == 0
+    caminho = vivo / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    del m["versoes"]["ligantes_md5"]
+    caminho.write_text(json.dumps(m))
+    capsys.readouterr()
+    codigo, rep = _cli_real(tmp_path, "rep", ["--manifesto", str(caminho)])
+    err = capsys.readouterr().err
+    assert codigo == 2
+    assert "anterior ao registro de MD5" in err and "ligantes_md5" in err
+    assert "alvos_md5" not in err
+    assert not (rep / "e.tsv").exists() and not (rep / "manifesto.json").exists()

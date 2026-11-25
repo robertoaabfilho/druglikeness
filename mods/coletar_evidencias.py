@@ -39,7 +39,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
 from mods.evidencias.manifesto import (
-    escrever_manifesto, ler_manifesto, verificar_manifesto)
+    escrever_manifesto, hashes_de_entrada_ausentes, ler_manifesto,
+    verificar_manifesto)
 
 
 def _commit_do_pipeline() -> str:
@@ -224,6 +225,13 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as e:
             print(f"[erro] --manifesto: nao foi possivel ler {args.manifesto}: {e}",
                   file=sys.stderr)
+            return 2
+        ausentes = hashes_de_entrada_ausentes(anterior)
+        if ausentes:
+            print(f"[erro] repeticao recusada: o manifesto {args.manifesto} e anterior "
+                  f"ao registro de MD5 das entradas e nao permite conferir os arquivos "
+                  f"de entrada (ausentes: {', '.join(ausentes)}). Gere um manifesto novo "
+                  "com uma execucao normal", file=sys.stderr)
             return 2
         if manifesto.resolve() == Path(args.manifesto).resolve():
             manifesto = saida.parent / "manifesto_repeticao.json"

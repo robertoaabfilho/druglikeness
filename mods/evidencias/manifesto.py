@@ -48,3 +48,13 @@ def verificar_manifesto(anterior: dict, atual: dict) -> list[str]:
                 problemas.append(f"{chave}: manifesto registra {antes[chave]!r}, "
                                  f"agora {agora.get(chave)!r}")
     return problemas
+
+
+_ENTRADAS_HASHEADAS = ("ligantes_md5", "alvos_md5", "sintomas_md5")
+
+
+def hashes_de_entrada_ausentes(anterior: dict) -> list[str]:
+    """Chaves de MD5 de entrada que o manifesto nao tem. Sem elas a repeticao
+    nao tem como conferir as entradas e deve recusar, nao seguir."""
+    versoes = anterior.get("versoes", {})
+    return [c for c in _ENTRADAS_HASHEADAS if not versoes.get(c)]
