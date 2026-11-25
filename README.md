@@ -535,7 +535,19 @@ Com `--alvos-enriquecidos alvos_enriquecidos.tsv --rotulos target_labels.tsv`, a
 - **Sintoma -> EFO nunca é escolhido em silêncio.** Fixe com `--efo "neuropathic pain=EFO_0005762"` (repetível). Sintoma sem `--efo` não é enriquecido; a CLI lista os candidatos do Open Targets e pede a escolha.
 - **Open Targets:** alvos com escore de associação >= `--corte-associacao` (padrão 0.5), UniProt -> ChEMBL (`SINGLE PROTEIN` primeiro). Para a dor neuropática (934 alvos), o corte 0.5 deixa 30.
 - **Colapso de família:** só dobra num representante os parálogos **ausentes do modelo**, na mesma classe de proteína do ChEMBL; o ID dobrado vai para `familia_colapsados` e a classe para `familia`. Parálogo presente no modelo continua sendo linha própria (NET e SERT, ambos em "SLC06 neurotransmitter transporter", são o mecanismo duplo da duloxetina).
-- **Reactome:** só dados de anotação (CC0): `data/mapping/UniProt/{acc}/pathways` e `data/participants/{stId}/referenceEntities`. Os arquivos de Functional Interaction não são usados (licença da Pathway Solutions, conteúdo KEGG). Vias com mais de `--teto-via` proteínas (padrão 150) são ignoradas, e o alvo expandido só entra se existir no espaço do modelo. Cada adição traz `origem = reactome`, `via_origem` (a primeira via que a trouxe) e `alvo_semente`.
+- **Reactome:** só dados de anotação (CC0): `data/mapping/UniProt/{acc}/pathways` e `data/participants/{stId}/referenceEntities`. Os arquivos de Functional Interaction não são usados (licença da Pathway Solutions, conteúdo KEGG). Vias com mais de `--teto-via` proteínas (padrão 150) são ignoradas, e o alvo expandido só entra se existir no espaço do modelo. Cada adição traz `origem = reactome`, `via_origem` (todas as vias que a trouxeram, separadas por `;`) e `alvo_semente`. Alvo que o Reactome alcança e que o Open Targets também associa ao sintoma, mas abaixo do corte, continua `reactome` e ganha o escore e uma `observacao`.
+
+**Fluxo em dois passos.** A coleta de evidência **não** usa os alvos enriquecidos: a lista precisa ser revisada antes de gastar a previsão sobre todos os ligantes (210 alvos x ~109 mil ligantes são ~23 milhões de pares). A execução avisa isso ao final e o manifesto registra `alvos_enriquecidos_usados_na_evidencia: false`.
+
+```bash
+# 1. enriquecer (escreve alvos_enriquecidos.tsv; evidencias.tsv usa so os alvos informados)
+python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
+    --saida passo1/evidencias.tsv --rotulos target_labels.tsv \
+    --alvos-enriquecidos alvos_enriquecidos.tsv --efo "neuropathic pain=EFO_0005762"
+# 2. revise/edite alvos_enriquecidos.tsv e colete a evidencia com ele
+python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos_enriquecidos.tsv --sintomas sintomas.txt \
+    --saida evidencias.tsv --checkpoint ecfp4.pt --rotulos target_labels.tsv
+```
 
 **Quanto cada filtro corta, medido** (sementes CHEMBL222/NET, CHEMBL228/SERT, CHEMBL233/MOR, CHEMBL4794/TRPV1; modelo PP4CKD; Reactome e ChEMBL consultados em 2026-11-25):
 

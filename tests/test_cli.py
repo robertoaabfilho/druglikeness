@@ -321,3 +321,26 @@ def test_chmod_que_falha_nao_custa_a_tabela(tmp_path, modelo_falso, rotulos_fals
                    "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
     assert codigo == 0
     assert len(saida.read_text(encoding="utf-8").splitlines()) > 1
+
+
+def test_enriquecimento_avisa_que_a_evidencia_nao_o_usou(tmp_path, monkeypatch, capsys):
+    import json
+    import mods.coletar_evidencias as cli
+    rotulos = tmp_path / "labels.tsv"
+    rotulos.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
+                       "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
+                       "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "_enriquecer", lambda *a: [
+        {"alvo_chembl_id": "CHEMBL222", "origem": "usuario"},
+        {"alvo_chembl_id": "CHEMBL233", "origem": "open_targets"}])
+    enr = tmp_path / "enr.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(tmp_path / "e.tsv"),
+                   "--rotulos", str(rotulos), "--alvos-enriquecidos", str(enr)])
+    assert codigo == 0
+    erro = capsys.readouterr().err
+    assert "2 alvos gravados" in erro and "NAO os usou" in erro and f"--alvos {enr}" in erro
+    c = json.loads((tmp_path / "manifesto.json").read_text())["contagens"]
+    assert c["alvos_enriquecidos_escritos"] == 2
+    assert c["alvos_enriquecidos_usados_na_evidencia"] is False

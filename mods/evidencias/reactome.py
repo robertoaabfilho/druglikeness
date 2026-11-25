@@ -16,7 +16,9 @@ Regras
   inteiras; as especificas ficam.
 * Um alvo expandido so entra se existir no espaco do modelo
   (`alvos_expandidos_no_modelo`); sem isso o preditor nao o pontua.
-* Toda adicao sai com `origem = reactome`, `via_origem` e `alvo_semente`.
+* Toda adicao sai com `origem = reactome`, `via_origem` (TODAS as vias que a
+  trouxeram, separadas por ';', como `familia_colapsados`) e `alvo_semente`
+  (idem). Uma proteina trazida por tres vias nao se confunde com a marginal.
 * Falha por item (`ListaTruncada`, `RespostaInesperada`, resposta HTTP de erro) e registrada em
   `relatorio["problemas"]` e a execucao segue.
 """
@@ -46,6 +48,12 @@ def _lista(resposta, consulta: str) -> list:
     return resposta
 
 
+def _juntar(linha: dict, campo: str, valor: str) -> None:
+    """Acrescenta `valor` a lista ';' do campo, sem repetir."""
+    if valor not in linha[campo].split(";"):
+        linha[campo] += ";" + valor
+
+
 def vias_do_uniprot(acc: str, *, obter_json: Callable = _obter_json_requests
                     ) -> list[dict]:
     """Vias humanas do Reactome que contem `acc`: `stId` e `nome`."""
@@ -71,8 +79,8 @@ def expandir_vias(sementes: list[dict], *, teto: int = 150,
                   relatorio: dict | None = None) -> list[dict]:
     """Proteinas que dividem via (de ate `teto` proteinas) com as sementes.
     Cada semente traz `uniprot` e `alvo_chembl_id`. Uma linha por UniProt
-    (as sementes nao voltam): `via_origem` e a primeira via que a trouxe e
-    `alvo_semente` junta, com ';', todas as sementes que a alcancaram.
+    (as sementes nao voltam): `via_origem` junta, com ';', todas as vias (dentro
+    do teto) que a trouxeram e `alvo_semente` todas as sementes que a alcancaram.
     `relatorio` recebe `vias_vistas`, `vias_descartadas` ({stId: n}) e
     `problemas`."""
     rel = relatorio if relatorio is not None else {}
@@ -118,9 +126,9 @@ def expandir_vias(sementes: list[dict], *, teto: int = 150,
                                      "via_origem": st_id, "via_nome": via["nome"],
                                      "alvo_semente": semente["alvo_chembl_id"]}
                 else:
-                    sementes_ja = achados[prot]["alvo_semente"].split(";")
-                    if semente["alvo_chembl_id"] not in sementes_ja:
-                        achados[prot]["alvo_semente"] += ";" + semente["alvo_chembl_id"]
+                    _juntar(achados[prot], "via_origem", st_id)
+                    _juntar(achados[prot], "via_nome", via["nome"])
+                    _juntar(achados[prot], "alvo_semente", semente["alvo_chembl_id"])
     return list(achados.values())
 
 
@@ -139,6 +147,7 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
     rel.setdefault("problemas", [])
     modelo = {r["chembl_id"]: r for r in rotulos}
     saida = []
+    por_id: dict[str, dict] = {}
     for e in expandidos:
         rel["proteinas"] += 1
         try:
@@ -160,6 +169,14 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
         if chembl_id in ja_presentes:
             rel["ja_na_lista"] += 1
             continue
+        if chembl_id in por_id:
+            # Outra proteina caiu no mesmo alvo do ChEMBL (grupo, complexo):
+            # uma linha so, com o rastro das duas.
+            rel["mesmo_alvo_de_outra_proteina"] = rel.get("mesmo_alvo_de_outra_proteina", 0) + 1
+            for campo in ("via_origem", "via_nome", "alvo_semente"):
+                for v in e[campo].split(";"):
+                    _juntar(por_id[chembl_id], campo, v)
+            continue
         rel["no_modelo"] += 1
         saida.append({**e, "alvo_chembl_id": chembl_id,
                       "alvo": alvo.get("pref_name") or "",
@@ -167,4 +184,5 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
                       "tipo_alvo": alvo.get("target_type") or "",
                       "no_modelo": True,
                       "n_moleculas_treino": modelo[chembl_id]["n_ativos"]})
+        por_id[chembl_id] = saida[-1]
     return saida

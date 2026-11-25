@@ -81,7 +81,7 @@ def test_via_grande_demais_e_descartada(respostas):
     # 'G alpha (i) signalling events' tem 317 proteinas; 'Opioid Signalling', 90.
     rel = {}
     expandidos = expandir_vias(SEMENTE, teto=150, obter_json=respostas, relatorio=rel)
-    vias = {a["via_origem"] for a in expandidos}
+    vias = {v for a in expandidos for v in a["via_origem"].split(";")}
     assert "R-HSA-111885" in vias
     assert "R-HSA-418594" not in vias
     assert rel["vias_descartadas"]["R-HSA-418594"] == 317
@@ -173,3 +173,58 @@ def test_http_500_e_falha_de_item_mas_timeout_propaga():
         raise TimeoutError("timeout")
     with pytest.raises(TimeoutError):
         alvos_expandidos_no_modelo(exp, [], obter_json_chembl=sem_rede)
+
+
+def test_via_origem_lista_todas_as_vias_que_trouxeram_a_proteina(respostas):
+    # O14610 participa de 'Opioid Signalling' e de 'G-protein activation'.
+    expandidos = {a["uniprot"]: a for a in expandir_vias(SEMENTE, teto=150, obter_json=respostas)}
+    assert expandidos["O14610"]["via_origem"] == "R-HSA-111885;R-HSA-202040"
+    # Proteina de uma via so continua com uma so.
+    assert all(";" not in a["via_origem"] or "R-HSA-111885" in a["via_origem"]
+               for a in expandidos.values())
+
+
+def test_duas_proteinas_no_mesmo_alvo_viram_uma_linha_com_rastro_das_duas():
+    alvo = {"target_chembl_id": "CHEMBL9", "pref_name": "grupo", "organism": "Homo sapiens",
+            "target_type": "PROTEIN FAMILY"}
+    exp = [{"uniprot": "P1", "origem": "reactome", "via_origem": "R1", "via_nome": "a", "alvo_semente": "S1"},
+           {"uniprot": "P2", "origem": "reactome", "via_origem": "R2", "via_nome": "b", "alvo_semente": "S2"}]
+    saida = alvos_expandidos_no_modelo(
+        exp, [{"chembl_id": "CHEMBL9", "n_ativos": 1}],
+        obter_json_chembl=_chembl_falso({"P1": alvo, "P2": alvo}))
+    assert len(saida) == 1
+    assert saida[0]["via_origem"] == "R1;R2" and saida[0]["alvo_semente"] == "S1;S2"
+
+
+def test_alvo_do_reactome_tambem_associado_no_open_targets_e_anotado():
+    from mods.evidencias.enriquecimento import enriquecer
+    alvo = {"target_chembl_id": "CHEMBL4296", "pref_name": "SCN9A", "organism": "Homo sapiens",
+            "target_type": "SINGLE PROTEIN"}
+    semente = {"target_chembl_id": "CHEMBL1", "pref_name": "S", "organism": "Homo sapiens",
+               "target_type": "SINGLE PROTEIN", "target_components": [{"accession": "PS"}]}
+    def chembl(url):
+        if "accession=Q15858" in url:
+            return {"targets": [alvo], "page_meta": {"total_count": 1}}
+        if "target/CHEMBL1.json" in url:
+            return {**semente, "pref_name": "S", "organism": "Homo sapiens"}
+        return {"targets": [], "page_meta": {"total_count": 0}}
+    def ot(url, corpo=None):
+        return {"data": {"disease": {"associatedTargets": {"count": 1, "rows": [
+            {"score": 0.41, "datatypeScores": [],
+             "target": {"id": "E", "approvedSymbol": "SCN9A",
+                        "proteinIds": [{"id": "Q15858", "source": "uniprot_swissprot"}]}}]}}}}
+    def reactome(url):
+        if "mapping" in url:
+            return [{"stId": "R-X", "displayName": "x"}]
+        return [{"databaseName": "UniProt", "identifier": "Q15858"},
+                {"databaseName": "UniProt", "identifier": "PS"}]
+    rel = {}
+    linhas = enriquecer([{"alvo_chembl_id": "CHEMBL1", "alvo": "", "organismo": ""}],
+                        {"dor": "EFO_1"}, [{"chembl_id": "CHEMBL1", "n_ativos": 1},
+                                           {"chembl_id": "CHEMBL4296", "n_ativos": 9}],
+                        corte_associacao=0.5, teto_via=150, obter_json_chembl=chembl,
+                        obter_json_open_targets=ot, obter_json_reactome=reactome,
+                        relatorio=rel)
+    r = [l for l in linhas if l["alvo_chembl_id"] == "CHEMBL4296"]
+    assert len(r) == 1 and r[0]["origem"] == "reactome"
+    assert r[0]["score"] == 0.41 and "Open Targets" in r[0]["observacao"]

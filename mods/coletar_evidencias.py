@@ -205,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
             from mods.evidencias.predito import linhas_preditas
 
     contagens_enriquecimento: dict = {}
+    linhas_enriquecidas: list[dict] = []
     if args.alvos_enriquecidos:
         # Antes de tocar nas saidas: erro de rede aqui nao deixa tabela nenhuma.
         try:
@@ -324,11 +325,25 @@ def main(argv: list[str] | None = None) -> int:
                    "medido_problemas": len(contagens_medido.get("problemas", [])),
                    "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
                    "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
+                   "alvos_enriquecidos_escritos": len(linhas_enriquecidas) if args.alvos_enriquecidos else 0,
+                   "alvos_enriquecidos_usados_na_evidencia": False,
                    "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
                    "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
               "descartada(s) por erro (detalhes acima)", file=sys.stderr)
+    if args.alvos_enriquecidos:
+        proximo = (f"python mods/coletar_evidencias.py --ligantes {args.ligantes} "
+                   f"--alvos {args.alvos_enriquecidos} --sintomas {args.sintomas} "
+                   f"--saida <nova_evidencias.tsv>"
+                   + (f" --checkpoint {args.checkpoint}" if args.checkpoint else "")
+                   + (f" --rotulos {args.rotulos}" if args.rotulos else "")
+                   + (f" --evidencias-chembl {args.evidencias_chembl}"
+                      if args.evidencias_chembl else ""))
+        print(f"[ATENCAO] {len(linhas_enriquecidas)} alvos gravados em "
+              f"{args.alvos_enriquecidos}, mas o evidencias.tsv desta execucao NAO os "
+              "usou (so os alvos de --alvos). Revise o arquivo e rode a coleta com ele:\n  "
+              + proximo, file=sys.stderr)
     print(f"{n_linhas} linhas de evidencia em {saida}; manifesto em {manifesto}")
     return 0
 

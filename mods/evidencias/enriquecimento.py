@@ -72,17 +72,23 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
     presentes = {l["alvo_chembl_id"] for l in linhas if l["alvo_chembl_id"]}
 
     candidatos: list[dict] = []
+    # UniProt -> melhor associacao ABAIXO do corte: alvo que o Reactome alcanca
+    # e que o Open Targets tambem associa ao sintoma nao pode parecer so "via".
+    abaixo: dict[str, dict] = {}
     for sintoma, efo in efos.items():
         try:
-            achados = alvos_associados(efo, corte=corte_associacao,
-                                       obter_json=obter_json_open_targets)
+            todos = alvos_associados(efo, corte=0.0,
+                                     obter_json=obter_json_open_targets)
         except (ListaTruncada, OSError, ValueError) as e:
             if not erro_de_item(e):
                 raise
             problemas.append(f"Open Targets, {sintoma!r} ({efo}): {e}")
             continue
-        for c in achados:
-            candidatos.append({**c, "sintoma": sintoma})
+        for c in todos:
+            if c["score"] >= corte_associacao:
+                candidatos.append({**c, "sintoma": sintoma})
+            elif c["uniprot"] and c["score"] > abaixo.get(c["uniprot"], {}).get("score", -1):
+                abaixo[c["uniprot"]] = {**c, "sintoma": sintoma}
     rel["open_targets_candidatos"] = len(candidatos)
 
     resolvidos = alvos_do_chembl(candidatos, rotulos, obter_json_chembl=obter_json_chembl)
@@ -128,6 +134,13 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
     problemas.extend(rel_vias["problemas"] + rel_modelo["problemas"])
     rel["reactome_vias"] = {k: v for k, v in rel_vias.items() if k != "problemas"}
     rel["reactome_modelo"] = {k: v for k, v in rel_modelo.items() if k != "problemas"}
+    for n in novos:
+        a = abaixo.get(n["uniprot"])
+        if a:
+            n.update(efo_id=a["efo_id"], sintoma=a["sintoma"], score=a["score"])
+            n["observacao"] = (f"tambem associado no Open Targets (escore "
+                               f"{a['score']:.3f}, abaixo do corte {corte_associacao})")
+            rel["reactome_tambem_open_targets"] = rel.get("reactome_tambem_open_targets", 0) + 1
     rel["reactome"] = len(novos)
     linhas.extend(novos)
     return linhas
