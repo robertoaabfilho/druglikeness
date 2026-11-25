@@ -52,3 +52,52 @@ def test_execucao_como_script_direto(tmp_path):
     assert r.returncode == 0, r.stderr
     assert saida.exists()
     assert "PARCIAL" in r.stderr
+
+
+ARGS = ["--ligantes", "tests/dados/ligantes_minimo.tsv",
+        "--alvos", "tests/dados/alvos_minimo.tsv",
+        "--sintomas", "tests/dados/sintomas.txt", "--sem-rede"]
+
+
+def test_commit_e_hash_de_40_hex_em_execucao_normal(tmp_path):
+    import re
+    main(ARGS + ["--saida", str(tmp_path / "e.tsv")])
+    c = ler_manifesto(tmp_path / "manifesto.json")["versoes"]["pipeline_commit"]
+    assert re.fullmatch(r"[0-9a-f]{40}", c)
+
+
+def test_sem_git_o_commit_e_desconhecido(tmp_path, monkeypatch):
+    import subprocess
+
+    def sem_git(*a, **k):
+        raise FileNotFoundError("git")
+    monkeypatch.setattr(subprocess, "run", sem_git)
+    assert main(ARGS + ["--saida", str(tmp_path / "e.tsv")]) == 0
+    m = ler_manifesto(tmp_path / "manifesto.json")
+    assert m["versoes"]["pipeline_commit"] == "desconhecido"
+
+
+def test_sintomas_vazio_e_aviso_e_a_execucao_continua(tmp_path, capsys):
+    vazio = tmp_path / "sintomas.txt"
+    vazio.write_text("# so comentario\n", encoding="utf-8")
+    args = [a if a != "tests/dados/sintomas.txt" else str(vazio) for a in ARGS]
+    assert main(args + ["--saida", str(tmp_path / "e.tsv")]) == 0
+    err = capsys.readouterr().err
+    assert "[aviso] sintomas" in err and "NENHUM enriquecimento" in err
+
+
+def test_limite_invalido_e_rejeitado(tmp_path):
+    import pytest
+    for ruim in ("0", "-3", "x"):
+        with pytest.raises(SystemExit):
+            main(ARGS + ["--saida", str(tmp_path / "e.tsv"), "--limite", ruim])
+    assert not (tmp_path / "e.tsv").exists()
+
+
+def test_limite_corta_durante_a_leitura(tmp_path):
+    # aspirina e o 1o ligante valido; a linha ruim (sem_estrutura) vem depois
+    # do limite e nao pode gerar problema nem entrar na contagem.
+    main(ARGS + ["--saida", str(tmp_path / "e.tsv"), "--limite", "1"])
+    c = ler_manifesto(tmp_path / "manifesto.json")["contagens"]
+    assert c["ligantes"] == 1
+    assert c["problemas_ligantes"] == 0

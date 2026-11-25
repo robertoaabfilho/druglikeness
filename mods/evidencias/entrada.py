@@ -35,9 +35,11 @@ class Problema:
     gravidade: Literal["erro", "aviso"]
 
 
-def _ler_tabela(caminho) -> tuple[list[str], list[tuple[int, dict]], list[Problema]]:
-    """Le TSV (ou CSV, com aviso). Devolve (cabecalho, [(linha, dict)], problemas).
-    Linhas com numero de celulas diferente do cabecalho sao descartadas."""
+def _ler_tabela_lazy(caminho):
+    """Le TSV (ou CSV, com aviso). Devolve (cabecalho, gerador, problemas): o
+    gerador produz (linha, dict) sob demanda, entao quem para cedo nao paga o
+    resto do arquivo. `problemas` cresce conforme o gerador avanca. Linhas com
+    numero de celulas diferente do cabecalho sao descartadas."""
     caminho = Path(caminho)
     problemas: list[Problema] = []
     csv_ = caminho.suffix.lower() == ".csv"
@@ -45,26 +47,39 @@ def _ler_tabela(caminho) -> tuple[list[str], list[tuple[int, dict]], list[Proble
         problemas.append(Problema(
             1, "arquivo", "arquivo .csv aceito, mas o formato e TSV: nomes com "
             "virgula quebram a leitura; prefira .tsv", "aviso"))
+    f = open(caminho, newline="", encoding="utf-8-sig")
+    leitor = csv.reader(f, delimiter="," if csv_ else "\t")
     cabecalho: list[str] = []
-    linhas: list[tuple[int, dict]] = []
-    with open(caminho, newline="", encoding="utf-8-sig") as f:
-        leitor = csv.reader(f, delimiter="," if csv_ else "\t")
-        for celulas in leitor:
-            if not any(c.strip() for c in celulas):
-                continue
-            if not cabecalho:
-                cabecalho = [c.strip() for c in celulas]
-                continue
-            if len(celulas) != len(cabecalho):
-                dica = " (virgula nao citada em .csv?)" if csv_ else ""
-                problemas.append(Problema(
-                    leitor.line_num, "linha", f"{len(celulas)} celulas, cabecalho "
-                    f"tem {len(cabecalho)}{dica}; linha descartada", "erro"))
-                continue
-            linhas.append((leitor.line_num, dict(zip(cabecalho, celulas))))
+    for celulas in leitor:
+        if any(c.strip() for c in celulas):
+            cabecalho = [c.strip() for c in celulas]
+            break
     if not cabecalho:
+        f.close()
         problemas.append(Problema(1, "arquivo", "arquivo vazio", "erro"))
-    return cabecalho, linhas, problemas
+        return cabecalho, (x for x in ()), problemas
+
+    def gerar():
+        with f:
+            for celulas in leitor:
+                if not any(c.strip() for c in celulas):
+                    continue
+                if len(celulas) != len(cabecalho):
+                    dica = " (virgula nao citada em .csv?)" if csv_ else ""
+                    problemas.append(Problema(
+                        leitor.line_num, "linha", f"{len(celulas)} celulas, "
+                        f"cabecalho tem {len(cabecalho)}{dica}; linha descartada",
+                        "erro"))
+                    continue
+                yield leitor.line_num, dict(zip(cabecalho, celulas))
+
+    return cabecalho, gerar(), problemas
+
+
+def _ler_tabela(caminho) -> tuple[list[str], list[tuple[int, dict]], list[Problema]]:
+    """Como `_ler_tabela_lazy`, mas le tudo e devolve lista."""
+    cabecalho, gerador, problemas = _ler_tabela_lazy(caminho)
+    return cabecalho, list(gerador), problemas
 
 
 def _exigir(cabecalho: list[str], colunas: list[str], problemas: list[Problema]) -> bool:
@@ -74,14 +89,20 @@ def _exigir(cabecalho: list[str], colunas: list[str], problemas: list[Problema])
     return not faltam
 
 
-def ler_ligantes(caminho) -> tuple[list[dict], list[Problema]]:
-    cabecalho, linhas, problemas = _ler_tabela(caminho)
+def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[Problema]]:
+    """`limite`: para a leitura apos N ligantes aceitos; linhas alem disso nao
+    sao lidas nem geram problemas."""
+    cabecalho, linhas, problemas = _ler_tabela_lazy(caminho)
     if cabecalho and not _exigir(cabecalho, ["nome", "smiles"], problemas):
+        linhas.close()
         return [], problemas
     ligantes: list[dict] = []
     vistos: dict[str, str] = {}  # inchikey_parental -> primeiro nome
     descartados: dict[str, list[str]] = {}
     for n, linha in linhas:
+        if limite is not None and len(ligantes) >= limite:
+            linhas.close()
+            break
         nome, smiles = texto(linha.get("nome")), texto(linha.get("smiles"))
         if not nome:
             problemas.append(Problema(n, "nome", "nome ausente", "erro"))

@@ -52,6 +52,17 @@ def _relatar(nome: str, problemas) -> None:
               file=sys.stderr)
 
 
+def _inteiro_positivo(texto: str) -> int:
+    try:
+        valor = int(texto)
+    except ValueError:
+        valor = 0
+    if valor < 1:
+        raise argparse.ArgumentTypeError(
+            f"--limite deve ser um inteiro >= 1, recebido '{texto}'")
+    return valor
+
+
 def _argumentos(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--ligantes", required=True, help="TSV com nome e smiles")
@@ -61,7 +72,7 @@ def _argumentos(argv):
     ap.add_argument("--manifesto", help="padrao: manifesto.json ao lado da saida")
     ap.add_argument("--corte", type=float, default=0.1,
                     help="corte de probabilidade do modelo (padrao 0.1)")
-    ap.add_argument("--limite", type=int, help="usar so os N primeiros ligantes")
+    ap.add_argument("--limite", type=_inteiro_positivo, help="usar so os N primeiros ligantes")
     ap.add_argument("--sem-rede", action="store_true",
                     help="pula enriquecimento e evidencia obtida por API")
     return ap.parse_args(argv)
@@ -71,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _argumentos(argv)
 
     try:
-        ligantes, p_lig = ler_ligantes(args.ligantes)
+        ligantes, p_lig = ler_ligantes(args.ligantes, args.limite)
         alvos, p_alvo = ler_alvos(args.alvos)
         sintomas = ler_sintomas(args.sintomas)
     except (OSError, UnicodeDecodeError) as e:
@@ -80,9 +91,6 @@ def main(argv: list[str] | None = None) -> int:
     _relatar("ligantes", p_lig)
     _relatar("alvos", p_alvo)
 
-    if args.limite is not None:
-        ligantes = ligantes[:args.limite]
-
     vazias = [n for n, itens in (("ligantes", ligantes), ("alvos", alvos)) if not itens]
     for n in vazias:
         print(f"[erro] {n}: nenhum registro utilizavel; execucao interrompida",
@@ -90,7 +98,8 @@ def main(argv: list[str] | None = None) -> int:
     if vazias:
         return 1
     if not sintomas:
-        print("[aviso] sintomas: nenhum sintoma na entrada", file=sys.stderr)
+        print("[aviso] sintomas: nenhum sintoma na entrada; NENHUM enriquecimento "
+              "sera feito (so os alvos informados serao usados)", file=sys.stderr)
 
     saida = Path(args.saida)
     manifesto = Path(args.manifesto) if args.manifesto else saida.parent / "manifesto.json"
