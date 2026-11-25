@@ -1,3 +1,5 @@
+import pytest
+
 from mods.evidencias.esquema import (
     COLUNAS_EVIDENCIA, EscritorEvidencias, ler_evidencias, formatar_atividade,
 )
@@ -42,3 +44,29 @@ def test_barra_invertida_literal_tambem_volta_exata(tmp_path):
             esc.escrever({"ligante": n})
     assert [l["ligante"] for l in ler_evidencias(destino)] == nomes
     assert len(destino.read_text(encoding="utf-8").splitlines()) == 1 + len(nomes)
+
+
+def test_escrever_chave_desconhecida_levanta_valueerror(tmp_path):
+    with EscritorEvidencias(tmp_path / "e.tsv") as esc:
+        with pytest.raises(ValueError):
+            esc.escrever({"ligante": "x", "coluna_inventada": "y"})
+
+
+def test_formatar_atividade_float_inteiro_sem_ponto_zero():
+    assert formatar_atividade("IC50", "=", 120.0, "nM") == "IC50 = 120 nM"
+
+
+def test_formatar_atividade_relacao_vazia_e_omitida():
+    assert formatar_atividade("IC50", "", 120.5, "nM") == "IC50 120.5 nM"
+
+
+def test_linha_malformada_levanta_valueerror_com_numero_da_linha(tmp_path):
+    cab = "#" + "\t".join(COLUNAS_EVIDENCIA) + "\n"
+    n = len(COLUNAS_EVIDENCIA)
+    curta = "\t".join(["a"] * (n - 1)) + "\n"
+    longa = "\t".join(["a"] * (n + 1)) + "\n"
+    for conteudo in (curta, longa):
+        destino = tmp_path / "m.tsv"
+        destino.write_text(cab + conteudo, encoding="utf-8")
+        with pytest.raises(ValueError, match="linha 2"):
+            list(ler_evidencias(destino))

@@ -56,7 +56,8 @@ def _desescapar(texto: str) -> str:
 
 
 def formatar_atividade(medida: str, relacao: str, valor, unidade: str) -> str:
-    """Texto de exibicao, ex. `IC50 = 120 nM`. Sempre com ponto decimal."""
+    """Texto de exibicao, ex. `IC50 = 120 nM`. O chamador deve passar `valor`
+    como numero (nao texto ja formatado); assim o decimal sai com ponto."""
     if isinstance(valor, float) and valor.is_integer():
         valor = int(valor)
     partes = [medida, relacao, valor, unidade]
@@ -92,7 +93,7 @@ def ler_evidencias(caminho):
     """Gera um dict por linha de dados, lendo em fluxo."""
     with open(caminho, encoding="utf-8", newline="\n") as arq:
         colunas = None
-        for bruta in arq:
+        for numero, bruta in enumerate(arq, start=1):
             texto = bruta.rstrip("\n")
             if colunas is None:
                 if not texto.startswith("#"):
@@ -102,5 +103,8 @@ def ler_evidencias(caminho):
             if not texto:
                 continue
             campos = texto.split("\t")
-            campos += [""] * (len(colunas) - len(campos))
+            if len(campos) != len(colunas):
+                raise ValueError(
+                    f"linha {numero} de {caminho}: {len(campos)} campos "
+                    f"encontrados, {len(colunas)} esperados")
             yield {c: _desescapar(v) for c, v in zip(colunas, campos)}
