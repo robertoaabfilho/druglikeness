@@ -123,8 +123,12 @@ def _argumentos(argv):
     ap.add_argument("--efo", action="append", default=[], metavar="SINTOMA=EFO_ID",
                     help="fixa o EFO de um sintoma (repetivel); sintoma sem --efo NAO e "
                          "enriquecido, so tem seus candidatos listados")
-    ap.add_argument("--corte-associacao", type=float, default=0.5,
-                    help="escore minimo de associacao do Open Targets (padrao 0.5)")
+    ap.add_argument("--corte-associacao", type=float, default=0.4,
+                    help="escore minimo de associacao do Open Targets (padrao 0.4, "
+                         "ajustavel; vai no manifesto). Escolhe pelo escore do proprio "
+                         "alvo, nao por acaso de via: o 'origem' nao deve depender de o "
+                         "Reactome ter alcancado o alvo. Na dor neuropatica: 30 alvos em "
+                         ">=0.5, 44 em >=0.4 (canais de sodio e adrenoceptores alfa-2)")
     ap.add_argument("--teto-via", type=int, default=150,
                     help="vias do Reactome com mais proteinas que isto sao ignoradas (padrao 150)")
     ap.add_argument("--sem-rede", action="store_true",

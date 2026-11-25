@@ -14,6 +14,10 @@ Regras
   e e relatado, nunca adivinhado.
 * Sementes do Reactome: os alvos do usuario e os do Open Targets que existem
   no modelo e tem um unico UniProt.
+* O corte do Open Targets (padrao 0.4 na CLI) escolhe pelo escore do proprio
+  alvo. Alvo que o Reactome alcanca e o Open Targets associa ABAIXO do corte
+  continua `reactome` (promove-lo faria `origem` depender de a via te-lo
+  alcancado) e ganha escore e `observacao`.
 * Falha por item vira `observacao`/`problemas`; so erro de rede aborta.
 """
 
