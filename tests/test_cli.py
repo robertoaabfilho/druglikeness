@@ -138,3 +138,13 @@ def test_leitura_fecha_o_arquivo_quando_falta_coluna(tmp_path, recwarn):
     ler_ligantes("tests/dados/ligantes_sem_coluna.tsv")
     gc.collect()
     assert not [w for w in recwarn if issubclass(w.category, ResourceWarning)]
+
+
+def test_checkpoint_sem_rotulos_falha_com_mensagem(tmp_path, capsys):
+    from mods.coletar_evidencias import main
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", "tests/dados/alvos_minimo.tsv",
+               "--sintomas", "tests/dados/sintomas.txt",
+               "--saida", str(tmp_path / "e.tsv"), "--checkpoint", "x.pt"])
+    assert rc == 2
+    assert "--checkpoint e --rotulos" in capsys.readouterr().err

@@ -75,8 +75,8 @@ def _argumentos(argv):
     ap.add_argument("--corte", type=float, default=0.1,
                     help="corte de probabilidade do modelo (padrao 0.1)")
     ap.add_argument("--limite", type=_inteiro_positivo, help="usar so os N primeiros ligantes")
-    ap.add_argument("--checkpoint", help="pesos .pt do PP4CKD; liga a evidencia prevista")
-    ap.add_argument("--rotulos", help="target_labels.tsv do PP4CKD (exigido com --checkpoint)")
+    ap.add_argument("--checkpoint", help="pesos .pt do PP4CKD; liga a evidencia prevista (use junto com --rotulos)")
+    ap.add_argument("--rotulos", help="target_labels.tsv do PP4CKD (use junto com --checkpoint; um nao funciona sem o outro)")
     ap.add_argument("--sem-rede", action="store_true",
                     help="pula enriquecimento e evidencia obtida por API")
     return ap.parse_args(argv)

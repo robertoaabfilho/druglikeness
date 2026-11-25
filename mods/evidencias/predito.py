@@ -92,6 +92,12 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
                     "fonte": "PP4CKD",
                     "atividade_relatada": formatar_atividade(
                         "p", "=", round(p, 2), "(ECFP4)"),
+                    # Numero de verdade (nao o texto de exibicao): a fase de
+                    # ranking ordena por ele; 6 casas preservam a ordem.
+                    "medida": "probabilidade",
+                    "relacao": "=",
+                    "valor": round(p, 6),
+                    "unidade": "",
                     "pchembl": "",
                     "n_moleculas_treino": r["n_ativos"],
                     "procedencia": procedencia,
