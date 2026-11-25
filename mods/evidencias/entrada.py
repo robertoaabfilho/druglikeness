@@ -20,6 +20,7 @@ Regras
 """
 
 import csv
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -56,6 +57,9 @@ def _ler_tabela_lazy(caminho):
             for celulas in leitor:
                 if any(c.strip() for c in celulas):
                     cabecalho = [c.strip() for c in celulas]
+                    # Convencao do repositorio: cabecalho '#nome\t...' (um '#' so).
+                    if cabecalho[0].startswith("#"):
+                        cabecalho[0] = cabecalho[0][1:].strip()
                     break
             yield cabecalho
             if not cabecalho:
@@ -141,7 +145,56 @@ def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[P
     return ligantes, problemas
 
 
+_CABECALHOS_DE_ALVO = {"alvo_chembl_id", "alvo", "organismo"}
+_RE_CHEMBL = re.compile(r"CHEMBL\d+", re.IGNORECASE)
+
+
+def _e_lista_de_alvos(caminho) -> bool:
+    """Formato 'um alvo por linha' (o de prever_alvos.py), em vez de tabela: a
+    primeira linha de conteudo nao tem tabulacao e nao e cabecalho de coluna."""
+    with open(caminho, encoding="utf-8-sig") as f:
+        for linha in f:
+            if not linha.strip():
+                continue
+            if "\t" in linha:
+                return False
+            primeira = linha.strip().lstrip("#").strip().lower()
+            return primeira not in _CABECALHOS_DE_ALVO
+    return False
+
+
+def _ler_lista_de_alvos(caminho) -> tuple[list[dict], list[Problema]]:
+    """'ID  # comentario' ou 'nome | organismo[, organismo]'; '#' comenta."""
+    alvos: list[dict] = []
+    problemas: list[Problema] = []
+    with open(caminho, encoding="utf-8-sig") as f:
+        for n, linha in enumerate(f, start=1):
+            linha = linha.split("#", 1)[0].strip()
+            if not linha:
+                continue
+            termo, _, organismos = linha.partition("|")
+            termo = termo.strip()
+            if _RE_CHEMBL.fullmatch(termo):
+                alvos.append({"alvo_chembl_id": termo.upper(), "alvo": "",
+                              "organismo": ""})
+                continue
+            lista = [o.strip() for o in organismos.split(",") if o.strip()]
+            if not lista:
+                problemas.append(Problema(
+                    n, "organismo", f"{termo}: organismo obrigatorio quando o alvo "
+                    "e dado por nome ('nome | organismo'); o mesmo nome existe em "
+                    "varias especies", "erro"))
+                continue
+            alvos.extend({"alvo_chembl_id": "", "alvo": termo, "organismo": o}
+                         for o in lista)
+    if not alvos and not problemas:
+        problemas.append(Problema(1, "arquivo", "arquivo vazio", "erro"))
+    return alvos, problemas
+
+
 def ler_alvos(caminho) -> tuple[list[dict], list[Problema]]:
+    if _e_lista_de_alvos(caminho):
+        return _ler_lista_de_alvos(caminho)
     cabecalho, linhas, problemas = _ler_tabela(caminho)
     if cabecalho and "alvo_chembl_id" not in cabecalho and not _exigir(
             cabecalho, ["alvo", "organismo"], problemas):

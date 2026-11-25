@@ -14,6 +14,11 @@ Regras
   Rotulos: `relacao` (um `>` e limite, nao medida), `triagem_hts`, `unidade`,
   `tipo_ensaio` e, em `procedencia`, `estereoisomero` quando a molecula
   ensaiada nao e a do ligante.
+* `correspondencia_ligante` traz a `correspondencia` da fonte: "exata" ou
+  "estereoisomero". Um estereoisomero NAO e uma correspondencia de identidade:
+  e outro composto, e a atividade medida nele nao e a do ligante. As linhas
+  ficam (a fase 2 decide) mas filtraveis por esta coluna, sem ler prosa.
+  Linhas previstas deixam a coluna vazia.
 * `valor` e `unidade` NAO sao comparaveis entre linhas (120 nM e 78% nao se
   ordenam). `pchembl` e a unica coluna comparavel e fica vazia quando a fonte
   nao a traz; nunca e calculada nem preenchida com outra coisa.
@@ -147,7 +152,10 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
             unidade = (linha.get("unidade") or "").strip()
             valor = _numero(linha.get("valor"))
             pchembl = _numero(linha.get("pchembl"))
-            exata = (linha.get("correspondencia") or "").strip() == "exata"
+            corresp = (linha.get("correspondencia") or "").strip()
+            exata = corresp == "exata"
+            if corresp == "estereoisômero":
+                corresp = "estereoisomero"  # ASCII, estavel para filtrar
             ensaiada = (linha.get("molecula_ensaiada") or "").strip()
             descricao = linha.get("descricao_ensaio") or ""
             procedencia = "medido (ChEMBL, evidencias_chembl.csv"
@@ -165,6 +173,7 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                     "ligante": lig.get("nome", ""),
                     "ligante_inchikey_parental": lig.get("inchikey_parental", ""),
                     "ligante_chembl_id": id_lig,
+                    "correspondencia_ligante": corresp,
                     "alvo_chembl_id": alvo["alvo_chembl_id"],
                     "alvo": alvo["alvo"],
                     "organismo": alvo["organismo"],

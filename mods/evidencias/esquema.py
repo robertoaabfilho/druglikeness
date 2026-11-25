@@ -29,7 +29,7 @@ from pathlib import Path
 
 COLUNAS_EVIDENCIA = [
     "ligante", "ligante_inchikey_parental", "ligante_chembl_id",
-    "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "origem_alvo",
+    "correspondencia_ligante", "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "origem_alvo",
     "tipo_evidencia", "fonte", "atividade_relatada", "medida", "relacao",
     "valor", "unidade", "pchembl", "tipo_ensaio", "ensaio_descricao",
     "triagem_hts", "confianca_ensaio", "n_moleculas_treino", "documento",

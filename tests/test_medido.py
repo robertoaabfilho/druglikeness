@@ -115,3 +115,40 @@ def test_erro_de_resolucao_de_ligante_e_alvo_vira_problema_e_segue():
     assert any(l["ligante"] == "pregabalin" for l in linhas)
     assert any(l["ligante"] == "ligante-estereo" for l in linhas)  # linha mantida
     assert len(contagens["problemas"]) >= 2
+
+
+def test_correspondencia_do_ligante_e_coluna_propria():
+    linhas = list(linhas_medidas(AMOSTRA, LIGANTES, ALVOS))
+    por = {l["ligante"]: l["correspondencia_ligante"] for l in linhas}
+    assert por["ligante-estereo"] == "estereoisomero"
+    assert por["pregabalin"] == "exata"
+
+
+def test_cli_grava_medido_sem_pchembl_misturado(tmp_path):
+    from mods.coletar_evidencias import main
+    from mods.evidencias.esquema import ler_evidencias
+    rot = tmp_path / "rotulos.tsv"
+    rot.write_text("target_idx\tchembl_id\tpref_name\torganism\ttarget_type\t"
+                   "active_molecules\n0\tCHEMBL3\tKallikrein-7\tHomo sapiens\t"
+                   "SINGLE PROTEIN\t5\n", encoding="utf-8")
+    alv = tmp_path / "alvos.tsv"
+    alv.write_text("alvo_chembl_id\nCHEMBL3\n", encoding="utf-8")
+    lig = tmp_path / "lig.tsv"
+    lig.write_text("#nome\tsmiles\nx\tCCO\n", encoding="utf-8")
+    amostra = tmp_path / "amostra.csv"
+    # InChIKey do etanol, trocada pela do ligante da amostra com Kallikrein-7
+    from mods.evidencias.entrada import ler_ligantes
+    chave = ler_ligantes(lig)[0][0]["inchikey"]
+    cab, *corpo = open(AMOSTRA, encoding="utf-8").read().splitlines()
+    amostra.write_text("\n".join([cab] + [
+        l.replace("BIXJFIJYBLJTMK-MEBBXXQBSA-N", chave, 1) for l in corpo
+        if l.startswith("BIXJFIJYBLJTMK")]) + "\n", encoding="utf-8")
+    saida = tmp_path / "e.tsv"
+    rc = main(["--ligantes", str(lig), "--alvos", str(alv), "--sintomas",
+               "tests/dados/sintomas.txt", "--saida", str(saida), "--sem-rede",
+               "--rotulos", str(rot), "--evidencias-chembl", str(amostra)])
+    assert rc == 0
+    linhas = list(ler_evidencias(saida))
+    assert linhas and all(l["tipo_evidencia"] == "medido" for l in linhas)
+    assert not [l for l in linhas
+                if l["pchembl"] != "" and l["medida"] == "probabilidade"]

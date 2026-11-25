@@ -78,3 +78,28 @@ def test_inchikey_parental_informado_divergente_avisa_e_usa_recalculado(tmp_path
     aviso = next(p for p in problemas if p.gravidade == "aviso" and p.campo == "inchikey_parental")
     assert errada in aviso.mensagem and "BSYNRYMUTXBXSQ-UHFFFAOYSA-N" in aviso.mensagem
     assert ligantes[0]["inchikey_parental"] == "BSYNRYMUTXBXSQ-UHFFFAOYSA-N"
+
+
+def test_le_o_exemplo_do_readme_com_cabecalho_com_cerquilha():
+    ligantes, problemas = ler_ligantes("input.exemplo.tsv")
+    assert len(ligantes) >= 150, (len(ligantes), problemas[:3])
+
+
+def test_le_o_controle_e_ignora_coluna_extra():
+    ligantes, problemas = ler_ligantes("exemplos/controle.dor_neuropatica.tsv")
+    assert len(ligantes) == 12 and not [p for p in problemas if p.gravidade == "erro"]
+    assert ligantes[0]["grupo_esperado"] == "trata"
+
+
+def test_le_lista_de_alvos_uma_por_linha(tmp_path):
+    alvos, problemas = ler_alvos("exemplos/alvos.dor_neuropatica.txt")
+    assert not problemas
+    assert [a["alvo_chembl_id"] for a in alvos][:3] == [
+        "CHEMBL1919", "CHEMBL3896", "CHEMBL228"]
+    f = tmp_path / "a.txt"
+    f.write_text("enoyl reductase | Staphylococcus aureus\nsem organismo\n",
+                 encoding="utf-8")
+    alvos, problemas = ler_alvos(f)
+    assert alvos == [{"alvo_chembl_id": "", "alvo": "enoyl reductase",
+                      "organismo": "Staphylococcus aureus"}]
+    assert [p.gravidade for p in problemas] == ["erro"]

@@ -98,8 +98,10 @@ def _argumentos(argv):
 
 def main(argv: list[str] | None = None) -> int:
     args = _argumentos(argv)
-    if bool(args.checkpoint) != bool(args.rotulos):
-        print("[erro] --checkpoint e --rotulos devem ser dados juntos", file=sys.stderr)
+    if args.checkpoint and not args.rotulos:
+        print("[erro] --checkpoint e --rotulos devem ser dados juntos "
+              "(--rotulos sozinho serve so para nomear alvos dados por ID)",
+              file=sys.stderr)
         return 2
 
     try:
@@ -130,12 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     n_linhas = 0
     contagens_modelo: dict = {}
     rotulos = None
-    if args.checkpoint:
+    if args.rotulos:
         # Tudo que pode falhar sem tocar na saida falha ANTES de abri-la.
         faltam = [pacote for modulo, pacote in (("torch", "torch"), ("rdkit", "rdkit"))
                   if importlib.util.find_spec(modulo) is None]
         if faltam:
-            print(f"[erro] --checkpoint precisa de {', '.join(faltam)}: "
+            print(f"[erro] --checkpoint/--rotulos precisam de {', '.join(faltam)}: "
                   f"pip install {' '.join(faltam)}", file=sys.stderr)
             return 2
         try:
@@ -144,7 +146,8 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, RuntimeError, ValueError) as e:
             print(f"[erro] rotulos: {e}", file=sys.stderr)
             return 2
-        from mods.evidencias.predito import linhas_preditas
+        if args.checkpoint:
+            from mods.evidencias.predito import linhas_preditas
 
     if args.evidencias_chembl and not Path(args.evidencias_chembl).expanduser().is_file():
         print(f"[erro] --evidencias-chembl: arquivo nao encontrado: "
