@@ -528,6 +528,29 @@ O recall@10 cru de 0,24 **não** é comparável ao 0,856 do artigo: o regime del
 tem ~1,3 rótulos por composto, aqui a mediana é 2 com cauda até 846 (painéis de
 triagem), e o recall@10 é limitado por construção acima de 10 rótulos.
 
+## 10. `mods/coletar_evidencias.py` — enriquecimento de alvos (Open Targets e Reactome)
+
+Com `--alvos-enriquecidos alvos_enriquecidos.tsv --rotulos target_labels.tsv`, a etapa 1 grava uma segunda saída: a lista do usuário **mais** os alvos que o Open Targets associa aos sintomas e os que o Reactome acrescenta por via. O enriquecimento só acrescenta: nenhum alvo do usuário sai, muda de ordem ou é sobrescrito.
+
+- **Sintoma -> EFO nunca é escolhido em silêncio.** Fixe com `--efo "neuropathic pain=EFO_0005762"` (repetível). Sintoma sem `--efo` não é enriquecido; a CLI lista os candidatos do Open Targets e pede a escolha.
+- **Open Targets:** alvos com escore de associação >= `--corte-associacao` (padrão 0.5), UniProt -> ChEMBL (`SINGLE PROTEIN` primeiro). Para a dor neuropática (934 alvos), o corte 0.5 deixa 30.
+- **Colapso de família:** só dobra num representante os parálogos **ausentes do modelo**, na mesma classe de proteína do ChEMBL; o ID dobrado vai para `familia_colapsados` e a classe para `familia`. Parálogo presente no modelo continua sendo linha própria (NET e SERT, ambos em "SLC06 neurotransmitter transporter", são o mecanismo duplo da duloxetina).
+- **Reactome:** só dados de anotação (CC0): `data/mapping/UniProt/{acc}/pathways` e `data/participants/{stId}/referenceEntities`. Os arquivos de Functional Interaction não são usados (licença da Pathway Solutions, conteúdo KEGG). Vias com mais de `--teto-via` proteínas (padrão 150) são ignoradas, e o alvo expandido só entra se existir no espaço do modelo. Cada adição traz `origem = reactome`, `via_origem` (a primeira via que a trouxe) e `alvo_semente`.
+
+**Quanto cada filtro corta, medido** (sementes CHEMBL222/NET, CHEMBL228/SERT, CHEMBL233/MOR, CHEMBL4794/TRPV1; modelo PP4CKD; Reactome e ChEMBL consultados em 2026-11-25):
+
+| etapa | proteínas |
+|---|---|
+| nas vias das 4 sementes, sem filtro | 573 (+4 sementes) |
+| após o teto de 150 por via (descarta "G alpha (i) signalling events", 317, e "Peptide ligand-binding receptors", 200) | 259 |
+| sem alvo humano no ChEMBL | -53 |
+| com alvo no ChEMBL, mas fora do espaço do modelo | -61 |
+| **entram no enriquecido** | **145** |
+
+O filtro de presença no modelo corta 114 das 259 proteínas (44%); os dois filtros juntos levam 573 a 145 (75% a menos). Os números dependem das sementes e do `target_labels.tsv`.
+
+---
+
 ## Dicas de busca por sintoma/condição
 
 - Use sempre o **nome em inglês**.

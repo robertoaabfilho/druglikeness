@@ -78,6 +78,31 @@ def _inteiro_positivo(texto: str) -> int:
     return valor
 
 
+def _enriquecer(args, alvos, sintomas, efos, rotulos, contagens) -> list[dict]:
+    """Sintoma -> EFO (so os fixados com --efo; os demais listam candidatos e
+    ficam de fora) e depois Open Targets + Reactome."""
+    from mods.evidencias import chembl, open_targets, reactome
+    from mods.evidencias.enriquecimento import enriquecer
+    validos: dict[str, str] = {}
+    for sintoma in sintomas:
+        if sintoma in efos:
+            validos[sintoma] = efos[sintoma]
+            continue
+        cands = open_targets.buscar_efo(sintoma)
+        lista = "; ".join(f"{c['id']} ({c['name']})" for c in cands[:5]) or "nenhum"
+        print(f"[aviso] sintoma {sintoma!r} SEM EFO fixado: nao enriquecido. "
+              f"Candidatos: {lista}. Escolha com --efo '{sintoma}=<EFO_ID>'",
+              file=sys.stderr)
+    for sintoma in efos.keys() - set(sintomas):
+        print(f"[aviso] --efo para {sintoma!r}, que nao esta em --sintomas: ignorado",
+              file=sys.stderr)
+    return enriquecer(
+        alvos, validos, rotulos, corte_associacao=args.corte_associacao,
+        teto_via=args.teto_via, obter_json_chembl=chembl._obter_json_requests,
+        obter_json_open_targets=open_targets._post_json_requests,
+        obter_json_reactome=reactome._obter_json_requests, relatorio=contagens)
+
+
 def _argumentos(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--ligantes", required=True, help="TSV com nome e smiles")
@@ -91,6 +116,17 @@ def _argumentos(argv):
     ap.add_argument("--checkpoint", help="pesos .pt do PP4CKD; liga a evidencia prevista (use junto com --rotulos)")
     ap.add_argument("--rotulos", help="target_labels.tsv do PP4CKD (use junto com --checkpoint; um nao funciona sem o outro)")
     ap.add_argument("--evidencias-chembl", help="evidencias_chembl.csv (ensaios medidos); liga a evidencia medida")
+    ap.add_argument("--alvos-enriquecidos",
+                    help="alvos_enriquecidos.tsv a escrever: alvos do usuario mais os do "
+                         "Open Targets (por sintoma) e da expansao por via do Reactome; "
+                         "exige --rotulos")
+    ap.add_argument("--efo", action="append", default=[], metavar="SINTOMA=EFO_ID",
+                    help="fixa o EFO de um sintoma (repetivel); sintoma sem --efo NAO e "
+                         "enriquecido, so tem seus candidatos listados")
+    ap.add_argument("--corte-associacao", type=float, default=0.5,
+                    help="escore minimo de associacao do Open Targets (padrao 0.5)")
+    ap.add_argument("--teto-via", type=int, default=150,
+                    help="vias do Reactome com mais proteinas que isto sao ignoradas (padrao 150)")
     ap.add_argument("--sem-rede", action="store_true",
                     help="pula enriquecimento e evidencia obtida por API")
     return ap.parse_args(argv)
@@ -124,6 +160,25 @@ def main(argv: list[str] | None = None) -> int:
         print("[aviso] sintomas: nenhum sintoma na entrada; NENHUM enriquecimento "
               "sera feito (so os alvos informados serao usados)", file=sys.stderr)
 
+    efos: dict[str, str] = {}
+    for par in args.efo:
+        sintoma, _, efo = par.partition("=")
+        if not sintoma.strip() or not efo.strip():
+            print(f"[erro] --efo espera 'SINTOMA=EFO_ID', recebido {par!r}", file=sys.stderr)
+            return 2
+        efos[sintoma.strip()] = efo.strip()
+    if args.alvos_enriquecidos and not args.rotulos:
+        print("[erro] --alvos-enriquecidos precisa de --rotulos (o espaco de alvos "
+              "do modelo decide o que a expansao pode acrescentar)", file=sys.stderr)
+        return 2
+    if args.alvos_enriquecidos and args.sem_rede:
+        print("[erro] --alvos-enriquecidos precisa de rede; incompativel com --sem-rede",
+              file=sys.stderr)
+        return 2
+    if efos and not args.alvos_enriquecidos:
+        print("[aviso] --efo ignorado: sem --alvos-enriquecidos nao ha enriquecimento",
+              file=sys.stderr)
+
     saida = Path(args.saida)
     manifesto = Path(args.manifesto) if args.manifesto else saida.parent / "manifesto.json"
 
@@ -148,6 +203,16 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         if args.checkpoint:
             from mods.evidencias.predito import linhas_preditas
+
+    contagens_enriquecimento: dict = {}
+    if args.alvos_enriquecidos:
+        # Antes de tocar nas saidas: erro de rede aqui nao deixa tabela nenhuma.
+        try:
+            linhas_enriquecidas = _enriquecer(args, alvos, sintomas, efos, rotulos,
+                                              contagens_enriquecimento)
+        except (OSError, RuntimeError, ValueError) as e:
+            print(f"[erro] enriquecimento: {e}", file=sys.stderr)
+            return 2
 
     if args.evidencias_chembl and not Path(args.evidencias_chembl).expanduser().is_file():
         print(f"[erro] --evidencias-chembl: arquivo nao encontrado: "
@@ -210,6 +275,17 @@ def main(argv: list[str] | None = None) -> int:
         if tmp is not None:
             tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
 
+    if args.alvos_enriquecidos:
+        from mods.evidencias.open_targets import escrever_alvos_enriquecidos
+        try:
+            Path(args.alvos_enriquecidos).parent.mkdir(parents=True, exist_ok=True)
+            escrever_alvos_enriquecidos(args.alvos_enriquecidos, linhas_enriquecidas)
+        except OSError as e:
+            print(f"[erro] alvos enriquecidos: {e}", file=sys.stderr)
+            return 2
+        for problema in contagens_enriquecimento.get("problemas", []):
+            print(f"[aviso] enriquecimento, {problema}", file=sys.stderr)
+
     for problema in contagens_medido.get("problemas", []):
         print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
     if (contagens_medido.get("linhas_lidas") and
@@ -247,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
                    "linhas_evidencia": n_linhas,
                    "medido_problemas": len(contagens_medido.get("problemas", [])),
                    "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
+                   "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
+                   "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
                    "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "

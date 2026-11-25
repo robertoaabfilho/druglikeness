@@ -32,28 +32,42 @@ def rotulos_falsos():
 
 
 BASE_CHEMBL = "https://www.ebi.ac.uk/chembl/api/data/"
+BASE_REACTOME = "https://reactome.org/ContentService/"
+URL_OPEN_TARGETS = "https://api.platform.opentargets.org/api/v4/graphql"
 
 
-def arquivo_da_resposta(url: str) -> str:
-    """Nome do arquivo gravado para uma URL: a URL sem a base, com tudo que
-    nao for [A-Za-z0-9._=-] trocado por '_'. Determinístico e legivel."""
+def arquivo_da_resposta(url: str, corpo: dict | None = None) -> str:
+    """Nome do arquivo gravado para uma requisicao: a URL sem a base, com tudo
+    que nao for [A-Za-z0-9._=-] trocado por '_'. Deterministico e legivel.
+    Open Targets e POST num unico endereco: o nome sai da operacao GraphQL e
+    de suas variaveis."""
     import re
-    assert url.startswith(BASE_CHEMBL), url
-    nome = re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(BASE_CHEMBL):])
+    if url == URL_OPEN_TARGETS:
+        assert corpo, "Open Targets exige o corpo GraphQL"
+        operacao = re.search(r"query\s+(\w+)", corpo["query"]).group(1)
+        variaveis = "_".join(f"{k}={v}" for k, v in corpo.get("variables", {}).items())
+        nome = re.sub(r"[^A-Za-z0-9._=-]", "_", f"opentargets_{operacao}_{variaveis}")
+    else:
+        base = next((b for b in (BASE_CHEMBL, BASE_REACTOME) if url.startswith(b)), None)
+        assert base, url
+        nome = re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(base):])
+        if base == BASE_REACTOME:
+            nome = "reactome_" + nome
     return nome if nome.endswith(".json") else nome + ".json"
 
 
 @pytest.fixture
 def respostas():
     """`obter_json` falso: le a resposta gravada em tests/dados/respostas/.
-    URL sem arquivo gravado FALHA o teste; nunca cai para a rede."""
+    URL sem arquivo gravado FALHA o teste; nunca cai para a rede. Aceita o
+    corpo GraphQL opcional que o Open Targets usa."""
     import json
     from pathlib import Path
     pasta = Path(__file__).parent / "dados" / "respostas"
     vistas: dict[str, str] = {}
 
-    def obter(url: str) -> dict:
-        nome = arquivo_da_resposta(url)
+    def obter(url: str, corpo: dict | None = None) -> dict:
+        nome = arquivo_da_resposta(url, corpo)
         # Injetividade: duas URLs distintas no mesmo arquivo falham alto.
         assert vistas.setdefault(nome, url) == url, (
             f"colisao: {url} e {vistas[nome]} -> {nome}")

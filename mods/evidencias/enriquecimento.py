@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+"""
+enriquecimento.py
+
+Orquestra a segunda saida da etapa 1: lista do usuario + alvos do Open Targets
+para os sintomas + expansao por via do Reactome.
+
+Regras
+------
+* So acrescenta. As linhas do usuario entram primeiro, na ordem dada, e nada
+  depois mexe nelas: um alvo do Open Targets ou do Reactome que ja esta na
+  lista nao e repetido.
+* O EFO de cada sintoma vem do chamador (`efos`); sintoma sem EFO fica de fora
+  e e relatado, nunca adivinhado.
+* Sementes do Reactome: os alvos do usuario e os do Open Targets que existem
+  no modelo e tem um unico UniProt.
+* Falha por item vira `observacao`/`problemas`; so erro de rede aborta.
+"""
+
+from typing import Callable
+
+from mods.evidencias import chembl
+from mods.evidencias.chembl import (
+    AlvoAmbiguo, ListaTruncada, RespostaInesperada, erro_de_item)
+from mods.evidencias.open_targets import (
+    alvos_associados, alvos_do_chembl, colapsar_familia)
+from mods.evidencias.reactome import alvos_expandidos_no_modelo, expandir_vias
+
+_ERROS_POR_ITEM = (ListaTruncada, RespostaInesperada, AlvoAmbiguo, LookupError,
+                   OSError)
+
+
+def _de_item(e: Exception) -> bool:
+    return isinstance(e, (AlvoAmbiguo, LookupError)) or erro_de_item(e)
+
+
+def _linha_do_usuario(a: dict, no_modelo: dict, obter_json) -> dict:
+    linha = {"alvo_chembl_id": a.get("alvo_chembl_id") or "",
+             "alvo": a.get("alvo") or "", "organismo": a.get("organismo") or "",
+             "tipo_alvo": "", "origem": "usuario", "no_modelo": False,
+             "n_moleculas_treino": "", "observacao": ""}
+    try:
+        if not linha["alvo_chembl_id"]:
+            achado = chembl.resolver_alvo_por_nome(
+                linha["alvo"], linha["organismo"], obter_json=obter_json)
+            linha["alvo_chembl_id"] = achado["target_chembl_id"]
+        dados = chembl.dados_do_alvo(linha["alvo_chembl_id"], obter_json=obter_json)
+        linha.update(alvo=dados["nome"], organismo=dados["organismo"],
+                     tipo_alvo=dados["tipo"])
+    except _ERROS_POR_ITEM as e:
+        if not _de_item(e):
+            raise
+        linha["observacao"] = f"nao resolvido no ChEMBL: {e}"
+    modelo = no_modelo.get(linha["alvo_chembl_id"])
+    if modelo:
+        linha.update(no_modelo=True, n_moleculas_treino=modelo["n_ativos"])
+    return linha
+
+
+def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[dict],
+               *, corte_associacao: float, teto_via: int,
+               obter_json_chembl: Callable, obter_json_open_targets: Callable,
+               obter_json_reactome: Callable, relatorio: dict | None = None
+               ) -> list[dict]:
+    """Linhas de `alvos_enriquecidos.tsv`. `efos` mapeia sintoma -> EFO ID.
+    `relatorio` recebe contagens (`open_targets`, `reactome`) e `problemas`."""
+    rel = relatorio if relatorio is not None else {}
+    problemas = rel.setdefault("problemas", [])
+    no_modelo = {r["chembl_id"]: r for r in rotulos}
+
+    linhas = [_linha_do_usuario(a, no_modelo, obter_json_chembl) for a in alvos_usuario]
+    presentes = {l["alvo_chembl_id"] for l in linhas if l["alvo_chembl_id"]}
+
+    candidatos: list[dict] = []
+    for sintoma, efo in efos.items():
+        try:
+            achados = alvos_associados(efo, corte=corte_associacao,
+                                       obter_json=obter_json_open_targets)
+        except (ListaTruncada, OSError, ValueError) as e:
+            if not erro_de_item(e):
+                raise
+            problemas.append(f"Open Targets, {sintoma!r} ({efo}): {e}")
+            continue
+        for c in achados:
+            candidatos.append({**c, "sintoma": sintoma})
+    rel["open_targets_candidatos"] = len(candidatos)
+
+    resolvidos = alvos_do_chembl(candidatos, rotulos, obter_json_chembl=obter_json_chembl)
+    ot: list[dict] = []
+    for r in resolvidos:
+        if r["alvo_chembl_id"] and r["alvo_chembl_id"] in presentes:
+            continue  # ja na lista (do usuario ou de outro sintoma): nao repete
+        if r["alvo_chembl_id"]:
+            presentes.add(r["alvo_chembl_id"])
+            try:
+                r["classe"] = chembl.classe_de_proteina(
+                    r["alvo_chembl_id"], obter_json=obter_json_chembl)
+            except _ERROS_POR_ITEM as e:
+                if not _de_item(e):
+                    raise
+                r["classe"] = None
+                r["observacao"] = (r["observacao"] + "; " if r["observacao"] else "") + f"classe: {e}"
+        ot.append(r)
+    ot = colapsar_familia(ot)
+    rel["open_targets"] = len(ot)
+    linhas.extend(ot)
+
+    sementes = []
+    for l in linhas:
+        if l["alvo_chembl_id"] and l["no_modelo"]:
+            try:
+                acc = chembl.uniprot_do_alvo(l["alvo_chembl_id"], obter_json=obter_json_chembl)
+            except (ListaTruncada, OSError, ValueError) as e:
+                if not erro_de_item(e):
+                    raise
+                problemas.append(f"UniProt de {l['alvo_chembl_id']}: {e}")
+                continue
+            if acc:
+                sementes.append({"uniprot": acc, "alvo_chembl_id": l["alvo_chembl_id"]})
+    rel["sementes_reactome"] = len(sementes)
+    rel_vias: dict = {}
+    expandidos = expandir_vias(sementes, teto=teto_via, obter_json=obter_json_reactome,
+                               relatorio=rel_vias)
+    rel_modelo: dict = {}
+    novos = alvos_expandidos_no_modelo(
+        expandidos, rotulos, obter_json_chembl=obter_json_chembl,
+        ja_presentes=presentes, relatorio=rel_modelo)
+    problemas.extend(rel_vias["problemas"] + rel_modelo["problemas"])
+    rel["reactome_vias"] = {k: v for k, v in rel_vias.items() if k != "problemas"}
+    rel["reactome_modelo"] = {k: v for k, v in rel_modelo.items() if k != "problemas"}
+    rel["reactome"] = len(novos)
+    linhas.extend(novos)
+    return linhas

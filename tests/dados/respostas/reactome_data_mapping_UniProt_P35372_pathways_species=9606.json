@@ -1,0 +1,118 @@
+[
+ {
+  "dbId": 111885,
+  "displayName": "Opioid Signalling",
+  "stId": "R-HSA-111885",
+  "stIdVersion": "R-HSA-111885.4",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 9,
+  "name": [
+   "Opioid Signalling"
+  ],
+  "releaseDate": "2008-12-17",
+  "speciesName": "Homo sapiens",
+  "doi": "10.3180/REACT_15295.1",
+  "hasDiagram": true,
+  "hasEHLD": false,
+  "lastUpdatedDate": "2023-03-29",
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ },
+ {
+  "dbId": 202040,
+  "displayName": "G-protein activation",
+  "stId": "R-HSA-202040",
+  "stIdVersion": "R-HSA-202040.3",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 2,
+  "name": [
+   "G-protein activation"
+  ],
+  "releaseDate": "2008-12-17",
+  "speciesName": "Homo sapiens",
+  "hasDiagram": false,
+  "hasEHLD": false,
+  "lastUpdatedDate": "2010-06-30",
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ },
+ {
+  "dbId": 375276,
+  "displayName": "Peptide ligand-binding receptors",
+  "stId": "R-HSA-375276",
+  "stIdVersion": "R-HSA-375276.10",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 3,
+  "name": [
+   "Peptide ligand-binding receptors"
+  ],
+  "releaseDate": "2008-09-30",
+  "speciesName": "Homo sapiens",
+  "doi": "10.3180/R-HSA-375276.9",
+  "hasDiagram": false,
+  "hasEHLD": false,
+  "lastUpdatedDate": "2022-06-09",
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ },
+ {
+  "dbId": 418594,
+  "displayName": "G alpha (i) signalling events",
+  "stId": "R-HSA-418594",
+  "stIdVersion": "R-HSA-418594.9",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 10,
+  "name": [
+   "G alpha (i) signalling events"
+  ],
+  "releaseDate": "2009-09-30",
+  "speciesName": "Homo sapiens",
+  "hasDiagram": true,
+  "hasEHLD": false,
+  "lastUpdatedDate": "2023-03-29",
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ },
+ {
+  "dbId": 6785807,
+  "displayName": "Interleukin-4 and Interleukin-13 signaling",
+  "stId": "R-HSA-6785807",
+  "stIdVersion": "R-HSA-6785807.8",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 2,
+  "name": [
+   "Interleukin-4 and Interleukin-13 signaling"
+  ],
+  "releaseDate": "2016-12-12",
+  "speciesName": "Homo sapiens",
+  "doi": "10.3180/R-HSA-6785807.1",
+  "hasDiagram": true,
+  "hasEHLD": false,
+  "lastUpdatedDate": "2021-09-15",
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ },
+ {
+  "dbId": 9022699,
+  "displayName": "MECP2 regulates neuronal receptors and channels",
+  "stId": "R-HSA-9022699",
+  "stIdVersion": "R-HSA-9022699.2",
+  "isInDisease": false,
+  "isInferred": false,
+  "maxDepth": 2,
+  "name": [
+   "MECP2 regulates neuronal receptors and channels"
+  ],
+  "releaseDate": "2018-09-12",
+  "speciesName": "Homo sapiens",
+  "hasDiagram": false,
+  "hasEHLD": false,
+  "schemaClass": "Pathway",
+  "className": "Pathway"
+ }
+]

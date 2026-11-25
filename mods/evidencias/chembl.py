@@ -45,6 +45,14 @@ class RespostaInesperada(ValueError):
     """Corpo sem a chave esperada (ex.: erro da API): nao e "zero resultados"."""
 
 
+def erro_de_item(e: Exception) -> bool:
+    """O erro e de UM item (lista truncada, corpo inesperado, ou resposta HTTP
+    de erro como o 500 do ChEMBL), e nao de rede fora do ar: o chamador registra
+    e segue. Excecao sem resposta HTTP (timeout, DNS) nao e de item."""
+    return (isinstance(e, (ListaTruncada, RespostaInesperada))
+            or (isinstance(e, OSError) and getattr(e, "response", None) is not None))
+
+
 def _sem_truncar(resposta: dict, chave: str, consulta: str) -> list[dict]:
     if chave not in resposta:
         raise RespostaInesperada(f"{consulta}: resposta sem {chave!r}")
