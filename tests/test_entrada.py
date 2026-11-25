@@ -59,3 +59,22 @@ def test_coluna_obrigatoria_ausente_e_erro(tmp_path):
     f.write_text("alvo\torganismo2\nX\tY\n")
     alvos, problemas = ler_alvos(f)
     assert alvos == [] and any(p.campo == "organismo" for p in problemas)
+
+
+def test_smiles_ilegivel_pelo_rdkit_e_erro_e_descartado(tmp_path):
+    f = tmp_path / "l.tsv"
+    f.write_text("nome\tsmiles\nlixo\tXXX\naspirina\tCC(=O)Oc1ccccc1C(=O)O\n")
+    ligantes, problemas = ler_ligantes(f)
+    erro = next(p for p in problemas if p.gravidade == "erro" and p.campo == "smiles")
+    assert "XXX" in erro.mensagem and "ausente" not in erro.mensagem
+    assert [l["nome"] for l in ligantes] == ["aspirina"]
+
+
+def test_inchikey_parental_informado_divergente_avisa_e_usa_recalculado(tmp_path):
+    f = tmp_path / "l.tsv"
+    errada = "AAAAAAAAAAAAAA-UHFFFAOYSA-N"
+    f.write_text(f"nome\tsmiles\tinchikey_parental\naspirina\tCC(=O)Oc1ccccc1C(=O)O\t{errada}\n")
+    ligantes, problemas = ler_ligantes(f)
+    aviso = next(p for p in problemas if p.gravidade == "aviso" and p.campo == "inchikey_parental")
+    assert errada in aviso.mensagem and "BSYNRYMUTXBXSQ-UHFFFAOYSA-N" in aviso.mensagem
+    assert ligantes[0]["inchikey_parental"] == "BSYNRYMUTXBXSQ-UHFFFAOYSA-N"
