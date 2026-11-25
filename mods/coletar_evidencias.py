@@ -6,7 +6,8 @@ coletar_evidencias.py
 Etapa 1: le ligantes, alvos e sintomas, valida tudo e escreve a tabela de
 evidencias (`evidencias.tsv`) e o manifesto da execucao (`manifesto.json`).
 
-Fontes ligadas: evidencia prevista (PP4CKD), com --checkpoint e --rotulos.
+Fontes ligadas: evidencia prevista (PP4CKD), com --checkpoint e --rotulos;
+evidencia medida (ChEMBL), com --evidencias-chembl.
 Sem elas a tabela sai so com o cabecalho. As demais fontes entram nas proximas
 tarefas.
 
@@ -89,6 +90,7 @@ def _argumentos(argv):
     ap.add_argument("--limite", type=_inteiro_positivo, help="usar so os N primeiros ligantes")
     ap.add_argument("--checkpoint", help="pesos .pt do PP4CKD; liga a evidencia prevista (use junto com --rotulos)")
     ap.add_argument("--rotulos", help="target_labels.tsv do PP4CKD (use junto com --checkpoint; um nao funciona sem o outro)")
+    ap.add_argument("--evidencias-chembl", help="evidencias_chembl.csv (ensaios medidos); liga a evidencia medida")
     ap.add_argument("--sem-rede", action="store_true",
                     help="pula enriquecimento e evidencia obtida por API")
     return ap.parse_args(argv)
@@ -144,6 +146,12 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from mods.evidencias.predito import linhas_preditas
 
+    if args.evidencias_chembl and not Path(args.evidencias_chembl).expanduser().is_file():
+        print(f"[erro] --evidencias-chembl: arquivo nao encontrado: "
+              f"{args.evidencias_chembl}", file=sys.stderr)
+        return 2
+    contagens_medido: dict = {}
+
     # Escrita atomica: a tabela nasce num temporario NO MESMO diretorio (mesmo
     # sistema de arquivos) e so substitui o destino ao fim de uma execucao
     # bem-sucedida. Qualquer falha deixa o evidencias.tsv anterior intacto.
@@ -159,6 +167,16 @@ def main(argv: list[str] | None = None) -> int:
                         ligantes, alvos, checkpoint=args.checkpoint,
                         rotulos=rotulos, corte=args.corte,
                         contagens=contagens_modelo):
+                    escritor.escrever(linha)
+                    n_linhas += 1
+            if args.evidencias_chembl:
+                from mods.evidencias import chembl
+                from mods.evidencias.medido import linhas_medidas
+                for linha in linhas_medidas(
+                        args.evidencias_chembl, ligantes, alvos, rotulos=rotulos,
+                        resolver_alvo=None if args.sem_rede else chembl.dados_do_alvo,
+                        resolver_ligante=None if args.sem_rede else chembl.resolver_ligante,
+                        contagens=contagens_medido):
                     escritor.escrever(linha)
                     n_linhas += 1
             # as demais fontes de evidencia entram nas proximas tarefas
@@ -180,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
         if tmp is not None:
             tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
 
+    for problema in contagens_medido.get("problemas", []):
+        print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
     ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
     if ilegiveis:
         print(f"[aviso] {ilegiveis} ligante(s) com SMILES ilegivel para o modelo: "
@@ -193,6 +213,9 @@ def main(argv: list[str] | None = None) -> int:
                     "sem_rede": args.sem_rede,
                     "checkpoint": args.checkpoint,
                     "rotulos": args.rotulos,
+                    "evidencias_chembl": args.evidencias_chembl,
+                    "evidencias_chembl_md5": (_md5(os.path.expanduser(args.evidencias_chembl))
+                                              if args.evidencias_chembl else None),
                     "rotulos_md5": _md5(args.rotulos) if args.checkpoint else None,
                     "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
@@ -203,7 +226,10 @@ def main(argv: list[str] | None = None) -> int:
                    "problemas_ligantes": len(p_lig), "problemas_alvos": len(p_alvo),
                    "linhas_descartadas": descartadas,
                    "smiles_ilegiveis_modelo": ilegiveis,
-                   "linhas_evidencia": n_linhas})
+                   "linhas_evidencia": n_linhas,
+                   "medido_problemas": len(contagens_medido.get("problemas", [])),
+                   "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
+                   "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
               "descartada(s) por erro (detalhes acima)", file=sys.stderr)

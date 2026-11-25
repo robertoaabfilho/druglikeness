@@ -95,9 +95,9 @@ RELACOES_VALIDAS = {"=", "<", "<=", "~", ""}
 PCHEMBL_TREINO = 5.0
 
 
-def e_triagem(descricao: str) -> bool:
-    """Varredura HTS de painel, em vez de ensaio dirigido a um alvo."""
-    return "PUBCHEM_BIOASSAY" in descricao or "qHTS" in descricao
+# Heuristica unica de triagem HTS, compartilhada com a coleta de evidencias.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from mods.evidencias.medido import e_triagem  # noqa: E402,F401
 
 
 def ler_evidencias(caminho: str, rotulos: list[dict]) -> tuple[dict, dict]:

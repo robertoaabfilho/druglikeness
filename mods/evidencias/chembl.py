@@ -196,3 +196,14 @@ def classe_de_proteina(chembl_id: str, *,
             if nome:
                 return nome
     return None
+
+
+def dados_do_alvo(chembl_id: str, *,
+                  obter_json: Callable[[str], dict] = _obter_json_requests) -> dict:
+    """Nome, organismo e tipo do alvo, para casar com o arquivo de ensaios.
+    Corpo sem nome ou organismo (ex.: erro da API): RespostaInesperada."""
+    alvo = obter_json(BASE + f"target/{quote(chembl_id)}.json")
+    if not alvo.get("pref_name") or not alvo.get("organism"):
+        raise RespostaInesperada(f"alvo {chembl_id}: resposta sem pref_name/organism")
+    return {"nome": alvo["pref_name"], "organismo": alvo["organism"],
+            "tipo": alvo.get("target_type") or ""}
