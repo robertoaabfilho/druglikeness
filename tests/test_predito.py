@@ -174,3 +174,14 @@ def test_nenhum_alvo_no_modelo_e_relatado(modelo_falso, rotulos_falsos):
                                   corte=0.0, contagens=contagens))
     assert linhas == []
     assert any("NENHUMA linha prevista" in p for p in contagens["problemas"])
+
+
+def test_alvo_pedido_por_id_e_por_nome_e_aviso_nao_problema(rotulos_falsos):
+    """Mesmo tratamento da evidencia medida: deduplicar nao e falha."""
+    from mods.evidencias.predito import casar_alvos
+    r = rotulos_falsos[0]
+    problemas, avisos = [], []
+    pares = casar_alvos([{"alvo_chembl_id": r["chembl_id"]},
+                         {"alvo": r["nome"], "organismo": r["organismo"]}],
+                        rotulos_falsos, problemas, avisos)
+    assert len(pares) == 1 and not problemas and avisos

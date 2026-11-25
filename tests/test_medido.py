@@ -238,10 +238,34 @@ def test_alvo_pedido_duas_vezes_nao_dobra_a_evidencia():
         {"alvo_chembl_id": "", "alvo": "Kallikrein-7", "organismo": "Homo sapiens"}],
         rotulos=rotulos, contagens=contagens))
     assert uma_vez and len(duas_vezes) == len(uma_vez)
-    assert any("mesmo alvo" in p for p in contagens["problemas"])
+    assert not contagens["problemas"]
+    assert any("mesmo alvo" in a for a in contagens["avisos"])
 
 
 def test_origem_do_alvo_sai_na_linha_medida():
     alvos = [{**ALVOS[2], "origem_alvo": "open_targets"}]
     linhas = list(linhas_medidas(AMOSTRA, LIGANTES, alvos))
     assert linhas and all(l["origem_alvo"] == "open_targets" for l in linhas)
+
+
+def test_alvo_por_id_e_por_nome_sai_com_codigo_zero(tmp_path, capsys):
+    """Deduplicar nao e falhar: a saida esta completa, entao o codigo e 0."""
+    from mods.coletar_evidencias import main
+    rot = tmp_path / "rotulos.tsv"
+    rot.write_text("target_idx\tchembl_id\tpref_name\torganism\ttarget_type\t"
+                   "active_molecules\n0\tCHEMBL222\tnoradrenaline transporter\t"
+                   "Homo sapiens\tSINGLE PROTEIN\t5\n", encoding="utf-8")
+    alv = tmp_path / "alvos.tsv"
+    alv.write_text("alvo_chembl_id\talvo\torganismo\nCHEMBL222\t\t\n"
+                   "\tnoradrenaline transporter\tHomo sapiens\n", encoding="utf-8")
+    lig = tmp_path / "lig.tsv"
+    lig.write_text("#nome\tsmiles\nx\tCCO\n", encoding="utf-8")
+    amostra = tmp_path / "amostra.csv"
+    amostra.write_text(open(AMOSTRA, encoding="utf-8").readline(), encoding="utf-8")
+    rc = main(["--ligantes", str(lig), "--alvos", str(alv), "--sintomas",
+               "tests/dados/sintomas.txt", "--saida", str(tmp_path / "e.tsv"),
+               "--sem-rede", "--rotulos", str(rot),
+               "--evidencias-chembl", str(amostra)])
+    err = capsys.readouterr().err
+    assert "mesmo alvo" in err and "incompleta" not in err
+    assert rc == 0

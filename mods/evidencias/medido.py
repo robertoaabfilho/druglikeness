@@ -98,7 +98,7 @@ def _chave_alvo(nome: str, organismo: str) -> tuple[str, str]:
     return (nome or "").strip().casefold(), (organismo or "").strip().casefold()
 
 
-def _indexar_alvos(alvos, rotulos, resolver_alvo, problemas):
+def _indexar_alvos(alvos, rotulos, resolver_alvo, problemas, avisos=None):
     """{(nome, organismo): alvo resolvido}; alvo sem nome e resolvido pelo ID.
 
     UM alvo por par (nome, organismo). Dois pedidos que resolvem para o mesmo
@@ -129,7 +129,9 @@ def _indexar_alvos(alvos, rotulos, resolver_alvo, problemas):
         chave = _chave_alvo(nome, organismo)
         if chave in indice:
             ja = indice[chave]
-            problemas.append(
+            # Deduplicacao deliberada, nao falha: vai para `avisos`, que nao
+            # torna a execucao parcial.
+            (problemas if avisos is None else avisos).append(
                 f"alvo {chembl_id or nome}: e o mesmo alvo que "
                 f"{ja['alvo_chembl_id'] or ja['alvo']} ({nome}, {organismo}); "
                 "usado uma vez so, para nao repetir cada ensaio medido dele")
@@ -152,14 +154,16 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
     `resolver_ligante(inchikey, parental) -> chembl_id | None`: opcionais (rede);
     suas falhas por item entram em `contagens["problemas"]`.
     `contagens` recebe: linhas_lidas, linhas_emitidas, sem_alvo_utilizavel,
-    ligante_ou_alvo_nao_pedido, problemas (lista de textos)."""
+    ligante_ou_alvo_nao_pedido, problemas (lista de textos), avisos (avisos
+    que nao tornam a execucao parcial, como alvo pedido duas vezes)."""
     c = contagens if contagens is not None else {}
     for k in ("linhas_lidas", "linhas_emitidas", "sem_alvo_utilizavel",
               "ligante_ou_alvo_nao_pedido"):
         c.setdefault(k, 0)
     problemas = c.setdefault("problemas", [])
+    avisos = c.setdefault("avisos", [])
 
-    indice_alvos = _indexar_alvos(alvos, rotulos, resolver_alvo, problemas)
+    indice_alvos = _indexar_alvos(alvos, rotulos, resolver_alvo, problemas, avisos)
     por_chave: dict[str, dict] = {}
     for campo in ("inchikey", "inchikey_parental"):  # a chave exata tem prioridade
         for lig in ligantes:

@@ -36,7 +36,8 @@ LOTE = 256
 
 
 def casar_alvos(alvos: list[dict], rotulos: list[dict],
-                problemas: list[str] | None = None) -> list[tuple[int, dict]]:
+                problemas: list[str] | None = None,
+                avisos: list[str] | None = None) -> list[tuple[int, dict]]:
     """[(indice no modelo, alvo pedido)], na ordem dos alvos; alvo ausente do
     modelo e omitido e indice repetido aparece uma vez so.
 
@@ -71,7 +72,14 @@ def casar_alvos(alvos: list[dict], rotulos: list[dict],
                         "ambiguo, NENHUMA linha prevista; informe o alvo_chembl_id")
                 continue
             i = achados[0] if achados else None
-        if i is not None and i not in usados:
+        if i is not None and i in usados:
+            # Pedido repetido (por ID e por nome): usado uma vez, e dito como
+            # aviso, nao como falha -- o mesmo tratamento da evidencia medida.
+            if avisos is not None:
+                avisos.append(
+                    f"alvo {chembl_id or alvo.get('alvo')}: e o mesmo alvo de um "
+                    "pedido anterior; usado uma vez so")
+        elif i is not None:
             usados.add(i)
             pares.append((i, alvo))
     return pares
@@ -92,11 +100,13 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
     if contagens is not None:
         contagens.setdefault("smiles_ilegiveis", 0)
         contagens.setdefault("problemas", [])
+        contagens.setdefault("avisos", [])
     problemas = None if contagens is None else contagens["problemas"]
     import numpy as np
     import torch
 
-    pares = casar_alvos(alvos, rotulos, problemas)
+    pares = casar_alvos(alvos, rotulos, problemas,
+                        None if contagens is None else contagens["avisos"])
     if not pares:
         if problemas is not None:
             problemas.append(

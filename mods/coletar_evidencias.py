@@ -437,6 +437,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[aviso] enriquecimento, {problema}", file=sys.stderr)
         for problema in contagens_medido.get("problemas", []):
             print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
+        # deduplicacoes deliberadas: informadas, mas nao tornam a saida parcial
+        for nome_fonte, c in (("evidencia prevista", contagens_modelo),
+                              ("evidencia medida", contagens_medido)):
+            for aviso in c.get("avisos", []):
+                print(f"[info] {nome_fonte}, {aviso}", file=sys.stderr)
         if (contagens_medido.get("linhas_lidas") and
                 not contagens_medido.get("linhas_emitidas")):
             print(f"[aviso] evidencia medida: {contagens_medido['linhas_lidas']} linhas "
