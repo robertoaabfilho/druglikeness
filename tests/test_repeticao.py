@@ -1,0 +1,210 @@
+# -*- coding: utf-8 -*-
+import json
+
+import pytest
+
+import mods.coletar_evidencias as cli
+from mods.coletar_evidencias import main
+from mods.evidencias.cache import (
+    Cache, FaltaNoCache, VersaoIndeterminada, abrir_ao_vivo,
+    abrir_para_repeticao, consultar_versoes)
+from mods.evidencias.chembl import ListaTruncada, _sem_truncar
+from mods.evidencias.manifesto import ler_manifesto, verificar_manifesto
+
+URL = "https://www.ebi.ac.uk/chembl/api/data/target/CHEMBL1.json"
+
+
+def _buscador(resposta, chamadas):
+    def buscar(url, corpo=None):
+        chamadas.append((url, corpo))
+        if isinstance(resposta, Exception):
+            raise resposta
+        return resposta
+    return buscar
+
+
+def test_repeticao_recusa_versao_divergente():
+    anterior = {"versoes": {"open_targets": "24.09", "checkpoint_md5": "abc"}}
+    atual = {"versoes": {"open_targets": "25.03", "checkpoint_md5": "abc"}}
+    assert "open_targets" in " ".join(verificar_manifesto(anterior, atual))
+    assert verificar_manifesto(anterior, anterior) == []
+    atual2 = {"versoes": {"open_targets": "24.09", "checkpoint_md5": "zzz"}}
+    assert "checkpoint_md5" in " ".join(verificar_manifesto(anterior, atual2))
+
+
+def test_repeticao_recusa_parametro_que_muda_a_saida():
+    anterior = {"parametros": {"corte": 0.1, "limite": None}}
+    assert verificar_manifesto(anterior, {"parametros": {"corte": 0.1, "limite": None}}) == []
+    assert "limite" in " ".join(verificar_manifesto(anterior, {"parametros": {"corte": 0.1, "limite": 5}}))
+
+
+def test_queda_de_rede_nao_deixa_saida_parcial(tmp_path, rotulos_falsos, monkeypatch):
+    # Falhar antes de escrever, nunca a meio arquivo.
+    def cai(url, corpo=None):
+        raise OSError("rede fora do ar")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", cai)
+    rot = tmp_path / "labels.tsv"
+    rot.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
+                   "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
+                   "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    saida = tmp_path / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(saida), "--rotulos", str(rot),
+                   "--alvos-enriquecidos", str(tmp_path / "enr.tsv")])
+    assert codigo != 0
+    assert not saida.exists()
+    assert not (tmp_path / "manifesto.json").exists()
+
+
+def test_cache_serve_a_segunda_chamada_sem_rede(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"a": [1]}, chamadas))
+    primeira = cache.obter_json("https://exemplo/teste")
+    segunda = Cache(tmp_path, _buscador(OSError("sem rede"), chamadas)).obter_json(
+        "https://exemplo/teste")
+    assert primeira == segunda == {"a": [1]}
+    assert len(chamadas) == 1
+
+
+def test_chave_distingue_corpo_e_url(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"x": 1}, chamadas))
+    cache.obter_json("https://e/g", {"q": 1})
+    cache.obter_json("https://e/g", {"q": 2})
+    cache.obter_json("https://e/h", {"q": 1})
+    cache.obter_json("https://e/g", {"q": 1})
+    assert len(chamadas) == 3
+
+
+@pytest.mark.parametrize("resposta", [
+    {"errors": [{"message": "x"}]},
+    {"error_message": "boom"},
+    {"targets": [{}], "page_meta": {"total_count": 5}},   # pagina truncada
+    None])
+def test_resposta_ruim_nao_e_gravada(tmp_path, resposta):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador(resposta, chamadas))
+    assert cache.obter_json(URL) == resposta   # devolvida ao chamador...
+    cache.obter_json(URL)
+    assert len(chamadas) == 2                  # ...mas nunca servida do disco
+    assert not list(tmp_path.glob("*.json"))
+
+
+def test_excecao_propaga_e_nao_grava(tmp_path):
+    cache = Cache(tmp_path, _buscador(OSError("timeout"), []))
+    with pytest.raises(OSError):
+        cache.obter_json(URL)
+    assert not list(tmp_path.iterdir())
+
+
+def test_pagina_truncada_segue_erro_de_item(tmp_path):
+    resposta = {"targets": [{}], "page_meta": {"total_count": 5}}
+    cache = Cache(tmp_path, _buscador(resposta, []))
+    with pytest.raises(ListaTruncada):
+        _sem_truncar(cache.obter_json(URL), "targets", "teste")
+
+
+def test_somente_leitura_falta_e_erro_e_nao_busca(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"a": 1}, chamadas), somente_leitura=True)
+    with pytest.raises(FaltaNoCache):
+        cache.obter_json(URL)
+    assert chamadas == []
+
+
+def test_entrada_corrompida_falha_alto(tmp_path):
+    cache = Cache(tmp_path, _buscador({"a": 1}, []))
+    cache.obter_json(URL)
+    arquivo = next(tmp_path.glob("*.json"))
+    arquivo.write_text("{ truncado", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="corrompida"):
+        cache.obter_json(URL)
+
+
+def _servicos(ot_mes=9, chembl="ChEMBL_35"):
+    def buscar(url, corpo=None):
+        if "opentargets" in url:
+            return {"data": {"meta": {"dataVersion": {"year": 24, "month": ot_mes,
+                                                      "iteration": None}}}}
+        if url.endswith("status.json"):
+            return {"chembl_db_version": chembl}
+        if url.endswith("database/version"):
+            return 93
+        return {"x": 1}
+    return buscar
+
+
+def test_versoes_vem_da_api_e_separam_as_pastas(tmp_path):
+    assert consultar_versoes(_servicos()) == {
+        "open_targets": "24.09", "chembl": "ChEMBL_35", "reactome": "93"}
+    c1, v1 = abrir_ao_vivo(tmp_path, _servicos(9))
+    c2, v2 = abrir_ao_vivo(tmp_path, _servicos(12))
+    assert c1.diretorio != c2.diretorio     # release nova nunca le o cache velho
+    c1.obter_json("https://e/x")
+    chamadas = []
+    c2._buscar = _buscador({"novo": 1}, chamadas)
+    assert c2.obter_json("https://e/x") == {"novo": 1} and len(chamadas) == 1
+    r, versoes = abrir_para_repeticao(tmp_path, c1.diretorio.name)
+    assert versoes == v1 and r.obter_json("https://e/x") == {"x": 1}
+
+
+def test_versao_indeterminada_aborta(tmp_path):
+    def quebrado(url, corpo=None):
+        return {"inesperado": True}
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(quebrado)
+
+
+def _rodar_enriquecido(tmp_path, nome, extra=()):
+    rot = tmp_path / "labels.tsv"
+    rot.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
+                   "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
+                   "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    pasta = tmp_path / nome
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(pasta / "e.tsv"), "--rotulos", str(rot),
+                   "--alvos-enriquecidos", str(pasta / "enr.tsv"),
+                   "--cache", str(tmp_path / "cache"), *extra])
+    return codigo, pasta
+
+
+def test_manifesto_grava_versoes_e_repeticao_funciona_sem_rede(tmp_path, monkeypatch):
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", _servicos())
+    monkeypatch.setattr(cli, "_enriquecer",
+                        lambda *a: [{"alvo_chembl_id": "CHEMBL222",
+                                                       "origem": "usuario"}])
+    codigo, pasta = _rodar_enriquecido(tmp_path, "um")
+    assert codigo == 0
+    m = ler_manifesto(pasta / "manifesto.json")
+    assert m["versoes"]["open_targets"] == "24.09" and m["versoes"]["chembl"] == "ChEMBL_35"
+    assert m["parametros"]["cache_pasta"].startswith("open_targets-24.09")
+
+    # Repeticao: a rede agora falha; mesmo assim roda, e nao toca o manifesto lido.
+    def cai(url, corpo=None):
+        raise OSError("fora do ar")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", cai)
+    original = (pasta / "manifesto.json").read_text()
+    codigo, pasta2 = _rodar_enriquecido(
+        tmp_path, "dois", ["--manifesto", str(pasta / "manifesto.json")])
+    assert codigo == 0
+    assert (pasta / "manifesto.json").read_text() == original
+    assert (pasta2 / "e.tsv").read_text() == (pasta / "e.tsv").read_text()
+
+
+def test_repeticao_recusa_cache_de_outra_versao(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", _servicos())
+    monkeypatch.setattr(cli, "_enriquecer", lambda *a: [])
+    codigo, pasta = _rodar_enriquecido(tmp_path, "um")
+    assert codigo == 0
+    caminho = pasta / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    m["versoes"]["open_targets"] = "23.12"
+    caminho.write_text(json.dumps(m))
+    codigo, pasta2 = _rodar_enriquecido(tmp_path, "dois", ["--manifesto", str(caminho)])
+    assert codigo == 2
+    assert "open_targets" in capsys.readouterr().err
+    assert not (pasta2 / "e.tsv").exists()

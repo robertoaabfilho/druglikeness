@@ -330,6 +330,7 @@ def test_enriquecimento_avisa_que_a_evidencia_nao_o_usou(tmp_path, monkeypatch, 
     rotulos.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
                        "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
                        "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "_abrir_cache", lambda *a: (None, {}, None, None))
     monkeypatch.setattr(cli, "_enriquecer", lambda *a: [
         {"alvo_chembl_id": "CHEMBL222", "origem": "usuario"},
         {"alvo_chembl_id": "CHEMBL233", "origem": "open_targets"}])

@@ -29,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 
 # Permite `python mods/coletar_evidencias.py`: a raiz do repositorio entra no
@@ -37,7 +38,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
-from mods.evidencias.manifesto import escrever_manifesto
+from mods.evidencias.manifesto import (
+    escrever_manifesto, ler_manifesto, verificar_manifesto)
 
 
 def _commit_do_pipeline() -> str:
@@ -78,17 +80,38 @@ def _inteiro_positivo(texto: str) -> int:
     return valor
 
 
-def _enriquecer(args, alvos, sintomas, efos, rotulos, contagens) -> list[dict]:
+def _abrir_cache(args, saida: Path, anterior: dict | None):
+    """Cache de rede da execucao: (Cache, versoes dos servicos).
+    Execucao normal: consulta as versoes ao vivo e usa a pasta delas.
+    Repeticao (`anterior` = manifesto lido): so leitura, na pasta que o
+    manifesto aponta; nunca toca a rede."""
+    from mods.evidencias import cache as c
+    if anterior is None:
+        raiz = Path(args.cache) if args.cache else saida.parent / "cache_rede"
+        cache, versoes = c.abrir_ao_vivo(raiz)
+    else:
+        par = anterior.get("parametros", {})
+        pasta = par.get("cache_pasta")
+        raiz = args.cache or par.get("cache_raiz")
+        if not pasta or not raiz:
+            raise c.VersaoIndeterminada(
+                "o manifesto nao aponta para um cache de rede; so manifestos de "
+                "execucoes que usaram a rede (com cache) podem ser repetidos")
+        cache, versoes = c.abrir_para_repeticao(raiz, pasta)
+    return cache, versoes, str(Path(raiz).resolve()), cache.diretorio.name
+
+
+def _enriquecer(args, alvos, sintomas, efos, rotulos, contagens, cache) -> list[dict]:
     """Sintoma -> EFO (so os fixados com --efo; os demais listam candidatos e
     ficam de fora) e depois Open Targets + Reactome."""
-    from mods.evidencias import chembl, open_targets, reactome
+    from mods.evidencias import open_targets
     from mods.evidencias.enriquecimento import enriquecer
     validos: dict[str, str] = {}
     for sintoma in sintomas:
         if sintoma in efos:
             validos[sintoma] = efos[sintoma]
             continue
-        cands = open_targets.buscar_efo(sintoma)
+        cands = open_targets.buscar_efo(sintoma, obter_json=cache.obter_json)
         lista = "; ".join(f"{c['id']} ({c['name']})" for c in cands[:5]) or "nenhum"
         print(f"[aviso] sintoma {sintoma!r} SEM EFO fixado: nao enriquecido. "
               f"Candidatos: {lista}. Escolha com --efo '{sintoma}=<EFO_ID>'",
@@ -98,9 +121,9 @@ def _enriquecer(args, alvos, sintomas, efos, rotulos, contagens) -> list[dict]:
               file=sys.stderr)
     return enriquecer(
         alvos, validos, rotulos, corte_associacao=args.corte_associacao,
-        teto_via=args.teto_via, obter_json_chembl=chembl._obter_json_requests,
-        obter_json_open_targets=open_targets._post_json_requests,
-        obter_json_reactome=reactome._obter_json_requests, relatorio=contagens)
+        teto_via=args.teto_via, obter_json_chembl=cache.obter_json,
+        obter_json_open_targets=cache.obter_json,
+        obter_json_reactome=cache.obter_json, relatorio=contagens)
 
 
 def _argumentos(argv):
@@ -109,7 +132,16 @@ def _argumentos(argv):
     ap.add_argument("--alvos", required=True, help="TSV com alvo_chembl_id, ou alvo + organismo")
     ap.add_argument("--sintomas", required=True, help="um sintoma por linha")
     ap.add_argument("--saida", required=True, help="evidencias.tsv a escrever")
-    ap.add_argument("--manifesto", help="padrao: manifesto.json ao lado da saida")
+    ap.add_argument("--manifesto", metavar="ARQUIVO",
+                    help="MODO DE REPETICAO: manifesto.json de uma execucao anterior. "
+                         "Recusa rodar se a versao do Open Targets/ChEMBL/Reactome ou o "
+                         "MD5 do checkpoint/rotulos/evidencias diferirem do registrado, ou "
+                         "se um parametro mudou; serve toda resposta de rede do cache "
+                         "que ele aponta (sem rede; falta no cache e erro). O novo "
+                         "manifesto sai ao lado da saida e nunca sobrescreve este")
+    ap.add_argument("--cache", metavar="DIR",
+                    help="raiz do cache de rede (padrao: cache_rede/ ao lado da saida; em "
+                         "repeticao, a do manifesto). Subpasta por versao dos servicos")
     ap.add_argument("--corte", type=float, default=0.1,
                     help="corte de probabilidade do modelo (padrao 0.1)")
     ap.add_argument("--limite", type=_inteiro_positivo, help="usar so os N primeiros ligantes")
@@ -184,7 +216,17 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
 
     saida = Path(args.saida)
-    manifesto = Path(args.manifesto) if args.manifesto else saida.parent / "manifesto.json"
+    anterior = None
+    manifesto = saida.parent / "manifesto.json"
+    if args.manifesto:
+        try:
+            anterior = ler_manifesto(args.manifesto)
+        except (OSError, ValueError) as e:
+            print(f"[erro] --manifesto: nao foi possivel ler {args.manifesto}: {e}",
+                  file=sys.stderr)
+            return 2
+        if manifesto.resolve() == Path(args.manifesto).resolve():
+            manifesto = saida.parent / "manifesto_repeticao.json"
 
     saida.parent.mkdir(parents=True, exist_ok=True)
     manifesto.parent.mkdir(parents=True, exist_ok=True)
@@ -210,11 +252,46 @@ def main(argv: list[str] | None = None) -> int:
 
     contagens_enriquecimento: dict = {}
     linhas_enriquecidas: list[dict] = []
+    # Cache e versoes ANTES de qualquer outra chamada de rede: sem versao
+    # conhecida (ou, em repeticao, com versao divergente) nada roda.
+    cache = None
+    versoes_rede: dict = {}
+    pasta_cache = raiz_cache = None
+    usa_rede = bool(args.alvos_enriquecidos) or (
+        bool(args.evidencias_chembl) and not args.sem_rede)
+    try:
+        if usa_rede:
+            cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(
+                args, saida, anterior)
+    except (OSError, RuntimeError, ValueError) as e:
+        print(f"[erro] cache de rede: {e}", file=sys.stderr)
+        return 2
+    def md5_ou_none(caminho):
+        # Arquivo ilegivel aqui nao e o erro a relatar: a etapa que o usa o faz.
+        try:
+            return _md5(os.path.expanduser(caminho)) if caminho else None
+        except OSError:
+            return None
+    md5s = {"checkpoint_md5": md5_ou_none(args.checkpoint),
+            "rotulos_md5": md5_ou_none(args.rotulos),
+            "evidencias_chembl_md5": md5_ou_none(args.evidencias_chembl)}
+    parametros_de_saida = {"corte": args.corte, "limite": args.limite,
+                           "sem_rede": args.sem_rede,
+                           "corte_associacao": args.corte_associacao,
+                           "teto_via": args.teto_via, "efo": dict(sorted(efos.items()))}
+    if anterior is not None:
+        divergencias = verificar_manifesto(
+            anterior, {"versoes": {**versoes_rede, **md5s},
+                       "parametros": parametros_de_saida})
+        if divergencias:
+            print("[erro] repeticao recusada, a execucao difere do manifesto:\n  "
+                  + "\n  ".join(divergencias), file=sys.stderr)
+            return 2
     if args.alvos_enriquecidos:
         # Antes de tocar nas saidas: erro de rede aqui nao deixa tabela nenhuma.
         try:
             linhas_enriquecidas = _enriquecer(args, alvos, sintomas, efos, rotulos,
-                                              contagens_enriquecimento)
+                                              contagens_enriquecimento, cache)
         except (OSError, RuntimeError, ValueError) as e:
             print(f"[erro] enriquecimento: {e}", file=sys.stderr)
             return 2
@@ -256,8 +333,10 @@ def main(argv: list[str] | None = None) -> int:
                 from mods.evidencias.medido import linhas_medidas
                 for linha in linhas_medidas(
                         args.evidencias_chembl, ligantes, alvos, rotulos=rotulos,
-                        resolver_alvo=None if args.sem_rede else chembl.dados_do_alvo,
-                        resolver_ligante=None if args.sem_rede else chembl.resolver_ligante,
+                        resolver_alvo=None if args.sem_rede else partial(
+                            chembl.dados_do_alvo, obter_json=cache.obter_json),
+                        resolver_ligante=None if args.sem_rede else partial(
+                            chembl.resolver_ligante, obter_json=cache.obter_json),
                         contagens=contagens_medido):
                     escritor.escrever(linha)
                     n_linhas += 1
@@ -313,17 +392,18 @@ def main(argv: list[str] | None = None) -> int:
         == Path(args.alvos_enriquecidos).expanduser().resolve())
     escrever_manifesto(
         manifesto,
-        parametros={"corte": args.corte, "limite": args.limite,
-                    "sem_rede": args.sem_rede,
+        parametros={**parametros_de_saida,
                     "checkpoint": args.checkpoint,
                     "rotulos": args.rotulos,
                     "evidencias_chembl": args.evidencias_chembl,
-                    "evidencias_chembl_md5": (_md5(os.path.expanduser(args.evidencias_chembl))
-                                              if args.evidencias_chembl else None),
-                    "rotulos_md5": _md5(args.rotulos) if args.rotulos else None,
+                    "evidencias_chembl_md5": md5s["evidencias_chembl_md5"],
+                    "rotulos_md5": md5s["rotulos_md5"],
+                    "cache_raiz": raiz_cache, "cache_pasta": pasta_cache,
+                    "repeticao_de": args.manifesto,
                     "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
-        versoes={"pipeline_commit": _commit_do_pipeline(),
+        versoes={**versoes_rede, **md5s,
+                 "pipeline_commit": _commit_do_pipeline(),
                  "data": datetime.now(timezone.utc).isoformat(timespec="seconds")},
         contagens={"ligantes": len(ligantes), "alvos": len(alvos),
                    "sintomas": len(sintomas),
