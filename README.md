@@ -565,6 +565,84 @@ python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos_enriquec
 
 O filtro de presença no modelo corta 114 das 259 proteínas (44%); os dois filtros juntos levam 573 a 145 (75% a menos). Os números dependem das sementes e do `target_labels.tsv`.
 
+## 11. Etapa 1 completa — painel, linha de comando e como reproduzir
+
+A etapa 1 transforma três arquivos (ligantes, alvos, sintomas) numa tabela de evidências, `evidencias.tsv`, e num `manifesto.json`. Há duas portas de entrada para a mesma lógica: o **painel** e a **linha de comando**. A CLI é a interface que o artigo cita; o painel apenas a dispara, e nada de coleta mora nele.
+
+### Pré-requisitos
+
+```bash
+pip install -r requirements.txt     # inclui streamlit, rdkit, torch, pandas, requests
+```
+
+- `target_labels.tsv` do PP4CKD (**obrigatório**: diz quais alvos existem no modelo e quantas moléculas treinaram cada um);
+- pesos `.pt` do PP4CKD (opcional: sem eles não há evidência prevista);
+- `evidencias_chembl.csv` (opcional: evidência medida).
+
+### Painel
+
+```bash
+export PP4CKD_ROTULOS=/caminho/target_labels.tsv     # padrão da barra lateral
+export PP4CKD_PESOS=/caminho/ecfp4_fold_4.pt         # opcional
+export EVIDENCIAS_CHEMBL=/caminho/evidencias_chembl.csv   # opcional
+streamlit run painel.py
+```
+
+1. **Entradas.** Envie ligantes, alvos e sintomas. A validação roda no upload, antes de qualquer execução, e mostra o que vai dar errado: alvo por nome sem organismo, SMILES ilegível, alvo fora do modelo, alvo com menos de 50 moléculas de treino.
+2. **Enriquecer alvos** (opcional, botão próprio). "Buscar EFO dos sintomas" lista as alternativas do Open Targets e **você escolhe**; sem escolha o sintoma não é enriquecido. A lista proposta aparece editável. **Os alvos enriquecidos não são usados na coleta até você clicar em "Usar esta lista na coleta".** Os botões são separados de propósito: uma execução real deu 235 alvos contra 108.935 ligantes, cerca de 23 milhões de pares, e o painel mostra essa conta antes da coleta.
+3. **Coletar evidências.** Roda em segundo plano (um enriquecimento sem cache leva 23 a 25 min); o painel mostra o tempo decorrido e o relatório que a CLI escreve. A CLI não informa percentual, então a barra de tempo é estimativa, não progresso. O resultado traz tabela filtrável e botões para baixar `evidencias.tsv` e `manifesto.json`.
+
+**Modo degradado.** Sem os pesos, o painel roda só com evidência medida e diz isso na tela; sem pesos nem `evidencias_chembl.csv` ele só enriquece. O enriquecimento não usa pesos.
+
+O painel não tem modo de repetição: para repetir uma execução use a CLI (abaixo).
+
+### Linha de comando
+
+Um passo (coleta sobre os alvos informados):
+
+```bash
+python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
+    --saida evidencias.tsv --checkpoint ecfp4_fold_4.pt --rotulos target_labels.tsv \
+    --evidencias-chembl evidencias_chembl.csv
+```
+
+Dois passos, com enriquecimento (a revisão da lista fica entre eles):
+
+```bash
+# 1. enriquecer; evidencias.tsv deste passo usa so os alvos informados
+python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
+    --saida passo1/evidencias.tsv --rotulos target_labels.tsv \
+    --alvos-enriquecidos alvos_enriquecidos.tsv --efo "neuropathic pain=EFO_0005762"
+# 2. revise alvos_enriquecidos.tsv e colete com ele
+python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos_enriquecidos.tsv \
+    --sintomas sintomas.txt --saida evidencias.tsv --checkpoint ecfp4_fold_4.pt \
+    --rotulos target_labels.tsv --evidencias-chembl evidencias_chembl.csv
+```
+
+Também se pode fazer tudo numa chamada só, passando `--alvos-enriquecidos` junto com `--checkpoint`: a execução grava a lista enriquecida e avisa que a coleta **não** a usou (o manifesto registra `alvos_enriquecidos_usados_na_evidencia: false`).
+
+### Pesos do PP4CKD: o tarball do Zenodo está truncado na origem
+
+O `pp4ckd_models.tar.gz` publicado no Zenodo tem MD5 igual ao checksum publicado (`f9380bb9cef3fe56d6d49d3e4a4d57ec`), mas o tar termina antes do fim: sobram íntegros 22 dos ~77 modelos, e `ecfp4_full_model.pt` não está entre eles. Não é download corrompido. **Contorno:** use `ecfp4_fold_4.pt`, um modelo real, treinado em 9/10 dos dados (detalhes na seção 8).
+
+### Cache e repetição
+
+Toda resposta de rede (ChEMBL, Open Targets, Reactome) é gravada em `--cache`, por versão dos serviços. `--manifesto manifesto.json` repete uma execução sem rede, servindo tudo do cache, e se recusa a rodar se uma versão, um MD5 de entrada ou um parâmetro mudou (seção 10). Duas execuções com o mesmo manifesto produzem o mesmo arquivo.
+
+### Licenças
+
+O **código** é MIT (`LICENSE`). Os **dados derivados do ChEMBL** em `dados/` são **CC BY-SA 3.0** (`dados/LICENSE`): a cláusula share-alike vale só para eles e não contamina o código.
+
+### Testes
+
+```bash
+python -m pytest tests/        # nenhum teste usa a rede nem sobe o Streamlit
+```
+
+O painel em si não tem teste unitário: a lógica que ele exibe (`mods/evidencias/resumo.py`) tem; a casca Streamlit foi verificada rodando-a.
+
+---
+
 ---
 
 ## Dicas de busca por sintoma/condição
