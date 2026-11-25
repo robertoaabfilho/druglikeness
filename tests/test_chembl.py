@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from mods.evidencias.chembl import (AlvoAmbiguo, ListaTruncada, alvos_por_uniprot,
+from mods.evidencias.chembl import (AlvoAmbiguo, ListaTruncada, RespostaInesperada, alvos_por_uniprot,
                                     classe_de_proteina, resolver_alvo_por_nome,
                                     resolver_ligante, uniprot_do_alvo)
 
@@ -21,6 +21,25 @@ def test_preferencia_por_single_protein_sem_filtro_do_servidor():
         return {"targets": [{"target_chembl_id": "G", "target_type": "SELECTIVITY GROUP"},
                             {"target_chembl_id": "P", "target_type": "SINGLE PROTEIN"}]}
     assert [a["target_chembl_id"] for a in alvos_por_uniprot("X", "", obter_json=falso)] == ["P", "G"]
+
+
+def test_uniprot_filtrado_truncado_levanta():
+    def falso(url):
+        return {"page_meta": {"total_count": 9},
+                "targets": [{"target_chembl_id": "P", "target_type": "SINGLE PROTEIN"}]}
+    with pytest.raises(ListaTruncada):
+        alvos_por_uniprot("X", "", obter_json=falso)
+
+
+def test_uniprot_resposta_sem_targets_levanta_sem_cair_no_fallback():
+    pedidos = []
+
+    def falso(url):
+        pedidos.append(url)
+        return {"error_message": "falha"}
+    with pytest.raises(RespostaInesperada):
+        alvos_por_uniprot("X", "", obter_json=falso)
+    assert len(pedidos) == 1
 
 
 def test_uniprot_consulta_single_protein_no_servidor_primeiro():

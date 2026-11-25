@@ -41,8 +41,14 @@ class ListaTruncada(Exception):
     """A API devolveu so parte dos resultados; decidir sobre ela seria chutar."""
 
 
+class RespostaInesperada(ValueError):
+    """Corpo sem a chave esperada (ex.: erro da API): nao e "zero resultados"."""
+
+
 def _sem_truncar(resposta: dict, chave: str, consulta: str) -> list[dict]:
-    itens = resposta.get(chave, [])
+    if chave not in resposta:
+        raise RespostaInesperada(f"{consulta}: resposta sem {chave!r}")
+    itens = resposta[chave]
     total = (resposta.get("page_meta") or {}).get("total_count")
     if total is not None and total > len(itens):
         raise ListaTruncada(f"{consulta}: {total} resultados, pagina trouxe {len(itens)}")
@@ -79,11 +85,13 @@ def alvos_por_uniprot(acc: str, organismo: str, *,
         base["organism"] = organismo
     # Filtro no servidor: com varios alvos por UniProt, a pagina poderia
     # cortar a proteina antes de qualquer ordenacao local.
-    alvos = obter_json(_url("target.json", **base, target_type=SINGLE,
-                            limit="5")).get("targets", [])
+    consulta = f"alvos de {acc}"
+    alvos = _sem_truncar(obter_json(_url("target.json", **base, target_type=SINGLE,
+                                         limit="5")), "targets", consulta)
     if alvos:
         return alvos
-    alvos = obter_json(_url("target.json", **base, limit="50")).get("targets", [])
+    alvos = _sem_truncar(obter_json(_url("target.json", **base, limit="50")),
+                         "targets", consulta)
     return sorted(alvos, key=lambda a: a.get("target_type") != SINGLE)
 
 
