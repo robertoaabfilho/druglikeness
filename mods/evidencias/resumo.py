@@ -130,6 +130,43 @@ def chave_enriquecimento(chave_entrada: str, efos: dict[str, str],
     return hashlib.md5(texto.encode("utf-8")).hexdigest()[:12]
 
 
+def chave_coleta(chave_entrada: str, assinatura_dos_alvos: str, corte: float,
+                 limite: int | None, pesos: str, medido: str) -> str:
+    """Identifica uma coleta pelo que a determina: os tres arquivos enviados
+    (`chave_entrada`), a lista de alvos realmente usada (a enviada ou a
+    revisada, por conteudo), o corte, o limite e as fontes de evidencia.
+
+    Nomeia a pasta da execucao, como `chave_enriquecimento` faz com a lista
+    enriquecida. Sem isso o painel lia `coleta/evidencias.tsv` num caminho
+    fixo e mostrava a tabela de uma execucao anterior como se fosse o
+    resultado dos arquivos que estao na tela."""
+    texto = json.dumps([chave_entrada, assinatura_dos_alvos, corte, limite or 0,
+                        pesos, medido])
+    return hashlib.md5(texto.encode("utf-8")).hexdigest()[:12]
+
+
+def assinatura_de_arquivo(caminho) -> str:
+    """Identidade barata de um arquivo grande (caminho, tamanho e mtime), para
+    entrar numa chave de pasta sem ler 785 MB de pesos a cada rerun. O MD5 do
+    conteudo entra no manifesto, que e quem precisa da garantia forte."""
+    if not caminho:
+        return ""
+    p = Path(caminho).expanduser()
+    try:
+        st = p.stat()
+    except OSError:
+        return f"{p}:ausente"
+    return f"{p}:{st.st_size}:{int(st.st_mtime)}"
+
+
+def chave_do_editor(pasta: str, geracao: int) -> str:
+    """Chave do `st.data_editor` da lista de alvos. A geracao existe para o
+    botao de descartar: subir a geracao cria um widget NOVO, cujo estado nasce
+    vazio -- em vez de depender de remover o estado do widget antigo do
+    session_state, que o Streamlit reenvia no rerun."""
+    return f"editor_alvos_{pasta}_g{geracao}"
+
+
 def edicao_pendente(estado_do_editor) -> bool:
     """O `st.data_editor` guarda suas edicoes em session_state como
     {edited_rows, added_rows, deleted_rows}. True se ha alguma: o painel nao

@@ -25,11 +25,15 @@ from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import escapar, ler_evidencias
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS, buscar_efo
 from mods.evidencias.resumo import (
-    chave_enriquecimento, edicao_pendente, ler_tabela_de_alvos, montar_comando,
-    pares_previstos, resumo_alvos, resumo_ligantes)
+    assinatura_de_arquivo, chave_coleta, chave_do_editor, chave_enriquecimento,
+    edicao_pendente, ler_tabela_de_alvos, montar_comando, pares_previstos,
+    resumo_alvos, resumo_ligantes)
 
 RAIZ = Path(__file__).resolve().parent
-LINHAS_NA_TELA = 200_000
+# Teto do que a tabela da tela le. O arquivo real pode ter ~23 milhoes de
+# linhas: `ler_evidencias` le em fluxo e a leitura PARA aqui, em vez de
+# materializar tudo e cortar depois. Quem quer o resto baixa o arquivo.
+LINHAS_NA_TELA = 5_000
 
 st.set_page_config(page_title="Evidências — etapa 1", layout="wide")
 
@@ -89,8 +93,11 @@ def iniciar(tipo: str, comando: list[str], saida: Path, pasta: Path) -> None:
 
 
 def edicao_em_curso() -> bool:
-    return any(edicao_pendente(v) for k, v in st.session_state.items()
-               if k.startswith("editor_alvos"))
+    """Ha edicao nao aplicada no editor QUE ESTA NA TELA. So o editor atual
+    conta: estado de um editor de outra lista (ou de outra geracao, depois de
+    um descarte) nao e trabalho que o pesquisador possa perder."""
+    chave = st.session_state.get("editor_atual")
+    return bool(chave) and edicao_pendente(st.session_state.get(chave))
 
 
 @st.fragment(run_every=2)
@@ -117,14 +124,22 @@ def acompanhar():
     else:
         if "concluido" not in t:
             t["concluido"] = codigo
-            if not edicao_em_curso():
+            if edicao_em_curso():
+                # Redesenho suprimido para não perder a edição em curso. Fica
+                # registrado: o aviso e o botão de descarte só fazem sentido
+                # quando um redesenho foi REALMENTE suprimido, e antes eles
+                # apareciam a cada poll depois do fim do trabalho.
+                t["rerun_suprimido"] = True
+            else:
                 st.rerun(scope="app")  # redesenha o app com o resultado
-        if edicao_em_curso():
+        if t.get("rerun_suprimido") and edicao_em_curso():
             st.warning("Execução terminada, mas há edições não aplicadas na lista "
                        "de alvos: a página não foi redesenhada para não as perder.")
             if st.button("Mostrar o resultado (descarta o que não foi aplicado)"):
-                for k in [k for k in st.session_state if k.startswith("editor_alvos")]:
-                    st.session_state.pop(k)
+                # Geração nova = widget novo, com estado vazio. Não depende de
+                # o Streamlit esquecer o estado do widget anterior.
+                st.session_state["geracao_editor"] = \
+                    st.session_state.get("geracao_editor", 0) + 1
                 st.rerun(scope="app")
         (st.success if codigo == 0 else st.error)(
             f"{nome} {'concluído' if codigo == 0 else f'falhou (código {codigo})'} "
@@ -226,6 +241,11 @@ if r_alv["fora_do_modelo"]:
     st.warning(f"{r_alv['fora_do_modelo']} alvo(s) **não existem no modelo**: não terão "
                "evidência prevista (zero linhas não significa 'sem atividade').")
     st.dataframe(pd.DataFrame(r_alv["lista_fora_do_modelo"]), hide_index=True)
+if r_alv["ambiguo"]:
+    st.error(f"{r_alv['ambiguo']} alvo(s) dado(s) por nome casam com **mais de um** "
+             "alvo do modelo: nenhum é escolhido (escolher seria um palpite entre "
+             "alvos diferentes). Informe o `alvo_chembl_id`.")
+    st.dataframe(pd.DataFrame(r_alv["lista_ambiguo"]), hide_index=True)
 if r_alv["pouco_treino"]:
     st.warning(f"{r_alv['pouco_treino']} alvo(s) treinados com menos de "
                f"{r_alv['minimo_treino']} moléculas ativas: a previsão neles é frágil.")
@@ -312,6 +332,7 @@ if sintomas:
 else:
     pasta_vigente = None
 
+st.session_state["editor_atual"] = None  # redefinido abaixo se houver editor
 arq_enriq = pasta_vigente / "alvos_enriquecidos.tsv" if pasta_vigente else None
 revisados = pasta_vigente / "alvos_revisados.tsv" if pasta_vigente else None
 if arq_enriq and arq_enriq.exists():
@@ -321,8 +342,11 @@ if arq_enriq and arq_enriq.exists():
     tabela = tabela_de_alvos(arq_enriq)
     if tabela.empty:
         st.info("O enriquecimento não acrescentou nenhum alvo.")
+    chave_editor = chave_do_editor(pasta_vigente.name,
+                                   st.session_state.get("geracao_editor", 0))
+    st.session_state["editor_atual"] = chave_editor
     editado = st.data_editor(tabela, num_rows="dynamic", hide_index=True,
-                             key=f"editor_alvos_{pasta_vigente.name}")
+                             key=chave_editor)
     b1, b2 = st.columns(2)
     if b1.button("Usar esta lista na coleta"):
         gravar_tabela_de_alvos(editado, revisados)
@@ -354,15 +378,30 @@ if pesos_ok:
 pode = pesos_ok or bool(medido_caminho)
 ocupado = bool(st.session_state.get("trabalho")) and \
     st.session_state["trabalho"]["proc"].poll() is None
+# A pasta da coleta e nomeada pelo que a determina (arquivos enviados, lista de
+# alvos usada, corte, limite e fontes de evidencia), como a do enriquecimento:
+# um resultado so pode pertencer as entradas que estao na tela.
+try:
+    assinatura_alvos = hashlib.md5(Path(alvos_da_coleta).read_bytes()).hexdigest()
+except OSError:
+    assinatura_alvos = "ausente"
+pasta_coleta = pasta_trabalho / "coleta" / chave_coleta(
+    chave, assinatura_alvos, float(corte), int(limite) or None,
+    assinatura_de_arquivo(pesos_caminho if pesos_ok else ""),
+    assinatura_de_arquivo(medido_caminho))
 if st.button("Coletar evidências", type="primary", disabled=not pode or ocupado):
-    saida_c = pasta_trabalho / "coleta"
+    # Execucao nova: o resultado anterior DESTA mesma chave sai da frente, para
+    # que uma coleta cancelada ou falha nao mostre a tabela da anterior como se
+    # fosse a sua (a escrita atomica da CLI deixa o arquivo velho no lugar).
+    for velho in (pasta_coleta / "evidencias.tsv", pasta_coleta / "manifesto.json"):
+        velho.unlink(missing_ok=True)
     iniciar("coletar", montar_comando(
         "coletar", python=sys.executable, ligantes=str(caminho_lig),
         alvos=alvos_da_coleta, sintomas=str(caminho_sin),
-        saida=str(saida_c / "evidencias.tsv"), rotulos=rotulos_caminho,
+        saida=str(pasta_coleta / "evidencias.tsv"), rotulos=rotulos_caminho,
         checkpoint=pesos_caminho if pesos_ok else None,
         evidencias_chembl=medido_caminho or None, cache=cache_pasta, corte=corte,
-        limite=int(limite) or None), saida_c / "evidencias.tsv", saida_c)
+        limite=int(limite) or None), pasta_coleta / "evidencias.tsv", pasta_coleta)
     st.rerun()
 if not pode:
     st.caption("Sem pesos e sem `evidencias_chembl.csv` não há o que coletar.")
@@ -370,9 +409,31 @@ if not pode:
 acompanhar()
 
 # ------------------------------------------------------------------ resultado
-evidencias = pasta_trabalho / "coleta" / "evidencias.tsv"
+# So o resultado DESTAS entradas e DESTES parametros: a pasta e nomeada por
+# eles. Resultado de outra escolha nunca aparece como se fosse o atual.
+evidencias = pasta_coleta / "evidencias.tsv"
+man = pasta_coleta / "manifesto.json"
 if evidencias.exists():
     st.header("Resultado")
+    manifesto_lido = None
+    if man.exists():
+        try:
+            manifesto_lido = json.loads(man.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifesto_lido = None
+    if manifesto_lido is None:
+        st.warning("Tabela sem `manifesto.json` ao lado: o resultado não é "
+                   "citável e pode estar incompleto.")
+    else:
+        contagens = manifesto_lido.get("contagens", {})
+        st.caption(
+            f"Execução de {manifesto_lido.get('versoes', {}).get('data', '?')} "
+            f"sobre os arquivos e parâmetros desta tela ({pasta_coleta.name}); "
+            f"{contagens.get('linhas_evidencia', '?')} linhas.")
+        if contagens.get("execucao_parcial"):
+            st.warning("**Execução PARCIAL:** o manifesto registra linhas de "
+                       "entrada descartadas ou falhas de item. A tabela abaixo "
+                       "está incompleta; veja `falhas_de_item` no manifesto.")
     linhas = []
     for i, l in enumerate(ler_evidencias(evidencias)):
         if i >= LINHAS_NA_TELA:
@@ -398,9 +459,13 @@ if evidencias.exists():
                    "`pchembl` é medida, probabilidade é do modelo.")
         st.dataframe(df, hide_index=True)
     d1, d2 = st.columns(2)
-    d1.download_button("Baixar evidencias.tsv", evidencias.read_bytes(), "evidencias.tsv")
-    man = pasta_trabalho / "coleta" / "manifesto.json"
-    if man.exists():
-        d2.download_button("Baixar manifesto.json", man.read_bytes(), "manifesto.json")
+    # Download diferido: o arquivo e aberto quando o usuario clica, nao a cada
+    # rerun. `read_bytes()` aqui punha a tabela inteira (ate ~23 milhoes de
+    # linhas) na memoria do servidor em todo redesenho da pagina.
+    d1.download_button("Baixar evidencias.tsv", lambda: open(evidencias, "rb"),
+                       "evidencias.tsv")
+    if manifesto_lido is not None:
+        d2.download_button("Baixar manifesto.json", lambda: open(man, "rb"),
+                           "manifesto.json")
         with st.expander("Manifesto"):
-            st.json(json.loads(man.read_text(encoding="utf-8")))
+            st.json(manifesto_lido)
