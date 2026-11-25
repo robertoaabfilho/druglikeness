@@ -344,3 +344,11 @@ def test_enriquecimento_avisa_que_a_evidencia_nao_o_usou(tmp_path, monkeypatch, 
     c = json.loads((tmp_path / "manifesto.json").read_text())["contagens"]
     assert c["alvos_enriquecidos_escritos"] == 2
     assert c["alvos_enriquecidos_usados_na_evidencia"] is False
+    # Rodar a coleta com o proprio arquivo enriquecido muda o flag e some o aviso.
+    saida2 = tmp_path / "e2.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv", "--alvos", str(enr),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida2),
+                   "--rotulos", str(rotulos), "--alvos-enriquecidos", str(enr)])
+    assert codigo == 0
+    c = json.loads((tmp_path / "manifesto.json").read_text())["contagens"]
+    assert c["alvos_enriquecidos_usados_na_evidencia"] is True

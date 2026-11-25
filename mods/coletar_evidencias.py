@@ -306,6 +306,11 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
 
     descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
+    # Derivado do que a execucao fez: a evidencia so usou o enriquecido se
+    # --alvos aponta para o proprio arquivo enriquecido.
+    enriquecido_usado = bool(args.alvos_enriquecidos) and (
+        Path(args.alvos).expanduser().resolve()
+        == Path(args.alvos_enriquecidos).expanduser().resolve())
     escrever_manifesto(
         manifesto,
         parametros={"corte": args.corte, "limite": args.limite,
@@ -330,13 +335,13 @@ def main(argv: list[str] | None = None) -> int:
                    "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
                    "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
                    "alvos_enriquecidos_escritos": len(linhas_enriquecidas) if args.alvos_enriquecidos else 0,
-                   "alvos_enriquecidos_usados_na_evidencia": False,
+                   "alvos_enriquecidos_usados_na_evidencia": enriquecido_usado,
                    "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
                    "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
               "descartada(s) por erro (detalhes acima)", file=sys.stderr)
-    if args.alvos_enriquecidos:
+    if args.alvos_enriquecidos and not enriquecido_usado:
         proximo = (f"python mods/coletar_evidencias.py --ligantes {args.ligantes} "
                    f"--alvos {args.alvos_enriquecidos} --sintomas {args.sintomas} "
                    f"--saida <nova_evidencias.tsv>"

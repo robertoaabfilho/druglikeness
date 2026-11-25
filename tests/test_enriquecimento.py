@@ -228,3 +228,68 @@ def test_alvo_do_reactome_tambem_associado_no_open_targets_e_anotado():
     r = [l for l in linhas if l["alvo_chembl_id"] == "CHEMBL4296"]
     assert len(r) == 1 and r[0]["origem"] == "reactome"
     assert r[0]["score"] == 0.41 and "Open Targets" in r[0]["observacao"]
+
+
+def _cenario_usuario_tambem_no_open_targets():
+    """Usuario fornece CHEMBL4296 (SCN9A); Open Targets e Reactome o devolvem
+    de novo, e um segundo sintoma tambem o implica."""
+    scn9a = {"target_chembl_id": "CHEMBL4296", "pref_name": "SCN9A",
+             "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+    def chembl(url):
+        if "target/CHEMBL4296.json" in url:
+            return {**scn9a, "target_components": [{"accession": "Q15858"}]}
+        if "accession=Q15858" in url:
+            return {"targets": [scn9a], "page_meta": {"total_count": 1}}
+        return {"targets": [], "page_meta": {"total_count": 0}}
+    def ot(url, corpo=None):
+        efo = corpo["variables"]["efo"]
+        return {"data": {"disease": {"associatedTargets": {"count": 1, "rows": [
+            {"score": 0.6 if efo == "EFO_2" else 0.5, "datatypeScores": [],
+             "target": {"id": "E", "approvedSymbol": "SCN9A",
+                        "proteinIds": [{"id": "Q15858", "source": "uniprot_swissprot"}]}}]}}}}
+    def reactome(url):
+        if "mapping" in url:
+            return [{"stId": "R-X", "displayName": "x"}]
+        return [{"databaseName": "UniProt", "identifier": "Q15858"}]
+    return chembl, ot, reactome
+
+
+def test_enriquecimento_so_acrescenta_alvo_do_usuario_fica_uma_vez_e_primeiro():
+    from mods.evidencias.enriquecimento import enriquecer
+    chembl, ot, reactome = _cenario_usuario_tambem_no_open_targets()
+    linhas = enriquecer(
+        [{"alvo_chembl_id": "CHEMBL4296", "alvo": "", "organismo": ""}],
+        {"dor": "EFO_1", "nevralgia": "EFO_2"},
+        [{"chembl_id": "CHEMBL4296", "n_ativos": 7}],
+        corte_associacao=0.4, teto_via=150, obter_json_chembl=chembl,
+        obter_json_open_targets=ot, obter_json_reactome=reactome)
+    assert [l["alvo_chembl_id"] for l in linhas] == ["CHEMBL4296"]
+    assert linhas[0]["origem"] == "usuario"
+    assert linhas[0]["alvo"] == "SCN9A"
+
+
+def test_sintomas_que_implicam_o_mesmo_alvo_se_acumulam():
+    from mods.evidencias.enriquecimento import enriquecer
+    chembl, ot, reactome = _cenario_usuario_tambem_no_open_targets()
+    # Sem o alvo do usuario: o Open Targets o traz por dois sintomas.
+    linhas = enriquecer([], {"dor": "EFO_1", "nevralgia": "EFO_2"},
+                        [{"chembl_id": "CHEMBL4296", "n_ativos": 7}],
+                        corte_associacao=0.4, teto_via=150, obter_json_chembl=chembl,
+                        obter_json_open_targets=ot, obter_json_reactome=reactome)
+    assert len(linhas) == 1 and linhas[0]["origem"] == "open_targets"
+    assert linhas[0]["sintoma"] == "dor;nevralgia"
+    assert linhas[0]["efo_id"] == "EFO_1;EFO_2"
+    assert linhas[0]["score"] == 0.6
+    # Com o alvo do usuario, ele ganha o rastro sem perder a origem.
+    linhas = enriquecer([{"alvo_chembl_id": "CHEMBL4296", "alvo": "", "organismo": ""}],
+                        {"dor": "EFO_1", "nevralgia": "EFO_2"},
+                        [{"chembl_id": "CHEMBL4296", "n_ativos": 7}],
+                        corte_associacao=0.4, teto_via=150, obter_json_chembl=chembl,
+                        obter_json_open_targets=ot, obter_json_reactome=reactome)
+    assert linhas[0]["origem"] == "usuario" and linhas[0]["sintoma"] == "dor;nevralgia"
+
+
+def test_a_suite_bloqueia_a_rede():
+    import socket
+    with pytest.raises(RuntimeError, match="rede"):
+        socket.create_connection(("93.184.216.34", 80), timeout=1)

@@ -38,6 +38,16 @@ def _de_item(e: Exception) -> bool:
     return isinstance(e, (AlvoAmbiguo, LookupError)) or erro_de_item(e)
 
 
+def _juntar_associacao(linha: dict, outra: dict) -> None:
+    """Acumula sintomas e EFOs (';') e guarda o maior escore de associacao."""
+    for campo in ("sintoma", "efo_id"):
+        atuais = [v for v in str(linha.get(campo) or "").split(";") if v]
+        if outra.get(campo) and outra[campo] not in atuais:
+            linha[campo] = ";".join(atuais + [outra[campo]])
+    if outra.get("score") is not None and outra["score"] > (linha.get("score") or 0):
+        linha["score"] = outra["score"]
+
+
 def _linha_do_usuario(a: dict, no_modelo: dict, obter_json) -> dict:
     linha = {"alvo_chembl_id": a.get("alvo_chembl_id") or "",
              "alvo": a.get("alvo") or "", "organismo": a.get("organismo") or "",
@@ -73,7 +83,8 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
     no_modelo = {r["chembl_id"]: r for r in rotulos}
 
     linhas = [_linha_do_usuario(a, no_modelo, obter_json_chembl) for a in alvos_usuario]
-    presentes = {l["alvo_chembl_id"] for l in linhas if l["alvo_chembl_id"]}
+    por_id = {l["alvo_chembl_id"]: l for l in linhas if l["alvo_chembl_id"]}
+    presentes = set(por_id)
 
     candidatos: list[dict] = []
     # UniProt -> melhor associacao ABAIXO do corte: alvo que o Reactome alcanca
@@ -99,9 +110,14 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
     ot: list[dict] = []
     for r in resolvidos:
         if r["alvo_chembl_id"] and r["alvo_chembl_id"] in presentes:
-            continue  # ja na lista (do usuario ou de outro sintoma): nao repete
+            # Ja na lista (do usuario ou de outro sintoma): nao repete, mas o
+            # rastro de cada sintoma que o implica fica (so campos de
+            # associacao; `origem` e o resto da linha nao mudam).
+            _juntar_associacao(por_id[r["alvo_chembl_id"]], r)
+            continue
         if r["alvo_chembl_id"]:
             presentes.add(r["alvo_chembl_id"])
+            por_id[r["alvo_chembl_id"]] = r
             try:
                 r["classe"] = chembl.classe_de_proteina(
                     r["alvo_chembl_id"], obter_json=obter_json_chembl)

@@ -5,6 +5,21 @@ import pytest
 N_ALVOS_FALSO = 6
 
 
+@pytest.fixture(autouse=True)
+def sem_rede(monkeypatch):
+    """Nenhum teste fala com a rede: conectar um socket de internet falha o
+    teste. Quem esquecer de injetar `obter_json` descobre aqui, nao na maquina
+    de outra pessoa. (Sockets UNIX e subprocessos ficam de fora.)"""
+    import socket
+    conectar = socket.socket.connect
+
+    def bloqueado(self, endereco, *a, **k):
+        if self.family in (socket.AF_INET, socket.AF_INET6):
+            raise RuntimeError(f"teste tentou usar a rede: {endereco}")
+        return conectar(self, endereco, *a, **k)
+    monkeypatch.setattr(socket.socket, "connect", bloqueado)
+
+
 @pytest.fixture
 def modelo_falso(tmp_path):
     """state_dict aleatorio com a arquitetura do PP4CKD (4096 -> 1000 -> 500 ->
