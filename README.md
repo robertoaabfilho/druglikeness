@@ -19,6 +19,11 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
     checar_alertas_adversos.py
     calibrar_deeppk.py
     importar_prospector.py
+    prever_alvos.py
+./exemplos/                 <- fixtures de validação (ver exemplos/LEIA-ME.md)
+    controle.dor_neuropatica.tsv
+    alvos.dor_neuropatica.txt
+    alvos.patogeno.txt
 ./results/                  <- criada automaticamente; todas as saídas vão aqui
     farmaco.csv
     farmaco.deeppk_raw.csv
@@ -342,6 +347,156 @@ Busca em texto livre não entende negação — uma bula que diz "não há relat
 Compara predições Deep-PK contra texto farmacocinético experimental do PubChem. **Decisão do projeto: não seguir com essa abordagem.** Continua no repositório por referência, mas não é chamada pelo `main.py`.
 
 ---
+
+## 8. `mods/prever_alvos.py` — compostos × alvos (qualquer organismo)
+
+Responde à pergunta central do repositório: **dada uma lista de compostos e uma
+lista de alvos, quais compostos têm chance de atuar sobre esses alvos?**
+
+A lista de alvos é **entrada**, não dedução. Quem a fornece (ou a enriquece a
+partir da doença) é o pesquisador.
+
+Usa os pesos pré-treinados do **PP4CKD** ([Zenodo
+10.5281/zenodo.23147411](https://zenodo.org/records/23147411), pesos CC-BY-4.0,
+código Apache-2.0): uma MLP que recebe o fingerprint de uma molécula e devolve
+uma probabilidade para cada um dos 7.676 alvos do ChEMBL 36.
+
+```
+SMILES -> ECFP4 (Morgan r=2, 4096 bits) -> Linear(4096,1000) -> ReLU
+       -> Linear(1000,500) -> ReLU -> Linear(500,7676) -> sigmoide
+```
+
+### Alvos não humanos são de primeira classe
+
+Dos 7.676 alvos, **4.140 são de *Homo sapiens* e 3.536 não são** — 666 de
+camundongo, 646 de rato, e centenas de patógeno, distribuídos por 1.084
+organismos. O modelo traz até alvos de **organismo inteiro** (ensaio
+fenotípico, não proteína): `CHEMBL360` = *M. tuberculosis* com 11.049 moléculas
+ativas no treino.
+
+Isso serve a dois usos diferentes:
+
+| uso | o alvo é | exemplo |
+|---|---|---|
+| **afirmativo** | do patógeno | doença infecciosa/parasitária: `CHEMBL360`, `CHEMBL364` (*P. falciparum*), `CHEMBL368` (*T. cruzi*) |
+| **negativo** | atividade indesejada | excluir do ranking o composto que é antibacteriano, não analgésico |
+
+O uso negativo foi **medido** no conjunto-controle deste repositório (6 fármacos
+que tratam dor neuropática contra 6 que a causam):
+
+| escore | AUC |
+|---|---|
+| só alvos humanos de dor | 0,750 |
+| `p_humano × (1 − p_bacteriano)` | **0,806** |
+| só `CHEMBL360` separando antibacteriano de analgésico | **1,000** |
+
+Com o alvo bacteriano no cálculo, o ciprofloxacino cai do 4º para o 7º lugar.
+
+### Como pedir os alvos
+
+Um por linha. `#` comenta a linha inteira ou o fim dela. `| organismo` fixa o
+organismo **daquela linha**:
+
+```
+CHEMBL360                      # M. tuberculosis, célula inteira
+CHEMBL1849                     # InhA de Mtb
+DNA gyrase | Escherichia coli  # nome + organismo, para não pegar o ortólogo errado
+dihydrofolate reductase | tuberculose
+```
+
+Ou restrinja tudo com `--organismo` (repetível, aceita vírgula). Apelidos
+(`humano`, `rato`, `camundongo`, `tuberculose`, `malaria`, `chagas`…) e trechos
+do nome científico funcionam — `--organismo Plasmodium` alcança
+`Plasmodium falciparum (isolate 3D7)`, porque as bases guardam cepa e isolado
+dentro do nome do organismo.
+
+**Pedir por ID ChEMBL vence o filtro de organismo.** Se você escreveu
+`CHEMBL304`, você quer o transportador de noradrenalina **de rato** — o script
+avisa e mantém.
+
+### Descobrindo a grafia (sem rodar previsão)
+
+Sem isto não há como escrever uma lista de alvos não humanos, porque a grafia
+tem de ser a do ChEMBL:
+
+```bash
+python mods/prever_alvos.py --rotulos target_labels.tsv --listar-organismos
+python mods/prever_alvos.py --rotulos target_labels.tsv --listar-organismos Plasmodium
+python mods/prever_alvos.py --rotulos target_labels.tsv \
+    --buscar-alvo gyrase --organismo Staphylococcus
+```
+
+### Uso
+
+```bash
+python mods/prever_alvos.py \
+    --entrada input.exemplo.tsv \
+    --modelos ~/modelos_baixados/pp4ckd/models \
+    --rotulos ~/modelos_baixados/pp4ckd/target_labels.tsv \
+    --alvos alvos.txt \
+    --organismo humano \
+    --saida results/alvos_preditos.tsv
+```
+
+Saída (TSV): `nome`, `inchikey_parental`, `chembl_id_composto`,
+`alvo_chembl_id`, `alvo`, `organismo`, `tipo_alvo`, `moleculas_treino`,
+`probabilidade`, `procedencia`.
+
+### Duas colunas que existem por um motivo
+
+**`moleculas_treino`** — quantas moléculas ativas treinaram aquele alvo. Alvo
+não humano é bem mais esparso: mediana de **26** moléculas ativas contra 67 dos
+humanos, 67% abaixo de 50, e 798 alvos abaixo de 10. Sem essa coluna você não
+distingue p=0,89 sustentado por 3.493 exemplos de p=0,89 sustentado por 10. O
+caso real: os três alvos mais prováveis do ciprofloxacino no modelo inteiro são
+organismos com 10, 11 e 12 moléculas de treino, enquanto a DNA girase (596
+ativos, o alvo de verdade) fica mais abaixo. `--minimo-treino N` (padrão 50)
+avisa — **sem remover** — quando um alvo pedido está abaixo do limiar.
+
+**`tipo_alvo`** — `SINGLE PROTEIN` é ligação a uma proteína; `ORGANISM` e
+`CELL-LINE` são ensaio fenotípico de célula inteira. São afirmações diferentes e
+não devem ser lidas como a mesma coisa.
+
+### Procedência: predito nunca se mistura com medido
+
+```
+predito (PP4CKD ECFP4 ecfp4_fold_4.pt)   previsão de modelo, hipótese a testar
+medido (ChEMBL pchembl=7.2)              bioatividade experimental
+```
+
+Uma previsão de 0,93 não tem o mesmo peso que um ensaio, e as duas nunca saem
+na mesma coluna sem distinção. A coluna `procedencia` nomeia o checkpoint usado,
+para que o resultado seja reproduzível.
+
+### Limites conhecidos
+
+- **Pró-fármaco.** O modelo é baseado em ligante: julga a estrutura que recebe.
+  A etionamida pontua 0,80 em *M. tuberculosis* (fenótipo) e **0,0017 em InhA**
+  (a proteína), porque só inibe a InhA depois de ativada pela EthA — a
+  molécula-mãe não se liga.
+- **Molécula pequena e polar.** Gabapentina e pregabalina pontuam baixo nos
+  alvos de dor (0,0001 e 0,02): são análogos de aminoácido, e o alvo delas
+  (α2δ-1) tem só 562 ativos no treino — a sub-unidade α2δ-2 tem 30. A AUC de
+  0,750 do conjunto humano vem quase toda dessas duas falhas.
+- **Ortólogo silencioso** é tratado, não eliminado: só o filtro de organismo e a
+  coluna `organismo` evitam que `noradrenaline transporter` traga humano
+  (`CHEMBL222`), camundongo (`CHEMBL2370`) e rato (`CHEMBL304`) juntos.
+
+### Os pesos publicados estão truncados na origem
+
+O `pp4ckd_models.tar.gz` do Zenodo tem **MD5 idêntico ao publicado**
+(`f9380bb9cef3fe56d6d49d3e4a4d57ec`, 785.350.656 bytes) mas o tar termina antes
+do fim: só **22 dos ~77 modelos** saem íntegros, e `ecfp4_full_model.pt` não é
+um deles. Não é download corrompido — é o arquivo publicado.
+
+Por isso:
+
+- `--checkpoint arquivo.pt` aceita um `.pt` específico;
+- a pasta `--modelos` cai automaticamente para `<fp>_fold_N.pt`, com aviso.
+
+Um checkpoint de fold é um modelo treinado de verdade, em 9/10 dos dados —
+válido para previsão e **preferível** na validação, porque permite medir fora do
+que o modelo viu. Os resultados acima usam `ecfp4_fold_4.pt`.
 
 ## Dicas de busca por sintoma/condição
 

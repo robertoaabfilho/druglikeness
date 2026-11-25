@@ -1,0 +1,8 @@
+# Alvos NAO HUMANOS -- teste do caminho de organismo.
+# Sintaxe nova: 'termo | organismo' fixa o organismo so daquela linha.
+
+CHEMBL360                      # M. tuberculosis, ensaio de celula inteira (11.049 ativos)
+CHEMBL1849                     # InhA, enoil-ACP redutase de Mtb -- alvo de isoniazida/etionamida
+DNA gyrase | Escherichia coli  # alvo de ciprofloxacino, casado por nome + organismo
+CHEMBL352                      # Staphylococcus aureus, celula inteira
+dihydrofolate reductase | tuberculose

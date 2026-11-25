@@ -1,0 +1,13 @@
+# Alvos proteicos de dor neuropática (humanos).
+# Lista FORNECIDA pelo pesquisador -- o pipeline não a deduz.
+# Use ID de alvo do ChEMBL para não casar com ortólogo de rato/camundongo.
+
+CHEMBL1919      # Canal de cálcio dep. de voltagem, alpha-2/delta-1  (pregabalina, gabapentina)
+CHEMBL3896      # Canal de cálcio dep. de voltagem, alpha-2/delta-2
+CHEMBL228       # Transportador de serotonina (SERT)                 (duloxetina, amitriptilina)
+CHEMBL222       # Transportador de noradrenalina (NET)               (duloxetina, amitriptilina)
+CHEMBL1845      # Canal de sódio tipo 1 subunidade alpha             (carbamazepina)
+CHEMBL4794      # TRPV1, receptor vanilóide                          (capsaicina)
+CHEMBL233       # Receptor opioide mu
+CHEMBL2015      # Receptor de glutamato ionotrópico, NMDA 1
+CHEMBL1904      # Receptor de glutamato ionotrópico, NMDA 2B

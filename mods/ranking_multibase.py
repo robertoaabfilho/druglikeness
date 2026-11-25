@@ -122,7 +122,16 @@ HEADERS_HTTP = {
     "Accept": "application/json",
 }
 
-COLUNAS_NAO_CARACTERISTICA = {"Nome", "SMILES", "Valido"}
+# Colunas de IDENTIDADE, nunca de característica. `calcular_pesos` trata
+# qualquer coluna desconhecida como característica categórica, então sem este
+# registro o InChIKey entraria como critério de pontuação: cada composto teria
+# uma chave única, a moda teria frequência 1, e o composto receberia nota por
+# "ser ele mesmo". As cinco últimas chegam ao farmaco.csv pela entrada TSV
+# (ver `ler_entrada` em farmaco_completo.py e `importar_prospector.py`).
+COLUNAS_NAO_CARACTERISTICA = {
+    "Nome", "SMILES", "Valido",
+    "inchikey", "inchikey_parental", "chembl_id", "fonte_smiles", "conferencia",
+}
 COLUNAS_NUMERICAS = {
     "PesoMolecular", "DoadoresHB", "AceptoresHB", "TPSA",
     "LigacoesRotacionaveis", "RefratividadeMolar", "AtomosPesados",
