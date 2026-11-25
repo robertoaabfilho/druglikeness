@@ -34,7 +34,8 @@ def test_corte_filtra_de_verdade(modelo_falso, rotulos_falsos):
     acima = list(linhas_preditas(LIGANTES, ALVOS, checkpoint=modelo_falso,
                                  rotulos=rotulos_falsos, corte=corte))
     assert 0 < len(acima) < len(todas)
-    assert all(float(l["atividade_relatada"].split()[2]) >= 0.5 for l in acima)
+    assert all(float(l["valor"]) >= corte for l in acima)
+    assert all(float(l["valor"]) < corte for l in todas if l not in acima)
 
 
 def test_alvo_fora_do_modelo_nao_gera_linha(modelo_falso, rotulos_falsos):
@@ -98,3 +99,13 @@ def test_valor_sobrevive_a_gravacao(modelo_falso, rotulos_falsos, tmp_path):
     lidas = list(ler_evidencias(destino))
     assert lidas and all("," not in l["valor"] and 0 < float(l["valor"]) < 1
                          for l in lidas)
+
+
+def test_smiles_ilegivel_e_contado(modelo_falso, rotulos_falsos):
+    ruins = LIGANTES + [{"nome": "lixo", "smiles": "isto nao e smiles"}]
+    contagens = {}
+    linhas = list(linhas_preditas(ruins, ALVOS, checkpoint=modelo_falso,
+                                  rotulos=rotulos_falsos, corte=0.0,
+                                  contagens=contagens))
+    assert contagens["smiles_ilegiveis"] == 1
+    assert len(linhas) == len(LIGANTES) * len(ALVOS)

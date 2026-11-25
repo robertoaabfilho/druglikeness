@@ -148,3 +148,74 @@ def test_checkpoint_sem_rotulos_falha_com_mensagem(tmp_path, capsys):
                "--saida", str(tmp_path / "e.tsv"), "--checkpoint", "x.pt"])
     assert rc == 2
     assert "--checkpoint e --rotulos" in capsys.readouterr().err
+
+
+def _alvos_do_modelo_falso(tmp_path):
+    alvos = tmp_path / "alvos.tsv"
+    alvos.write_text("alvo_chembl_id\nCHEMBL100\nCHEMBL101\n", encoding="utf-8")
+    return alvos
+
+
+def _rotulos_tsv(tmp_path, rotulos):
+    caminho = tmp_path / "rotulos.tsv"
+    linhas = ["target_idx\tchembl_id\tpref_name\torganism\ttarget_type\tactive_molecules"]
+    for i, r in enumerate(rotulos):
+        linhas.append(f"{i}\t{r['chembl_id']}\t{r['nome']}\t{r['organismo']}"
+                      f"\t{r['tipo']}\t{r['n_ativos']}")
+    caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    return caminho
+
+
+def _rodar_com_modelo(tmp_path, modelo, rotulos, corte, nome):
+    from mods.evidencias.esquema import ler_evidencias
+    saida = tmp_path / nome / "evidencias.tsv"
+    rot = _rotulos_tsv(tmp_path, rotulos)
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", modelo, "--rotulos", str(rot),
+                   "--corte", str(corte)])
+    assert codigo == 0
+    return list(ler_evidencias(saida)), ler_manifesto(saida.parent / "manifesto.json"), rot
+
+
+def test_checkpoint_grava_linhas_e_manifesto_confere(tmp_path, modelo_falso, rotulos_falsos):
+    import hashlib
+    todas, m, rot = _rodar_com_modelo(tmp_path, modelo_falso, rotulos_falsos, 0.0, "a")
+    assert todas and all(l["tipo_evidencia"] == "predito" for l in todas)
+    assert m["contagens"]["linhas_evidencia"] == len(todas)
+    assert m["parametros"]["rotulos"] == str(rot)
+    assert m["parametros"]["rotulos_md5"] == hashlib.md5(rot.read_bytes()).hexdigest()
+    assert m["contagens"]["smiles_ilegiveis_modelo"] == 0
+    filtradas, m2, _ = _rodar_com_modelo(tmp_path, modelo_falso, rotulos_falsos, 0.505, "b")
+    assert 0 < len(filtradas) < len(todas)
+    assert all(float(l["valor"]) >= 0.505 for l in filtradas)
+    assert m2["contagens"]["linhas_evidencia"] == len(filtradas)
+
+
+def test_checkpoint_invalido_nao_deixa_tabela_nem_manifesto(tmp_path, rotulos_falsos, capsys):
+    ruim = tmp_path / "ruim.pt"
+    ruim.write_bytes(b"isto nao e um checkpoint")
+    saida = tmp_path / "o" / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", str(ruim),
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 2
+    assert not saida.exists()
+    assert not (saida.parent / "manifesto.json").exists()
+    assert "[erro]" in capsys.readouterr().err
+
+
+def test_sem_torch_falha_limpo_e_sem_arquivo(tmp_path, rotulos_falsos, monkeypatch, capsys):
+    import importlib.util
+    monkeypatch.setattr(importlib.util, "find_spec", lambda nome: None)
+    saida = tmp_path / "o" / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", "x.pt",
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 2 and not saida.exists()
+    assert "pip install torch rdkit" in capsys.readouterr().err

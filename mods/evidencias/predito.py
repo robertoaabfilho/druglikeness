@@ -49,8 +49,14 @@ def _indices_dos_alvos(alvos: list[dict], rotulos: list[dict]) -> list[int]:
 
 
 def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
-                    rotulos: list[dict], corte: float = 0.1) -> Iterator[dict]:
-    """Uma linha por par ligante/alvo com probabilidade >= `corte`."""
+                    rotulos: list[dict], corte: float = 0.1,
+                    contagens: dict | None = None) -> Iterator[dict]:
+    """Uma linha por par ligante/alvo com probabilidade >= `corte`.
+
+    `contagens`, se dado, recebe `smiles_ilegiveis`: ligantes cujo fingerprint
+    nao pode ser calculado e que por isso nunca foram pontuados."""
+    if contagens is not None:
+        contagens.setdefault("smiles_ilegiveis", 0)
     import numpy as np
     import torch
 
@@ -67,9 +73,12 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
         validos, vetores = [], []
         for lig in ligantes[inicio:inicio + LOTE]:
             fp = fingerprint_de(lig.get("smiles", ""), cfg)
-            if fp is not None:
-                validos.append(lig)
-                vetores.append(fp)
+            if fp is None:
+                if contagens is not None:
+                    contagens["smiles_ilegiveis"] += 1
+                continue
+            validos.append(lig)
+            vetores.append(fp)
         if not validos:
             continue
         with torch.no_grad():

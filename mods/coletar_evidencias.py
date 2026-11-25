@@ -20,6 +20,9 @@ Problemas `aviso` sao relatados e a execucao continua.
 """
 
 import argparse
+import hashlib
+import importlib.util
+import pickle
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -31,7 +34,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
-from mods.evidencias.predito import linhas_preditas
 from mods.evidencias.manifesto import escrever_manifesto
 
 
@@ -46,6 +48,14 @@ def _commit_do_pipeline() -> str:
     except (OSError, subprocess.SubprocessError):
         pass
     return "desconhecido"
+
+
+def _md5(caminho: str) -> str:
+    h = hashlib.md5()
+    with open(caminho, "rb") as f:
+        for bloco in iter(lambda: f.read(1 << 20), b""):
+            h.update(bloco)
+    return h.hexdigest()
 
 
 def _relatar(nome: str, problemas) -> None:
@@ -114,26 +124,56 @@ def main(argv: list[str] | None = None) -> int:
     saida.parent.mkdir(parents=True, exist_ok=True)
     manifesto.parent.mkdir(parents=True, exist_ok=True)
     n_linhas = 0
-    with EscritorEvidencias(saida) as escritor:
-        if args.checkpoint:
+    contagens_modelo: dict = {}
+    rotulos = None
+    if args.checkpoint:
+        # Tudo que pode falhar sem tocar na saida falha ANTES de abri-la.
+        faltam = [pacote for modulo, pacote in (("torch", "torch"), ("rdkit", "rdkit"))
+                  if importlib.util.find_spec(modulo) is None]
+        if faltam:
+            print(f"[erro] --checkpoint precisa de {', '.join(faltam)}: "
+                  f"pip install {' '.join(faltam)}", file=sys.stderr)
+            return 2
+        try:
             from mods.prever_alvos import carregar_rotulos
-            try:
-                rotulos = carregar_rotulos(args.rotulos)
-                for linha in linhas_preditas(ligantes, alvos, checkpoint=args.checkpoint,
-                                             rotulos=rotulos, corte=args.corte):
+            rotulos = carregar_rotulos(args.rotulos)
+        except (OSError, RuntimeError, ValueError) as e:
+            print(f"[erro] rotulos: {e}", file=sys.stderr)
+            return 2
+        from mods.evidencias.predito import linhas_preditas
+
+    try:
+        with EscritorEvidencias(saida) as escritor:
+            if args.checkpoint:
+                for linha in linhas_preditas(
+                        ligantes, alvos, checkpoint=args.checkpoint,
+                        rotulos=rotulos, corte=args.corte,
+                        contagens=contagens_modelo):
                     escritor.escrever(linha)
                     n_linhas += 1
-            except (OSError, RuntimeError, ValueError) as e:
-                print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
-                return 2
-        # as demais fontes de evidencia entram nas proximas tarefas
+            # as demais fontes de evidencia entram nas proximas tarefas
+    except (OSError, RuntimeError, ValueError, ImportError, EOFError,
+            pickle.UnpicklingError) as e:
+        # Execucao falha nao deixa tabela nem manifesto.
+        saida.unlink(missing_ok=True)
+        print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
+        return 2
+
+    ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
+    if ilegiveis:
+        print(f"[aviso] {ilegiveis} ligante(s) com SMILES ilegivel para o modelo: "
+              "NAO foram pontuados (zero linhas deles nao significa 'sem atividade')",
+              file=sys.stderr)
 
     descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
     escrever_manifesto(
         manifesto,
         parametros={"corte": args.corte, "limite": args.limite,
                     "sem_rede": args.sem_rede,
-                    "checkpoint": args.checkpoint, "ligantes": args.ligantes,
+                    "checkpoint": args.checkpoint,
+                    "rotulos": args.rotulos,
+                    "rotulos_md5": _md5(args.rotulos) if args.rotulos else None,
+                    "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
         versoes={"pipeline_commit": _commit_do_pipeline(),
                  "data": datetime.now(timezone.utc).isoformat(timespec="seconds")},
@@ -141,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
                    "sintomas": len(sintomas),
                    "problemas_ligantes": len(p_lig), "problemas_alvos": len(p_alvo),
                    "linhas_descartadas": descartadas,
+                   "smiles_ilegiveis_modelo": ilegiveis,
                    "linhas_evidencia": n_linhas})
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
