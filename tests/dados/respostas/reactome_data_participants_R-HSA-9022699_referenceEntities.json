@@ -1,0 +1,382 @@
+[
+ {
+  "dbId": 236960,
+  "displayName": "UniProt:P51608-2 MECP2",
+  "stId": "uniprot:P51608-2",
+  "databaseName": "UniProt",
+  "identifier": "P51608",
+  "name": [
+   "MECP2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 404286,
+  "displayName": "UniProt:P51608-1 MECP2",
+  "stId": "uniprot:P51608-1",
+  "databaseName": "UniProt",
+  "identifier": "P51608",
+  "name": [
+   "MECP2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 9004911,
+  "displayName": "ENSEMBL:ENSG00000196396 PTPN1",
+  "stId": "ensembl:ENSG00000196396",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000196396",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 1606483,
+  "displayName": "ENSEMBL:ENSG00000148400 NOTCH1",
+  "stId": "ensembl:ENSG00000148400",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000148400",
+  "name": [
+   "NOTCH1 Gene"
+  ],
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 9949511,
+  "displayName": "ENSEMBL:ENST00000651671 NOTCH1",
+  "stId": "ensembl:ENST00000651671",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENST00000651671",
+  "name": [
+   "NOTCH1 mRNA"
+  ],
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceRNASequence",
+  "className": "ReferenceRNASequence"
+ },
+ {
+  "dbId": 9004241,
+  "displayName": "ENSEMBL:ENSG00000105976 MET",
+  "stId": "ensembl:ENSG00000105976",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000105976",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 9000214,
+  "displayName": "ENSEMBL:ENSG00000082556 OPRK1",
+  "stId": "ensembl:ENSG00000082556",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000082556",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 60950,
+  "displayName": "UniProt:P41145 OPRK1",
+  "stId": "uniprot:P41145",
+  "databaseName": "UniProt",
+  "identifier": "P41145",
+  "name": [
+   "OPRK1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8996205,
+  "displayName": "ENSEMBL:ENSG00000088179 PTPN4",
+  "stId": "ensembl:ENSG00000088179",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000088179",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 402617,
+  "displayName": "UniProt:P08581 MET",
+  "stId": "uniprot:P08581",
+  "databaseName": "UniProt",
+  "identifier": "P08581",
+  "name": [
+   "MET"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8961184,
+  "displayName": "ENSEMBL:ENSG00000169258 GPRIN1",
+  "stId": "ensembl:ENSG00000169258",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000169258",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 231152,
+  "displayName": "UniProt:Q7Z2K8 GPRIN1",
+  "stId": "uniprot:Q7Z2K8",
+  "databaseName": "UniProt",
+  "identifier": "Q7Z2K8",
+  "name": [
+   "GPRIN1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 62423,
+  "displayName": "UniProt:P18031 PTPN1",
+  "stId": "uniprot:P18031",
+  "databaseName": "UniProt",
+  "identifier": "P18031",
+  "name": [
+   "PTPN1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 62429,
+  "displayName": "UniProt:P29074 PTPN4",
+  "stId": "uniprot:P29074",
+  "databaseName": "UniProt",
+  "identifier": "P29074",
+  "name": [
+   "PTPN4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8989291,
+  "displayName": "ENSEMBL:ENSG00000138741 TRPC3",
+  "stId": "ensembl:ENSG00000138741",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000138741",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 6797366,
+  "displayName": "ENSEMBL:ENSG00000112038 OPRM1",
+  "stId": "ensembl:ENSG00000112038",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000112038",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 56410,
+  "displayName": "UniProt:Q92769 HDAC2",
+  "stId": "uniprot:Q92769",
+  "databaseName": "UniProt",
+  "identifier": "Q92769",
+  "name": [
+   "HDAC2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 56408,
+  "displayName": "UniProt:Q13547 HDAC1",
+  "stId": "uniprot:Q13547",
+  "databaseName": "UniProt",
+  "identifier": "Q13547",
+  "name": [
+   "HDAC1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 101853,
+  "displayName": "UniProt:Q96ST3 SIN3A",
+  "stId": "uniprot:Q96ST3",
+  "databaseName": "UniProt",
+  "identifier": "Q96ST3",
+  "name": [
+   "SIN3A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8989094,
+  "displayName": "ENSEMBL:ENSG00000273079 GRIN2B",
+  "stId": "ensembl:ENSG00000273079",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000273079",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 60297,
+  "displayName": "UniProt:Q13224 GRIN2B",
+  "stId": "uniprot:Q13224",
+  "databaseName": "UniProt",
+  "identifier": "Q13224",
+  "name": [
+   "GRIN2B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8999528,
+  "displayName": "ENSEMBL:ENSG00000059804 SLC2A3",
+  "stId": "ensembl:ENSG00000059804",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000059804",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 56068,
+  "displayName": "UniProt:P11169 SLC2A3",
+  "stId": "uniprot:P11169",
+  "databaseName": "UniProt",
+  "identifier": "P11169",
+  "name": [
+   "SLC2A3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 403029,
+  "displayName": "UniProt:P16220-1 CREB1",
+  "stId": "uniprot:P16220-1",
+  "databaseName": "UniProt",
+  "identifier": "P16220",
+  "name": [
+   "CREB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 66459,
+  "displayName": "UniProt:Q13507 TRPC3",
+  "stId": "uniprot:Q13507",
+  "databaseName": "UniProt",
+  "identifier": "Q13507",
+  "name": [
+   "TRPC3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9004840,
+  "displayName": "ENSEMBL:ENSG00000183454 GRIN2A",
+  "stId": "ensembl:ENSG00000183454",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000183454",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 60295,
+  "displayName": "UniProt:Q12879 GRIN2A",
+  "stId": "uniprot:Q12879",
+  "databaseName": "UniProt",
+  "identifier": "Q12879",
+  "name": [
+   "GRIN2A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9000614,
+  "displayName": "ENSEMBL:ENSG00000120251 GRIA2",
+  "stId": "ensembl:ENSG00000120251",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000120251",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 404010,
+  "displayName": "UniProt:P42262 GRIA2",
+  "stId": "uniprot:P42262",
+  "databaseName": "UniProt",
+  "identifier": "P42262",
+  "name": [
+   "GRIA2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60952,
+  "displayName": "UniProt:P35372 OPRM1",
+  "stId": "uniprot:P35372",
+  "databaseName": "UniProt",
+  "identifier": "P35372",
+  "name": [
+   "OPRM1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8990701,
+  "displayName": "ENSEMBL:ENSG00000096060 FKBP5",
+  "stId": "ensembl:ENSG00000096060",
+  "databaseName": "ENSEMBL",
+  "identifier": "ENSG00000096060",
+  "moleculeType": "Entity",
+  "schemaClass": "ReferenceDNASequence",
+  "className": "ReferenceDNASequence"
+ },
+ {
+  "dbId": 54874,
+  "displayName": "UniProt:Q13451 FKBP5",
+  "stId": "uniprot:Q13451",
+  "databaseName": "UniProt",
+  "identifier": "Q13451",
+  "name": [
+   "FKBP5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ }
+]

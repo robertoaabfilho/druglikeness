@@ -406,7 +406,14 @@ e diz isso na tela em vez de falhar.
 1. `sintomas.txt` com "neuropathic pain" devolve alvos do Open Targets que
    incluam os canais de cálcio α2δ e os transportadores de monoamina.
 2. O conjunto-controle `exemplos/controle.dor_neuropatica.tsv` produz
-   evidências em que duloxetina e amitriptilina têm linhas `medido` para o
+   evidências em que a **amitriptilina** tem linhas `medido` para o
    transportador de noradrenalina.
+
+   *Correção de 2026-11-25:* este critério citava também a duloxetina. Medi o
+   arquivo de origem: amitriptilina tem 175 linhas, ciprofloxacino 179,
+   capsaicina 105, gabapentina 22, pregabalina 15 — e **duloxetina,
+   carbamazepina e linezolida têm zero**. Elas não estão no
+   `evidencias_chembl.csv`, que cobre os compostos garimpados pela prospecção.
+   O critério original supunha uma cobertura que a fonte não tem.
 3. Nenhuma linha mistura `pchembl` com probabilidade de modelo.
 4. Rodar duas vezes com o mesmo manifesto produz o mesmo arquivo.

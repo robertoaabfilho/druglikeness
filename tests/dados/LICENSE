@@ -1,0 +1,32 @@
+Licenca dos dados versionados nesta pasta (tests/dados)
+=======================================================
+
+Esta pasta guarda fixtures de teste. Parte delas deriva do ChEMBL, e o
+share-alike do ChEMBL alcanca o arquivo derivado: a licenca MIT da raiz vale
+para o CODIGO, nunca para estes dados.
+
+Derivado do ChEMBL -- Creative Commons Attribution-ShareAlike 3.0 Unported
+(CC BY-SA 3.0), https://creativecommons.org/licenses/by-sa/3.0/
+
+    tests/dados/evidencias_amostra.csv
+    tests/dados/respostas/molecule.json_*.json
+    tests/dados/respostas/target.json_*.json
+    tests/dados/respostas/target_CHEMBL222.json
+    tests/dados/respostas/target_component.json_*.json
+    tests/dados/respostas/protein_classification_695.json
+
+Fonte: ChEMBL (EMBL-EBI), https://www.ebi.ac.uk/chembl/
+Ao usar estes dados, cite o ChEMBL:
+
+Zdrazil B, Felix E, Hunter F, et al. The ChEMBL Database in 2023: a drug
+discovery platform spanning multiple bioactivity data types and time periods.
+Nucleic Acids Research. 2024;52(D1):D1180-D1192. doi:10.1093/nar/gkad1004
+
+Dominio publico (CC0), sem exigencia de share-alike
+
+    tests/dados/respostas/reactome_*.json   -- Reactome (so anotacao; nenhum
+        arquivo de Functional Interaction, que e restrito, entra aqui)
+    tests/dados/respostas/opentargets_*.json -- Open Targets
+
+Fixtures escritas a mao (ligantes_minimo.tsv, alvos_minimo.tsv,
+ligantes_sem_coluna.tsv, sintomas.txt) seguem a licenca MIT do repositorio.

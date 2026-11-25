@@ -4,3 +4,4 @@ __pycache__/
 
 # Saidas do pipeline (geradas por main.py)
 results/
+.superpowers/
