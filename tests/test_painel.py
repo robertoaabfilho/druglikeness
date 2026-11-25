@@ -220,8 +220,11 @@ class _ProcessoTerminado:
     processo nenhum."""
     pid = -1
 
+    def __init__(self):
+        self.codigo = 0
+
     def poll(self):
-        return 0
+        return self.codigo
 
 
 def _trabalho(ambiente, pasta):
@@ -270,3 +273,46 @@ def test_aviso_de_edicao_aparece_quando_a_edicao_estava_em_curso(ambiente, monke
     assert at.session_state["trabalho"]["rerun_suprimido"] is True
     assert any("edições não aplicadas" in w.value for w in at.warning)
     assert any("descarta" in b.label for b in at.button)
+
+
+def test_descartar_limpa_a_bandeira_e_a_proxima_edicao_nao_reaparece_o_aviso(
+        ambiente, monkeypatch):
+    """A bandeira ficava de pe depois do descarte: a edicao seguinte reerguia o
+    aviso 'nao foi redesenhada' (agora falso), com o botao destrutivo junto."""
+    _com_envios(monkeypatch)
+    _preparar_lista(ambiente, {"neuropathic pain": "EFO_1"}, LISTA)
+    at = _painel().run()
+    _edicao(at, at.session_state["editor_atual"])
+    at.session_state["trabalho"] = _trabalho(ambiente, ambiente)
+    at = at.run()
+    botao = next(b for b in at.button if "descarta" in b.label)
+    at = botao.click().run()
+    assert not at.exception
+    assert not at.session_state["trabalho"].get("rerun_suprimido")
+    _edicao(at, at.session_state["editor_atual"])      # segunda edicao
+    at = at.run()
+    assert not any("edições não aplicadas" in w.value for w in at.warning)
+    assert not any("descarta" in b.label for b in at.button)
+
+
+def test_saida_parcial_e_aviso_nao_erro(ambiente, monkeypatch):
+    """Codigo 3 = a coleta terminou mas perdeu linhas/itens: a saida e
+    utilizavel. Pintar de vermelho 'falhou' recriava o conflito com o aviso
+    PARCIAL logo abaixo."""
+    from mods.coletar_evidencias import SAIDA_PARCIAL
+    _com_envios(monkeypatch)
+    _preparar_lista(ambiente, {"neuropathic pain": "EFO_1"}, LISTA)
+    at = _painel().run()
+    trabalho = _trabalho(ambiente, ambiente)
+    trabalho["proc"].codigo = SAIDA_PARCIAL
+    at.session_state["trabalho"] = trabalho
+    at = at.run()
+    assert not at.exception
+    assert not any("falhou" in e.value for e in at.error)
+    assert any("incompleta" in w.value for w in at.warning)
+    # um codigo de falha de verdade continua sendo erro
+    trabalho2 = _trabalho(ambiente, ambiente)
+    trabalho2["proc"].codigo = 1
+    at.session_state["trabalho"] = trabalho2
+    at = at.run()
+    assert any("falhou (código 1)" in e.value for e in at.error)

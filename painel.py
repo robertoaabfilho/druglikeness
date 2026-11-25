@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from mods.coletar_evidencias import SAIDA_PARCIAL
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import escapar, ler_evidencias
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS, buscar_efo
@@ -140,10 +141,17 @@ def acompanhar():
                 # o Streamlit esquecer o estado do widget anterior.
                 st.session_state["geracao_editor"] = \
                     st.session_state.get("geracao_editor", 0) + 1
+                t["rerun_suprimido"] = False  # o redesenho acontece agora
                 st.rerun(scope="app")
-        (st.success if codigo == 0 else st.error)(
-            f"{nome} {'concluído' if codigo == 0 else f'falhou (código {codigo})'} "
-            f"em {decorrido // 60} min {decorrido % 60} s.")
+        tempo = f"em {decorrido // 60} min {decorrido % 60} s."
+        if codigo == 0:
+            st.success(f"{nome} concluído {tempo}")
+        elif codigo == SAIDA_PARCIAL and t["tipo"] == "coletar":
+            st.warning(f"{nome} terminou {tempo} A execução foi concluída, mas "
+                       "linhas foram descartadas ou itens falharam: a saída é "
+                       "utilizável, porém incompleta (detalhes no relatório abaixo).")
+        else:
+            st.error(f"{nome} falhou (código {codigo}) {tempo}")
     st.code(texto[-6000:] or "(sem saída ainda)", language="text")
 
 
