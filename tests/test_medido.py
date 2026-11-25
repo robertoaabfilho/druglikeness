@@ -148,7 +148,76 @@ def test_cli_grava_medido_sem_pchembl_misturado(tmp_path):
                "tests/dados/sintomas.txt", "--saida", str(saida), "--sem-rede",
                "--rotulos", str(rot), "--evidencias-chembl", str(amostra)])
     assert rc == 0
+    from mods.evidencias.manifesto import ler_manifesto
+    par = ler_manifesto(tmp_path / "manifesto.json")["parametros"]
+    assert par["rotulos_md5"] and par["evidencias_chembl_md5"]
     linhas = list(ler_evidencias(saida))
     assert linhas and all(l["tipo_evidencia"] == "medido" for l in linhas)
     assert not [l for l in linhas
                 if l["pchembl"] != "" and l["medida"] == "probabilidade"]
+
+
+def _csv_com(tmp_path, cabecalho, linhas=()):
+    f = tmp_path / "x.csv"
+    f.write_text(cabecalho + "\n" + "\n".join(linhas) + "\n", encoding="utf-8")
+    return str(f)
+
+
+def test_arquivo_errado_falha_nomeando_as_colunas(tmp_path):
+    import pytest
+    errado = _csv_com(tmp_path, "id,nome,smiles", ["1,a,CCO"])
+    with pytest.raises(ValueError, match="alvo.*organismo_alvo"):
+        list(linhas_medidas(errado, LIGANTES, ALVOS))
+
+
+def test_cli_recusa_arquivo_errado_sem_deixar_saida(tmp_path, capsys):
+    from mods.coletar_evidencias import main
+    errado = _csv_com(tmp_path, "id,nome", ["1,a"])
+    saida = tmp_path / "e.tsv"
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", "tests/dados/alvos_minimo.tsv", "--sintomas",
+               "tests/dados/sintomas.txt", "--saida", str(saida), "--sem-rede",
+               "--evidencias-chembl", errado])
+    assert rc == 2 and not saida.exists()
+    assert "evidencia medida" in capsys.readouterr().err
+
+
+def test_cli_avisa_quando_leu_linhas_e_nenhuma_casou(tmp_path, capsys):
+    from mods.coletar_evidencias import main
+    saida = tmp_path / "e.tsv"
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", "tests/dados/alvos_minimo.tsv", "--sintomas",
+               "tests/dados/sintomas.txt", "--saida", str(saida), "--sem-rede",
+               "--evidencias-chembl", AMOSTRA])
+    err = capsys.readouterr().err
+    assert rc == 0 and "NENHUMA casou" in err
+
+
+def test_correspondencia_desconhecida_ou_nfd_nao_vira_estereoisomero(tmp_path):
+    import csv
+    import unicodedata
+    with open(AMOSTRA, encoding="utf-8") as f:
+        leitor = csv.DictReader(f)
+        base = next(l for l in leitor if l["InChIKey"].startswith("BIXJFIJYBL"))
+        cab = leitor.fieldnames
+    destino = tmp_path / "c.csv"
+    with open(destino, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, cab)
+        w.writeheader()
+        for valor in ("", "estranha",
+                      unicodedata.normalize("NFD", "estereoisômero")):
+            w.writerow({**base, "correspondencia": valor})
+    contagens = {}
+    linhas = list(linhas_medidas(str(destino), LIGANTES, ALVOS, contagens=contagens))
+    assert [l["correspondencia_ligante"] for l in linhas] == [
+        "desconhecida", "desconhecida", "estereoisomero"]
+    assert all("estereoisomero da" not in l["procedencia"] for l in linhas[:2])
+    assert len(contagens["problemas"]) == 2
+
+
+def test_inteiros_saem_como_inteiros():
+    linhas = list(linhas_medidas(AMOSTRA, LIGANTES, ALVOS))
+    assert all(not str(l["valor"]).endswith(".0") for l in linhas)
+    assert all(not l["ano"].endswith(".0") and not l["pmid"].endswith(".0")
+               for l in linhas)
+    assert any(l["valor"] == 213 for l in linhas)

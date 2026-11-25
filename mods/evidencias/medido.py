@@ -30,6 +30,7 @@ Regras
 
 import csv
 import math
+import unicodedata
 from pathlib import Path
 from typing import Callable, Iterator
 
@@ -45,6 +46,40 @@ csv.field_size_limit(1 << 24)
 def e_triagem(descricao: str) -> bool:
     """Varredura HTS de painel, em vez de ensaio dirigido a um alvo."""
     return "PUBCHEM_BIOASSAY" in descricao or "qHTS" in descricao
+
+
+COLUNAS_OBRIGATORIAS = ("InChIKey", "alvo", "organismo_alvo", "medida", "valor",
+                        "pchembl", "correspondencia", "descricao_ensaio")
+
+
+def validar_cabecalho(caminho_csv: str) -> None:
+    """ValueError nomeando as colunas que faltam: com o arquivo errado toda
+    linha cairia como 'sem alvo' e o resultado pareceria 'sem evidencia'."""
+    with open(Path(caminho_csv).expanduser(), encoding="utf-8-sig", newline="") as f:
+        cabecalho = next(csv.reader(f), [])
+    faltam = [c for c in COLUNAS_OBRIGATORIAS if c not in cabecalho]
+    if faltam:
+        raise ValueError(f"{caminho_csv}: nao parece evidencias_chembl.csv; "
+                         f"colunas ausentes: {', '.join(faltam)}")
+
+
+def _inteiro_se_inteiro(n: float):
+    return int(n) if n.is_integer() else n
+
+
+def _texto_numerico(texto: str) -> str:
+    """'2021.0' -> '2021'; texto que nao e numero fica como veio."""
+    n = _numero(texto)
+    return str(_inteiro_se_inteiro(n)) if n is not None else (texto or "").strip()
+
+
+def _correspondencia(texto: str) -> str:
+    """'exata', 'estereoisomero' ou 'desconhecida' (nunca chuta estereoisomero).
+    Aceita a forma acentuada em NFC ou NFD."""
+    base = unicodedata.normalize("NFKD", texto or "")
+    base = "".join(ch for ch in base if not unicodedata.combining(ch))
+    base = base.strip().casefold()
+    return base if base in ("exata", "estereoisomero") else "desconhecida"
 
 
 def _numero(texto: str):
@@ -132,8 +167,10 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                 ids_ligante[(ik, parental)] = ""
         return ids_ligante[(ik, parental)]
 
+    validar_cabecalho(caminho_csv)
     if not indice_alvos or not por_chave:
         return
+    desconhecidas: set[str] = set()
     with open(Path(caminho_csv).expanduser(), encoding="utf-8-sig", newline="") as f:
         for linha in csv.DictReader(f):
             c["linhas_lidas"] += 1
@@ -152,16 +189,22 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
             unidade = (linha.get("unidade") or "").strip()
             valor = _numero(linha.get("valor"))
             pchembl = _numero(linha.get("pchembl"))
-            corresp = (linha.get("correspondencia") or "").strip()
+            bruta = (linha.get("correspondencia") or "").strip()
+            corresp = _correspondencia(bruta)
             exata = corresp == "exata"
-            if corresp == "estereoisômero":
-                corresp = "estereoisomero"  # ASCII, estavel para filtrar
+            if corresp == "desconhecida" and bruta not in desconhecidas:
+                desconhecidas.add(bruta)
+                problemas.append(f"correspondencia nao reconhecida {bruta!r}: linhas "
+                                 "marcadas 'desconhecida', sem ID de ligante")
             ensaiada = (linha.get("molecula_ensaiada") or "").strip()
             descricao = linha.get("descricao_ensaio") or ""
             procedencia = "medido (ChEMBL, evidencias_chembl.csv"
             if exata:
                 procedencia += ")"
                 id_lig = lig.get("chembl_id") or ensaiada or id_do_ligante(lig)
+            elif corresp == "desconhecida":
+                procedencia += "; correspondencia desconhecida)"
+                id_lig = lig.get("chembl_id") or ""
             else:
                 # Outra molecula (estereoisomero) foi ensaiada: o ID dela nao e o do ligante.
                 procedencia += f"; estereoisomero da molecula ensaiada {ensaiada})"
@@ -185,16 +228,16 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                         medida, relacao, valor, unidade),
                     "medida": medida,
                     "relacao": relacao,
-                    "valor": "" if valor is None else valor,
+                    "valor": "" if valor is None else _inteiro_se_inteiro(valor),
                     "unidade": unidade,
-                    "pchembl": "" if pchembl is None else pchembl,
+                    "pchembl": "" if pchembl is None else _inteiro_se_inteiro(pchembl),
                     "tipo_ensaio": (linha.get("tipo_ensaio") or "").strip(),
                     "ensaio_descricao": descricao,
                     "triagem_hts": "sim" if e_triagem(descricao) else "nao",
                     "confianca_ensaio": "",
                     "n_moleculas_treino": "",
                     "documento": (linha.get("documento_chembl") or "").strip(),
-                    "pmid": (linha.get("PMID") or "").strip(),
-                    "ano": (linha.get("ano") or "").strip(),
+                    "pmid": _texto_numerico(linha.get("PMID")),
+                    "ano": _texto_numerico(linha.get("ano")),
                     "procedencia": procedencia,
                 }

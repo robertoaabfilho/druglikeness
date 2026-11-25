@@ -103,3 +103,11 @@ def test_le_lista_de_alvos_uma_por_linha(tmp_path):
     assert alvos == [{"alvo_chembl_id": "", "alvo": "enoyl reductase",
                       "organismo": "Staphylococcus aureus"}]
     assert [p.gravidade for p in problemas] == ["erro"]
+
+
+def test_alvos_em_csv_continuam_lidos_como_tabela(tmp_path):
+    f = tmp_path / "alvos.csv"
+    f.write_text("alvo_chembl_id,organismo\nCHEMBL222,Homo sapiens\n", encoding="utf-8")
+    alvos, problemas = ler_alvos(f)
+    assert [a["alvo_chembl_id"] for a in alvos] == ["CHEMBL222"]
+    assert not [p for p in problemas if p.gravidade == "erro"]

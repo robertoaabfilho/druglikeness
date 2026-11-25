@@ -154,11 +154,19 @@ def main(argv: list[str] | None = None) -> int:
               f"{args.evidencias_chembl}", file=sys.stderr)
         return 2
     contagens_medido: dict = {}
+    if args.evidencias_chembl:
+        from mods.evidencias.medido import validar_cabecalho
+        try:
+            validar_cabecalho(args.evidencias_chembl)
+        except (OSError, ValueError, UnicodeDecodeError) as e:
+            print(f"[erro] evidencia medida: {e}", file=sys.stderr)
+            return 2
 
     # Escrita atomica: a tabela nasce num temporario NO MESMO diretorio (mesmo
     # sistema de arquivos) e so substitui o destino ao fim de uma execucao
     # bem-sucedida. Qualquer falha deixa o evidencias.tsv anterior intacto.
     tmp = None
+    etapa = "evidencia prevista"
     try:
         fd, nome_tmp = tempfile.mkstemp(dir=saida.parent, prefix=saida.name + ".",
                                         suffix=".tmp")
@@ -173,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
                     escritor.escrever(linha)
                     n_linhas += 1
             if args.evidencias_chembl:
+                etapa = "evidencia medida"
                 from mods.evidencias import chembl
                 from mods.evidencias.medido import linhas_medidas
                 for linha in linhas_medidas(
@@ -195,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
             pickle.UnpicklingError) as e:
         # Execucao falha nao deixa tabela nova nem manifesto.
-        print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
+        print(f"[erro] {etapa}: {e}", file=sys.stderr)
         return 2
     finally:
         if tmp is not None:
@@ -203,6 +212,12 @@ def main(argv: list[str] | None = None) -> int:
 
     for problema in contagens_medido.get("problemas", []):
         print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
+    if (contagens_medido.get("linhas_lidas") and
+            not contagens_medido.get("linhas_emitidas")):
+        print(f"[aviso] evidencia medida: {contagens_medido['linhas_lidas']} linhas "
+              "lidas de --evidencias-chembl e NENHUMA casou com os ligantes e alvos "
+              "pedidos; confira o arquivo, os InChIKeys e os nomes/organismos dos alvos "
+              "(zero linhas nao significa 'sem evidencia')", file=sys.stderr)
     ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
     if ilegiveis:
         print(f"[aviso] {ilegiveis} ligante(s) com SMILES ilegivel para o modelo: "
@@ -219,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
                     "evidencias_chembl": args.evidencias_chembl,
                     "evidencias_chembl_md5": (_md5(os.path.expanduser(args.evidencias_chembl))
                                               if args.evidencias_chembl else None),
-                    "rotulos_md5": _md5(args.rotulos) if args.checkpoint else None,
+                    "rotulos_md5": _md5(args.rotulos) if args.rotulos else None,
                     "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
         versoes={"pipeline_commit": _commit_do_pipeline(),

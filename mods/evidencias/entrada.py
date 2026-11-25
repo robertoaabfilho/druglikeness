@@ -150,16 +150,19 @@ _RE_CHEMBL = re.compile(r"CHEMBL\d+", re.IGNORECASE)
 
 
 def _e_lista_de_alvos(caminho) -> bool:
-    """Formato 'um alvo por linha' (o de prever_alvos.py), em vez de tabela: a
-    primeira linha de conteudo nao tem tabulacao e nao e cabecalho de coluna."""
+    """Formato 'um alvo por linha' (o de prever_alvos.py), em vez de tabela.
+    Tabela: arquivo .csv, ou primeira linha de conteudo com tabulacao, ou cuja
+    primeira linha (dividida em tabulacao E virgula) tem um nome de coluna."""
+    if Path(caminho).suffix.lower() == ".csv":
+        return False
     with open(caminho, encoding="utf-8-sig") as f:
         for linha in f:
             if not linha.strip():
                 continue
             if "\t" in linha:
                 return False
-            primeira = linha.strip().lstrip("#").strip().lower()
-            return primeira not in _CABECALHOS_DE_ALVO
+            celulas = re.split(r"[,\t]", linha.strip().lstrip("#"))
+            return not any(c.strip().lower() in _CABECALHOS_DE_ALVO for c in celulas)
     return False
 
 
