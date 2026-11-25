@@ -24,9 +24,9 @@ import hashlib
 import importlib.util
 import os
 import pickle
-import tempfile
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -166,7 +166,10 @@ def main(argv: list[str] | None = None) -> int:
         # normal (0666 menos a umask), igual ao do manifesto.
         mascara = os.umask(0)
         os.umask(mascara)
-        os.chmod(tmp, 0o666 & ~mascara)
+        try:
+            os.chmod(tmp, 0o666 & ~mascara)
+        except OSError:
+            pass  # ajuste de cortesia: nunca custa o resultado (vfat, FUSE, SMB)
         os.replace(tmp, saida)
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
             pickle.UnpicklingError) as e:

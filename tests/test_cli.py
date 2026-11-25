@@ -306,3 +306,18 @@ def test_diretorio_de_saida_sem_permissao_falha_limpo(tmp_path, capsys):
     assert codigo == 2
     err = capsys.readouterr().err
     assert "[erro]" in err and "Traceback" not in err
+
+
+def test_chmod_que_falha_nao_custa_a_tabela(tmp_path, modelo_falso, rotulos_falsos, monkeypatch):
+    import os
+    def recusa(*a, **k):
+        raise OSError("filesystem sem chmod")
+    monkeypatch.setattr(os, "chmod", recusa)
+    saida = tmp_path / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", modelo_falso, "--corte", "0",
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 0
+    assert len(saida.read_text(encoding="utf-8").splitlines()) > 1
