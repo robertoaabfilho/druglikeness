@@ -1,0 +1,6 @@
+# Bytecode do Python
+__pycache__/
+*.py[cod]
+
+# Saidas do pipeline (geradas por main.py)
+results/
