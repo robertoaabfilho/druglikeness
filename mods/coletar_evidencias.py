@@ -24,6 +24,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Permite `python mods/coletar_evidencias.py`: a raiz do repositorio entra no
+# caminho para que `mods.evidencias.*` resolva (com `python -m` ja resolve).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
 from mods.evidencias.manifesto import escrever_manifesto
@@ -97,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     with EscritorEvidencias(saida):
         pass  # as fontes de evidencia entram nas proximas tarefas
 
+    descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
     escrever_manifesto(
         manifesto,
         parametros={"corte": args.corte, "limite": args.limite,
@@ -107,7 +112,11 @@ def main(argv: list[str] | None = None) -> int:
         contagens={"ligantes": len(ligantes), "alvos": len(alvos),
                    "sintomas": len(sintomas),
                    "problemas_ligantes": len(p_lig), "problemas_alvos": len(p_alvo),
+                   "linhas_descartadas": descartadas,
                    "linhas_evidencia": n_linhas})
+    if descartadas:
+        print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
+              "descartada(s) por erro (detalhes acima)", file=sys.stderr)
     print(f"{n_linhas} linhas de evidencia em {saida}; manifesto em {manifesto}")
     return 0
 

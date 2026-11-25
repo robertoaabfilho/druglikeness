@@ -34,3 +34,21 @@ def test_cria_diretorio_de_saida_ausente(tmp_path):
                    "--saida", str(saida), "--sem-rede"])
     assert codigo == 0
     assert saida.exists() and (saida.parent / "manifesto.json").exists()
+
+
+def test_execucao_como_script_direto(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+    raiz = Path(__file__).resolve().parent.parent
+    saida = tmp_path / "evidencias.tsv"
+    r = subprocess.run(
+        [sys.executable, "mods/coletar_evidencias.py",
+         "--ligantes", "tests/dados/ligantes_minimo.tsv",
+         "--alvos", "tests/dados/alvos_minimo.tsv",
+         "--sintomas", "tests/dados/sintomas.txt",
+         "--saida", str(saida), "--sem-rede"],
+        cwd=raiz, capture_output=True, text=True, env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)})
+    assert r.returncode == 0, r.stderr
+    assert saida.exists()
+    assert "PARCIAL" in r.stderr
