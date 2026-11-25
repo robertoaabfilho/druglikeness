@@ -23,8 +23,8 @@ import argparse
 import hashlib
 import importlib.util
 import os
-import tempfile
 import pickle
+import tempfile
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -147,11 +147,12 @@ def main(argv: list[str] | None = None) -> int:
     # Escrita atomica: a tabela nasce num temporario NO MESMO diretorio (mesmo
     # sistema de arquivos) e so substitui o destino ao fim de uma execucao
     # bem-sucedida. Qualquer falha deixa o evidencias.tsv anterior intacto.
-    fd, nome_tmp = tempfile.mkstemp(dir=saida.parent, prefix=saida.name + ".",
-                                    suffix=".tmp")
-    os.close(fd)
-    tmp = Path(nome_tmp)
+    tmp = None
     try:
+        fd, nome_tmp = tempfile.mkstemp(dir=saida.parent, prefix=saida.name + ".",
+                                        suffix=".tmp")
+        os.close(fd)
+        tmp = Path(nome_tmp)
         with EscritorEvidencias(tmp) as escritor:
             if args.checkpoint:
                 for linha in linhas_preditas(
@@ -161,6 +162,11 @@ def main(argv: list[str] | None = None) -> int:
                     escritor.escrever(linha)
                     n_linhas += 1
             # as demais fontes de evidencia entram nas proximas tarefas
+        # mkstemp cria 0600; o arquivo publicado deve ter o modo de uma escrita
+        # normal (0666 menos a umask), igual ao do manifesto.
+        mascara = os.umask(0)
+        os.umask(mascara)
+        os.chmod(tmp, 0o666 & ~mascara)
         os.replace(tmp, saida)
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
             pickle.UnpicklingError) as e:
@@ -168,7 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
         return 2
     finally:
-        tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
 
     ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
     if ilegiveis:

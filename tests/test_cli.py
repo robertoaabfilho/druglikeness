@@ -258,3 +258,51 @@ def test_rotulos_inexistente_sem_checkpoint_falha_limpo(tmp_path, capsys):
                    "--rotulos", str(tmp_path / "nao_existe.tsv")])
     assert codigo == 2 and not saida.exists()
     assert "[erro]" in capsys.readouterr().err
+
+
+def test_falha_com_checkpoint_corrompido_preserva_saida(tmp_path, rotulos_falsos):
+    ruim = tmp_path / "ruim.pt"
+    ruim.write_bytes(b"\x00garbage\xff" * 50)
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nprecioso\n")
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", str(ruim),
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 2
+    assert saida.read_bytes() == b"#antigo\nprecioso\n"
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_modo_da_tabela_igual_ao_do_manifesto(tmp_path, modelo_falso, rotulos_falsos):
+    import stat
+    saida = tmp_path / "o" / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", modelo_falso,
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 0
+    modo = lambda p: stat.S_IMODE(p.stat().st_mode)
+    assert modo(saida) == modo(saida.parent / "manifesto.json")
+
+
+def test_diretorio_de_saida_sem_permissao_falha_limpo(tmp_path, capsys):
+    import os
+    import pytest
+    if os.geteuid() == 0:
+        pytest.skip("root ignora permissoes de diretorio")
+    destino = tmp_path / "ro"
+    destino.mkdir()
+    destino.chmod(0o500)
+    try:
+        codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                       "--alvos", "tests/dados/alvos_minimo.tsv",
+                       "--sintomas", "tests/dados/sintomas.txt",
+                       "--saida", str(destino / "evidencias.tsv"), "--sem-rede"])
+    finally:
+        destino.chmod(0o700)
+    assert codigo == 2
+    err = capsys.readouterr().err
+    assert "[erro]" in err and "Traceback" not in err
