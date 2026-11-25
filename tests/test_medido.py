@@ -139,7 +139,8 @@ def test_cli_grava_medido_sem_pchembl_misturado(tmp_path):
     # InChIKey do etanol, trocada pela do ligante da amostra com Kallikrein-7
     from mods.evidencias.entrada import ler_ligantes
     chave = ler_ligantes(lig)[0][0]["inchikey"]
-    cab, *corpo = open(AMOSTRA, encoding="utf-8").read().splitlines()
+    from pathlib import Path
+    cab, *corpo = Path(AMOSTRA).read_text(encoding="utf-8").splitlines()
     amostra.write_text("\n".join([cab] + [
         l.replace("BIXJFIJYBLJTMK-MEBBXXQBSA-N", chave, 1) for l in corpo
         if l.startswith("BIXJFIJYBLJTMK")]) + "\n", encoding="utf-8")

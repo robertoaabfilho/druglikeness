@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+from pathlib import Path
 
 import pytest
 
@@ -248,7 +249,8 @@ def _entrada_real(tmp_path):
     (tmp_path / "alvos.tsv").write_text("alvo_chembl_id\nCHEMBL4296\n", encoding="utf-8")
     (tmp_path / "sint.txt").write_text("dor\n", encoding="utf-8")
     (tmp_path / "lig.tsv").write_text(
-        open("tests/dados/ligantes_minimo.tsv", encoding="utf-8").read(), encoding="utf-8")
+        Path("tests/dados/ligantes_minimo.tsv").read_text(encoding="utf-8"),
+        encoding="utf-8")
     (tmp_path / "labels.tsv").write_text(
         "target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\tactive_molecules\tis_ckd\n"
         "0\t1\tCHEMBL4296\tSCN9A\tSINGLE PROTEIN\tHomo sapiens\t50\tTrue\n", encoding="utf-8")
