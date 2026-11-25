@@ -6,8 +6,9 @@ coletar_evidencias.py
 Etapa 1: le ligantes, alvos e sintomas, valida tudo e escreve a tabela de
 evidencias (`evidencias.tsv`) e o manifesto da execucao (`manifesto.json`).
 
-Nesta versao nenhuma fonte de evidencia esta ligada ainda: a tabela sai so com
-o cabecalho. As fontes entram nas proximas tarefas.
+Fontes ligadas: evidencia prevista (PP4CKD), com --checkpoint e --rotulos.
+Sem elas a tabela sai so com o cabecalho. As demais fontes entram nas proximas
+tarefas.
 
 Validacao
 ---------
@@ -30,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
+from mods.evidencias.predito import linhas_preditas
 from mods.evidencias.manifesto import escrever_manifesto
 
 
@@ -73,6 +75,8 @@ def _argumentos(argv):
     ap.add_argument("--corte", type=float, default=0.1,
                     help="corte de probabilidade do modelo (padrao 0.1)")
     ap.add_argument("--limite", type=_inteiro_positivo, help="usar so os N primeiros ligantes")
+    ap.add_argument("--checkpoint", help="pesos .pt do PP4CKD; liga a evidencia prevista")
+    ap.add_argument("--rotulos", help="target_labels.tsv do PP4CKD (exigido com --checkpoint)")
     ap.add_argument("--sem-rede", action="store_true",
                     help="pula enriquecimento e evidencia obtida por API")
     return ap.parse_args(argv)
@@ -80,6 +84,9 @@ def _argumentos(argv):
 
 def main(argv: list[str] | None = None) -> int:
     args = _argumentos(argv)
+    if bool(args.checkpoint) != bool(args.rotulos):
+        print("[erro] --checkpoint e --rotulos devem ser dados juntos", file=sys.stderr)
+        return 2
 
     try:
         ligantes, p_lig = ler_ligantes(args.ligantes, args.limite)
@@ -107,14 +114,26 @@ def main(argv: list[str] | None = None) -> int:
     saida.parent.mkdir(parents=True, exist_ok=True)
     manifesto.parent.mkdir(parents=True, exist_ok=True)
     n_linhas = 0
-    with EscritorEvidencias(saida):
-        pass  # as fontes de evidencia entram nas proximas tarefas
+    with EscritorEvidencias(saida) as escritor:
+        if args.checkpoint:
+            from mods.prever_alvos import carregar_rotulos
+            try:
+                rotulos = carregar_rotulos(args.rotulos)
+                for linha in linhas_preditas(ligantes, alvos, checkpoint=args.checkpoint,
+                                             rotulos=rotulos, corte=args.corte):
+                    escritor.escrever(linha)
+                    n_linhas += 1
+            except (OSError, RuntimeError, ValueError) as e:
+                print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
+                return 2
+        # as demais fontes de evidencia entram nas proximas tarefas
 
     descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
     escrever_manifesto(
         manifesto,
         parametros={"corte": args.corte, "limite": args.limite,
-                    "sem_rede": args.sem_rede, "ligantes": args.ligantes,
+                    "sem_rede": args.sem_rede,
+                    "checkpoint": args.checkpoint, "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
         versoes={"pipeline_commit": _commit_do_pipeline(),
                  "data": datetime.now(timezone.utc).isoformat(timespec="seconds")},
