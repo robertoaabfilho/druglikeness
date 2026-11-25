@@ -20,10 +20,12 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
     calibrar_deeppk.py
     importar_prospector.py
     prever_alvos.py
+    validar_alvos_medidos.py
 ./exemplos/                 <- fixtures de validação (ver exemplos/LEIA-ME.md)
     controle.dor_neuropatica.tsv
     alvos.dor_neuropatica.txt
     alvos.patogeno.txt
+    validacao.alvos_medidos.md
 ./results/                  <- criada automaticamente; todas as saídas vão aqui
     farmaco.csv
     farmaco.deeppk_raw.csv
@@ -497,6 +499,34 @@ Por isso:
 Um checkpoint de fold é um modelo treinado de verdade, em 9/10 dos dados —
 válido para previsão e **preferível** na validação, porque permite medir fora do
 que o modelo viu. Os resultados acima usam `ecfp4_fold_4.pt`.
+
+## 9. `mods/validar_alvos_medidos.py` — recall@10 contra alvos medidos
+
+Mede o `prever_alvos.py` contra bioatividade **medida** (não âncoras de
+literatura, não decoys): quando um composto tem atividade experimental contra um
+alvo, o modelo põe esse alvo no topo?
+
+Resultados completos em [`exemplos/validacao.alvos_medidos.md`](exemplos/validacao.alvos_medidos.md).
+Em resumo, sobre 6.000 compostos com alvo medido no ChEMBL:
+
+- **O vazamento não foi eliminado.** A divisão de folds do PP4CKD
+  (`cv_splits_10fold.npz`) não foi publicada, e o estrato abaixo do limiar de
+  treino (`pchembl < 5`) tem só 21 pares depois de remover triagem HTS. Todo
+  número é limite superior — está dito lá, não escondido.
+- **O treino do alvo domina**: recall@10 vai de 0,127 a 0,477 conforme o alvo
+  sai de <50 para ≥5.000 moléculas ativas. Fator de 3,8, e a razão de existir a
+  coluna `moleculas_treino`.
+- **Alvo não humano vai melhor**: 0,387 contra 0,209 do humano.
+- **Triagem HTS é ruído**: 0,111 contra 0,272 de ensaio dirigido; entra como
+  estrato próprio, nunca somada ao resto.
+- **A medida que corresponde ao uso real**: o alvo medido fica na posição
+  mediana **79 de 7.676** (top 1,0%); o melhor alvo de cada composto, na posição
+  3. Numa lista fornecida de 10 alvos, o verdadeiro ficaria no top-3 em ~95% dos
+  casos — teto otimista, porque alvos de uma mesma doença são correlacionados.
+
+O recall@10 cru de 0,24 **não** é comparável ao 0,856 do artigo: o regime deles
+tem ~1,3 rótulos por composto, aqui a mediana é 2 com cauda até 846 (painéis de
+triagem), e o recall@10 é limitado por construção acima de 10 rótulos.
 
 ## Dicas de busca por sintoma/condição
 
