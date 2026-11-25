@@ -9,6 +9,9 @@ Regras
 ------
 * O alvo casa pelo PAR (nome, organismo): o arquivo nao traz ID de alvo e o
   mesmo nome existe em varias especies. Nunca so pelo nome.
+* UM alvo por par (nome, organismo). Dois pedidos para o mesmo alvo (um por
+  ID, outro por nome) sao dobrados e relatados: a tabela tem uma linha por
+  evidencia, e a linha repetida pareceria um segundo ensaio.
 * O ligante casa pela InChIKey completa (estereo incluso).
 * Todo registro e mantido e rotulado; nada e descartado aqui. A fase 2 decide.
   Rotulos: `relacao` (um `>` e limite, nao medida), `triagem_hts`, `unidade`,
@@ -96,14 +99,19 @@ def _chave_alvo(nome: str, organismo: str) -> tuple[str, str]:
 
 
 def _indexar_alvos(alvos, rotulos, resolver_alvo, problemas):
-    """{(nome, organismo): [alvo resolvido]}; alvo sem nome e resolvido pelo ID."""
-    por_id = {r["chembl_id"].upper(): r for r in rotulos or [] if r.get("chembl_id")}
-    indice: dict[tuple[str, str], list[dict]] = {}
+    """{(nome, organismo): alvo resolvido}; alvo sem nome e resolvido pelo ID.
+
+    UM alvo por par (nome, organismo). Dois pedidos que resolvem para o mesmo
+    alvo (um por ID, outro por nome) dobrariam cada ensaio dele, e a linha
+    repetida seria indistinguivel de dois ensaios de verdade numa tabela de uma
+    linha por evidencia. O ID chega normalizado da leitura (`ler_alvos`)."""
+    por_id = {r["chembl_id"]: r for r in rotulos or [] if r.get("chembl_id")}
+    indice: dict[tuple[str, str], dict] = {}
     for alvo in alvos:
         chembl_id = (alvo.get("alvo_chembl_id") or "").strip()
         nome, organismo, tipo = alvo.get("alvo", ""), alvo.get("organismo", ""), ""
         if chembl_id:
-            r = por_id.get(chembl_id.upper())
+            r = por_id.get(chembl_id)
             if r is not None:
                 nome, organismo, tipo = r["nome"], r["organismo"], r.get("tipo", "")
             elif not (nome and organismo) and resolver_alvo is not None:
@@ -118,9 +126,17 @@ def _indexar_alvos(alvos, rotulos, resolver_alvo, problemas):
             problemas.append(f"alvo {chembl_id or nome or '?'}: sem nome e organismo "
                              "para casar com o arquivo; nenhuma linha medida dele")
             continue
-        indice.setdefault(_chave_alvo(nome, organismo), []).append({
+        chave = _chave_alvo(nome, organismo)
+        if chave in indice:
+            ja = indice[chave]
+            problemas.append(
+                f"alvo {chembl_id or nome}: e o mesmo alvo que "
+                f"{ja['alvo_chembl_id'] or ja['alvo']} ({nome}, {organismo}); "
+                "usado uma vez so, para nao repetir cada ensaio medido dele")
+            continue
+        indice[chave] = {
             "alvo_chembl_id": chembl_id, "alvo": nome, "organismo": organismo,
-            "tipo_alvo": tipo, "origem_alvo": alvo.get("origem_alvo", "")})
+            "tipo_alvo": tipo, "origem_alvo": alvo.get("origem_alvo", "")}
     return indice
 
 
@@ -179,8 +195,8 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                 c["sem_alvo_utilizavel"] += 1
                 continue
             lig = por_chave.get((linha.get("InChIKey") or "").strip().upper())
-            achados = indice_alvos.get(_chave_alvo(nome, linha.get("organismo_alvo", "")))
-            if lig is None or not achados:
+            alvo = indice_alvos.get(_chave_alvo(nome, linha.get("organismo_alvo", "")))
+            if lig is None or alvo is None:
                 c["ligante_ou_alvo_nao_pedido"] += 1
                 continue
 
@@ -210,34 +226,33 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                 procedencia += f"; estereoisomero da molecula ensaiada {ensaiada})"
                 id_lig = id_do_ligante(lig)
 
-            for alvo in achados:
-                c["linhas_emitidas"] += 1
-                yield {
-                    "ligante": lig.get("nome", ""),
-                    "ligante_inchikey_parental": lig.get("inchikey_parental", ""),
-                    "ligante_chembl_id": id_lig,
-                    "correspondencia_ligante": corresp,
-                    "alvo_chembl_id": alvo["alvo_chembl_id"],
-                    "alvo": alvo["alvo"],
-                    "organismo": alvo["organismo"],
-                    "tipo_alvo": alvo["tipo_alvo"],
-                    "origem_alvo": alvo["origem_alvo"],
-                    "tipo_evidencia": "medido",
-                    "fonte": "ChEMBL",
-                    "atividade_relatada": formatar_atividade(
-                        medida, relacao, valor, unidade),
-                    "medida": medida,
-                    "relacao": relacao,
-                    "valor": "" if valor is None else _inteiro_se_inteiro(valor),
-                    "unidade": unidade,
-                    "pchembl": "" if pchembl is None else _inteiro_se_inteiro(pchembl),
-                    "tipo_ensaio": (linha.get("tipo_ensaio") or "").strip(),
-                    "ensaio_descricao": descricao,
-                    "triagem_hts": "sim" if e_triagem(descricao) else "nao",
-                    "confianca_ensaio": "",
-                    "n_moleculas_treino": "",
-                    "documento": (linha.get("documento_chembl") or "").strip(),
-                    "pmid": _texto_numerico(linha.get("PMID")),
-                    "ano": _texto_numerico(linha.get("ano")),
-                    "procedencia": procedencia,
-                }
+            c["linhas_emitidas"] += 1
+            yield {
+                "ligante": lig.get("nome", ""),
+                "ligante_inchikey_parental": lig.get("inchikey_parental", ""),
+                "ligante_chembl_id": id_lig,
+                "correspondencia_ligante": corresp,
+                "alvo_chembl_id": alvo["alvo_chembl_id"],
+                "alvo": alvo["alvo"],
+                "organismo": alvo["organismo"],
+                "tipo_alvo": alvo["tipo_alvo"],
+                "origem_alvo": alvo["origem_alvo"],
+                "tipo_evidencia": "medido",
+                "fonte": "ChEMBL",
+                "atividade_relatada": formatar_atividade(
+                    medida, relacao, valor, unidade),
+                "medida": medida,
+                "relacao": relacao,
+                "valor": "" if valor is None else _inteiro_se_inteiro(valor),
+                "unidade": unidade,
+                "pchembl": "" if pchembl is None else _inteiro_se_inteiro(pchembl),
+                "tipo_ensaio": (linha.get("tipo_ensaio") or "").strip(),
+                "ensaio_descricao": descricao,
+                "triagem_hts": "sim" if e_triagem(descricao) else "nao",
+                "confianca_ensaio": "",
+                "n_moleculas_treino": "",
+                "documento": (linha.get("documento_chembl") or "").strip(),
+                "pmid": _texto_numerico(linha.get("PMID")),
+                "ano": _texto_numerico(linha.get("ano")),
+                "procedencia": procedencia,
+            }

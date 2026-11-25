@@ -77,8 +77,10 @@ def test_valor_e_numero_legivel_por_maquina(modelo_falso, rotulos_falsos,
         rede[0].bias.fill_(math.log(0.9341 / (1 - 0.9341)))
     monkeypatch.setattr(predito, "carregar_modelo",
                         lambda *a, **k: (rede, {"raio": 2, "bits": 4096}, "cpu", "x.pt"))
+    # Uma saida na rede, UM rotulo: o par tem de descrever o mesmo espaco de
+    # alvos (ver test_largura_do_checkpoint_diferente_dos_rotulos_e_recusada).
     linhas = list(linhas_preditas(LIGANTES, [{"alvo_chembl_id": "CHEMBL100"}],
-                                  checkpoint="x.pt", rotulos=rotulos_falsos,
+                                  checkpoint="x.pt", rotulos=rotulos_falsos[:1],
                                   corte=0.0))
     assert len(linhas) == 2
     for l in linhas:
@@ -109,3 +111,66 @@ def test_smiles_ilegivel_e_contado(modelo_falso, rotulos_falsos):
                                   contagens=contagens))
     assert contagens["smiles_ilegiveis"] == 1
     assert len(linhas) == len(LIGANTES) * len(ALVOS)
+
+
+def test_largura_do_checkpoint_diferente_dos_rotulos_e_recusada(
+        modelo_falso, rotulos_falsos):
+    """O README manda trocar o checkpoint (o tarball publicado esta truncado),
+    entao par divergente e o caso esperado. Antes, os indices alem da largura
+    eram descartados em silencio -- zero linhas, nenhuma mensagem -- e um par
+    com a MESMA largura atribuia a coluna i ao alvo i do outro arquivo."""
+    import pytest
+    curtos = rotulos_falsos[:3]  # modelo com 6 saidas, rotulos com 3
+    with pytest.raises(ValueError) as e:
+        list(linhas_preditas(LIGANTES, ALVOS, checkpoint=modelo_falso,
+                             rotulos=curtos, corte=0.0))
+    assert "6 saidas" in str(e.value) and "3 alvos" in str(e.value)
+    longos = rotulos_falsos + [
+        {"chembl_id": "CHEMBL999", "nome": "extra", "organismo": "Homo sapiens",
+         "tipo": "SINGLE PROTEIN", "n_ativos": 1}]
+    with pytest.raises(ValueError, match="7 alvos"):
+        list(linhas_preditas(LIGANTES, ALVOS, checkpoint=modelo_falso,
+                             rotulos=longos, corte=0.0))
+
+
+def test_organismo_casa_exato_e_nao_por_trecho(rotulos_falsos):
+    from mods.evidencias.predito import casar_alvos
+    nome = rotulos_falsos[0]["nome"]
+    assert casar_alvos([{"alvo": nome, "organismo": "Homo sapiens"}],
+                       rotulos_falsos) == [(0, {"alvo": nome,
+                                                "organismo": "Homo sapiens"})]
+    # "Homo" casava por trecho e trazia o alvo humano sem o usuario pedir;
+    # "sapiens" idem. Ortologo em silencio e anti-objetivo do desenho.
+    for parcial in ("Homo", "sapiens", "homo sapiens (human)"):
+        assert casar_alvos([{"alvo": nome, "organismo": parcial}],
+                           rotulos_falsos) == []
+
+
+def test_nome_ambiguo_no_modelo_nao_escolhe_nenhum(rotulos_falsos):
+    from mods.evidencias.predito import casar_alvos
+    gemeos = rotulos_falsos + [
+        {**rotulos_falsos[0], "chembl_id": "CHEMBL999"}]  # mesmo nome e organismo
+    problemas = []
+    pares = casar_alvos([{"alvo": gemeos[0]["nome"], "organismo": "Homo sapiens"}],
+                        gemeos, problemas)
+    assert pares == []
+    assert len(problemas) == 1 and "ambiguo" in problemas[0]
+    assert "CHEMBL100" in problemas[0] and "CHEMBL999" in problemas[0]
+
+
+def test_origem_do_alvo_sai_na_linha_prevista(modelo_falso, rotulos_falsos):
+    alvos = [{"alvo_chembl_id": "CHEMBL100", "origem_alvo": "usuario"},
+             {"alvo_chembl_id": "CHEMBL101", "origem_alvo": "open_targets"}]
+    linhas = list(linhas_preditas(LIGANTES, alvos, checkpoint=modelo_falso,
+                                  rotulos=rotulos_falsos, corte=0.0))
+    por_alvo = {l["alvo_chembl_id"]: l["origem_alvo"] for l in linhas}
+    assert por_alvo == {"CHEMBL100": "usuario", "CHEMBL101": "open_targets"}
+
+
+def test_nenhum_alvo_no_modelo_e_relatado(modelo_falso, rotulos_falsos):
+    contagens = {}
+    linhas = list(linhas_preditas(LIGANTES, [{"alvo_chembl_id": "CHEMBL404"}],
+                                  checkpoint=modelo_falso, rotulos=rotulos_falsos,
+                                  corte=0.0, contagens=contagens))
+    assert linhas == []
+    assert any("NENHUMA linha prevista" in p for p in contagens["problemas"])

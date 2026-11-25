@@ -14,6 +14,15 @@ Regras
   e rato, e aceitar o nome puro traria o ortologo errado sem ninguem notar.
 * Ligantes sao deduplicados por `inchikey_parental`: sal e base livre sao o
   mesmo composto e duplicariam toda linha a jusante.
+* Alvos sao deduplicados pela identidade usada a jusante (ID do ChEMBL, ou
+  nome+organismo quando nao ha ID): a tabela tem UMA linha por evidencia, e um
+  alvo repetido na entrada dobraria cada ensaio medido dele.
+* `alvo_chembl_id` e normalizado para maiusculas AQUI, no unico ponto de
+  leitura: `chembl222` e `CHEMBL222` sao o mesmo alvo, e a jusante ninguem
+  precisa repetir a normalizacao.
+* Todo alvo sai com `origem_alvo` (`usuario` por padrao; a coluna `origem` do
+  `alvos_enriquecidos.tsv` e aceita com esse nome, que e o da saida). Sem isso
+  a procedencia do alvo se perderia ao realimentar a lista enriquecida.
 * Linha com erro e descartada e relatada; nada falha em silencio.
 * Se o alvo existe ou nao no espaco do modelo PP4CKD NAO e decidido aqui
   (vem do arquivo de rotulos do modelo, onde for preciso).
@@ -52,7 +61,12 @@ def _ler_tabela_lazy(caminho):
         # O arquivo pertence ao gerador: close() do gerador fecha o arquivo.
         # O primeiro item produzido e o cabecalho (lido logo abaixo).
         with open(caminho, newline="", encoding="utf-8-sig") as f:
-            leitor = csv.reader(f, delimiter="," if csv_ else "\t")
+            # TSV nao tem citacao: aspas fazem parte do nome. Com o dialeto
+            # padrao, `"cis" isomer of X` seria lido como `cis isomer of X` --
+            # o rotulo de identidade reescrito em silencio. No .csv a citacao
+            # continua valendo: e dela que a virgula do nome depende.
+            leitor = csv.reader(f, delimiter="," if csv_ else "\t",
+                                **({} if csv_ else {"quoting": csv.QUOTE_NONE}))
             cabecalho: list[str] = []
             for celulas in leitor:
                 if any(c.strip() for c in celulas):
@@ -148,6 +162,53 @@ def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[P
 _CABECALHOS_DE_ALVO = {"alvo_chembl_id", "alvo", "organismo"}
 _RE_CHEMBL = re.compile(r"CHEMBL\d+", re.IGNORECASE)
 
+# Procedencias que caracterizam um alvo VINDO do enriquecimento (as que
+# `escrever_alvos_enriquecidos` grava em `origem`); `usuario` e o padrao.
+ORIGENS_DE_ENRIQUECIMENTO = ("open_targets", "reactome")
+ORIGEM_PADRAO = "usuario"
+
+
+def _origem_do_alvo(linha: dict) -> str:
+    """Procedencia do alvo sob um nome so, `origem_alvo`. Aceita tambem a
+    coluna `origem`, que e como a etapa grava o `alvos_enriquecidos.tsv`: sem
+    isso realimentar aquele arquivo perderia a procedencia de cada alvo."""
+    bruta = texto(linha.get("origem_alvo")) or texto(linha.get("origem"))
+    return bruta.strip().lower() or ORIGEM_PADRAO
+
+
+def _identidade(alvo: dict):
+    """Como o alvo e reconhecido a jusante: pelo ID, ou pelo par
+    nome+organismo quando nao ha ID."""
+    if alvo["alvo_chembl_id"]:
+        return ("id", alvo["alvo_chembl_id"])
+    return ("nome", alvo["alvo"].casefold(), alvo["organismo"].casefold())
+
+
+def _deduplicar_alvos(alvos: list[dict], problemas: list[Problema]) -> list[dict]:
+    """Mantem a primeira ocorrencia de cada alvo e relata o que foi dobrado.
+    `evidencias.tsv` tem uma linha por evidencia: um alvo repetido dobraria
+    cada ensaio medido dele, e a duplicata seria indistinguivel de dois
+    ensaios de verdade."""
+    unicos: list[dict] = []
+    vistos: dict = {}
+    dobrados: dict = {}
+    for alvo in alvos:
+        chave = _identidade(alvo)
+        if chave in vistos:
+            dobrados.setdefault(chave, []).append(
+                alvo["alvo_chembl_id"] or f"{alvo['alvo']} ({alvo['organismo']})")
+            continue
+        vistos[chave] = alvo
+        unicos.append(alvo)
+    for chave, repetidos in dobrados.items():
+        rotulo = (vistos[chave]["alvo_chembl_id"]
+                  or f"{vistos[chave]['alvo']} ({vistos[chave]['organismo']})")
+        problemas.append(Problema(
+            0, "alvo", f"alvo repetido na entrada ({rotulo}): mantida a primeira "
+            f"ocorrencia, dobrada(s) {len(repetidos)}; sem isso cada evidencia "
+            "medida dele sairia repetida", "aviso"))
+    return unicos
+
 
 def _e_lista_de_alvos(caminho) -> bool:
     """Formato 'um alvo por linha' (o de prever_alvos.py), em vez de tabela.
@@ -179,7 +240,7 @@ def _ler_lista_de_alvos(caminho) -> tuple[list[dict], list[Problema]]:
             termo = termo.strip()
             if _RE_CHEMBL.fullmatch(termo):
                 alvos.append({"alvo_chembl_id": termo.upper(), "alvo": "",
-                              "organismo": ""})
+                              "organismo": "", "origem_alvo": ORIGEM_PADRAO})
                 continue
             lista = [o.strip() for o in organismos.split(",") if o.strip()]
             if not lista:
@@ -188,11 +249,11 @@ def _ler_lista_de_alvos(caminho) -> tuple[list[dict], list[Problema]]:
                     "e dado por nome ('nome | organismo'); o mesmo nome existe em "
                     "varias especies", "erro"))
                 continue
-            alvos.extend({"alvo_chembl_id": "", "alvo": termo, "organismo": o}
-                         for o in lista)
+            alvos.extend({"alvo_chembl_id": "", "alvo": termo, "organismo": o,
+                          "origem_alvo": ORIGEM_PADRAO} for o in lista)
     if not alvos and not problemas:
         problemas.append(Problema(1, "arquivo", "arquivo vazio", "erro"))
-    return alvos, problemas
+    return _deduplicar_alvos(alvos, problemas), problemas
 
 
 def ler_alvos(caminho) -> tuple[list[dict], list[Problema]]:
@@ -204,7 +265,7 @@ def ler_alvos(caminho) -> tuple[list[dict], list[Problema]]:
         return [], problemas
     alvos: list[dict] = []
     for n, linha in linhas:
-        chembl_id = texto(linha.get("alvo_chembl_id"))
+        chembl_id = texto(linha.get("alvo_chembl_id")).upper()
         nome, organismo = texto(linha.get("alvo")), texto(linha.get("organismo"))
         if not chembl_id:
             if not nome:
@@ -218,9 +279,10 @@ def ler_alvos(caminho) -> tuple[list[dict], list[Problema]]:
                     "erro"))
                 continue
         registro = dict(linha)
-        registro.update(alvo_chembl_id=chembl_id, alvo=nome, organismo=organismo)
+        registro.update(alvo_chembl_id=chembl_id, alvo=nome, organismo=organismo,
+                        origem_alvo=_origem_do_alvo(linha))
         alvos.append(registro)
-    return alvos, problemas
+    return _deduplicar_alvos(alvos, problemas), problemas
 
 
 def ler_sintomas(caminho) -> list[str]:

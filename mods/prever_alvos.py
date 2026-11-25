@@ -332,7 +332,9 @@ def carregar_rotulos(caminho: str) -> list[dict]:
             except (TypeError, ValueError):
                 n_ativos = 0
             por_indice[idx] = {
-                "chembl_id": (linha.get("chembl_id") or "").strip(),
+                # Normalizado AQUI, no ponto de leitura: o ID do ChEMBL e
+                # maiusculo, e quem compara a jusante nao repete a regra.
+                "chembl_id": (linha.get("chembl_id") or "").strip().upper(),
                 "nome": (linha.get("pref_name") or "").strip(),
                 "organismo": (linha.get("organism") or "").strip(),
                 "tipo": (linha.get("target_type") or "").strip(),

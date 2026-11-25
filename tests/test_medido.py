@@ -221,3 +221,25 @@ def test_inteiros_saem_como_inteiros():
     assert all(not l["ano"].endswith(".0") and not l["pmid"].endswith(".0")
                for l in linhas)
     assert any(l["valor"] == 213 for l in linhas)
+
+
+def test_alvo_pedido_duas_vezes_nao_dobra_a_evidencia():
+    """Mesmo alvo por ID e por nome: um ensaio tem de dar UMA linha. Numa tabela
+    de uma linha por evidencia, a linha repetida pareceria um segundo ensaio."""
+    rotulos = [{"chembl_id": "CHEMBL3", "nome": "Kallikrein-7",
+                "organismo": "Homo sapiens", "tipo": "SINGLE PROTEIN", "n_ativos": 5}]
+    uma_vez = list(linhas_medidas(AMOSTRA, LIGANTES, [
+        {"alvo_chembl_id": "CHEMBL3", "alvo": "", "organismo": ""}], rotulos=rotulos))
+    contagens = {}
+    duas_vezes = list(linhas_medidas(AMOSTRA, LIGANTES, [
+        {"alvo_chembl_id": "CHEMBL3", "alvo": "", "organismo": ""},
+        {"alvo_chembl_id": "", "alvo": "Kallikrein-7", "organismo": "Homo sapiens"}],
+        rotulos=rotulos, contagens=contagens))
+    assert uma_vez and len(duas_vezes) == len(uma_vez)
+    assert any("mesmo alvo" in p for p in contagens["problemas"])
+
+
+def test_origem_do_alvo_sai_na_linha_medida():
+    alvos = [{**ALVOS[2], "origem_alvo": "open_targets"}]
+    linhas = list(linhas_medidas(AMOSTRA, LIGANTES, alvos))
+    assert linhas and all(l["origem_alvo"] == "open_targets" for l in linhas)

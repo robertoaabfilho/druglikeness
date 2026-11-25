@@ -6,8 +6,9 @@ Contagens que o painel mostra assim que um arquivo e enviado, antes de rodar
 qualquer coisa. Ficam fora de `painel.py` para serem testaveis sem Streamlit.
 
 `resumo_alvos` usa a mesma regra de casamento da evidencia prevista
-(`predito.indices_dos_alvos`): o que o painel chama "fora do modelo" e
-exatamente o que a previsao vai omitir.
+(`predito.casar_alvos`): o que o painel chama "fora do modelo" e exatamente o
+que a previsao vai omitir, e o que ele chama "ambiguo" e o que ela se recusa a
+escolher.
 """
 
 import hashlib
@@ -17,7 +18,7 @@ from pathlib import Path
 from mods.evidencias.entrada import Problema
 from mods.evidencias.esquema import desescapar
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS
-from mods.evidencias.predito import indices_dos_alvos
+from mods.evidencias.predito import casar_alvos
 from mods.importar_prospector import molecula
 
 # Abaixo disto a previsao e fragil (README, validacao: recall@10 0,127 com <50
@@ -44,15 +45,20 @@ def resumo_alvos(alvos: list[dict], rotulos: list[dict],
     `sem_organismo`: dado por nome sem organismo (erro na leitura). `ler_alvos`
     ja descarta essas linhas, entao `problemas` (os da leitura) tambem conta.
     `fora_do_modelo`: tem identificacao completa mas nao existe no modelo.
+    `ambiguo`: o nome+organismo casa com mais de um alvo do modelo, e por isso
+    nenhum e escolhido (nao e "fora do modelo": e indecidivel sem o ID).
     `pouco_treino`: existe no modelo com menos de `minimo_treino` ativos."""
-    sem_organismo, fora, fracos = [], [], []
+    sem_organismo, fora, fracos, ambiguos = [], [], [], []
     for a in alvos:
         if not (a.get("alvo_chembl_id") or "").strip() and not (
                 a.get("organismo") or "").strip():
             sem_organismo.append(a)
             continue
-        indices = indices_dos_alvos([a], rotulos)
-        if not indices:
+        duvidas: list[str] = []
+        indices = [i for i, _ in casar_alvos([a], rotulos, duvidas)]
+        if duvidas:
+            ambiguos.append({**a, "motivo": duvidas[0]})
+        elif not indices:
             fora.append(a)
         elif rotulos[indices[0]]["n_ativos"] < minimo_treino:
             fracos.append({**a, "alvo_chembl_id": rotulos[indices[0]]["chembl_id"],
@@ -62,8 +68,10 @@ def resumo_alvos(alvos: list[dict], rotulos: list[dict],
     return {"total": len(alvos) + ja_descartados,
             "sem_organismo": len(sem_organismo) + ja_descartados,
             "fora_do_modelo": len(fora), "pouco_treino": len(fracos),
-            "no_modelo": len(alvos) - len(sem_organismo) - len(fora),
+            "ambiguo": len(ambiguos),
+            "no_modelo": len(alvos) - len(sem_organismo) - len(fora) - len(ambiguos),
             "lista_sem_organismo": sem_organismo, "lista_fora_do_modelo": fora,
+            "lista_ambiguo": ambiguos,
             "lista_pouco_treino": fracos, "minimo_treino": minimo_treino}
 
 
