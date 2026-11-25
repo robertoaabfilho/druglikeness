@@ -219,3 +219,42 @@ def test_sem_torch_falha_limpo_e_sem_arquivo(tmp_path, rotulos_falsos, monkeypat
                    "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
     assert codigo == 2 and not saida.exists()
     assert "pip install torch rdkit" in capsys.readouterr().err
+
+
+def test_falha_preserva_saida_preexistente(tmp_path, rotulos_falsos):
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nconteudo precioso\n")
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", str(tmp_path / "nao_existe.pt"),
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 2
+    assert saida.read_bytes() == b"#antigo\nconteudo precioso\n"
+    assert not (tmp_path / "manifesto.json").exists()
+    assert [p.name for p in tmp_path.glob("*.tmp")] == []
+
+
+def test_sucesso_substitui_saida_preexistente(tmp_path, modelo_falso, rotulos_falsos):
+    from mods.evidencias.esquema import ler_evidencias
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nlixo\n")
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--checkpoint", modelo_falso, "--corte", "0",
+                   "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
+    assert codigo == 0
+    assert b"lixo" not in saida.read_bytes()
+    assert list(ler_evidencias(saida))
+    assert [p.name for p in tmp_path.glob("*.tmp")] == []
+
+
+def test_rotulos_inexistente_sem_checkpoint_falha_limpo(tmp_path, capsys):
+    saida = tmp_path / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+                   "--rotulos", str(tmp_path / "nao_existe.tsv")])
+    assert codigo == 2 and not saida.exists()
+    assert "[erro]" in capsys.readouterr().err

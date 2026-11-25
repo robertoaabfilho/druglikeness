@@ -22,6 +22,8 @@ Problemas `aviso` sao relatados e a execucao continua.
 import argparse
 import hashlib
 import importlib.util
+import os
+import tempfile
 import pickle
 import subprocess
 import sys
@@ -51,7 +53,7 @@ def _commit_do_pipeline() -> str:
 
 
 def _md5(caminho: str) -> str:
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)
     with open(caminho, "rb") as f:
         for bloco in iter(lambda: f.read(1 << 20), b""):
             h.update(bloco)
@@ -142,8 +144,15 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         from mods.evidencias.predito import linhas_preditas
 
+    # Escrita atomica: a tabela nasce num temporario NO MESMO diretorio (mesmo
+    # sistema de arquivos) e so substitui o destino ao fim de uma execucao
+    # bem-sucedida. Qualquer falha deixa o evidencias.tsv anterior intacto.
+    fd, nome_tmp = tempfile.mkstemp(dir=saida.parent, prefix=saida.name + ".",
+                                    suffix=".tmp")
+    os.close(fd)
+    tmp = Path(nome_tmp)
     try:
-        with EscritorEvidencias(saida) as escritor:
+        with EscritorEvidencias(tmp) as escritor:
             if args.checkpoint:
                 for linha in linhas_preditas(
                         ligantes, alvos, checkpoint=args.checkpoint,
@@ -152,12 +161,14 @@ def main(argv: list[str] | None = None) -> int:
                     escritor.escrever(linha)
                     n_linhas += 1
             # as demais fontes de evidencia entram nas proximas tarefas
+        os.replace(tmp, saida)
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
             pickle.UnpicklingError) as e:
-        # Execucao falha nao deixa tabela nem manifesto.
-        saida.unlink(missing_ok=True)
+        # Execucao falha nao deixa tabela nova nem manifesto.
         print(f"[erro] evidencia prevista: {e}", file=sys.stderr)
         return 2
+    finally:
+        tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
 
     ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
     if ilegiveis:
@@ -172,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
                     "sem_rede": args.sem_rede,
                     "checkpoint": args.checkpoint,
                     "rotulos": args.rotulos,
-                    "rotulos_md5": _md5(args.rotulos) if args.rotulos else None,
+                    "rotulos_md5": _md5(args.rotulos) if args.checkpoint else None,
                     "ligantes": args.ligantes,
                     "alvos": args.alvos, "sintomas": args.sintomas},
         versoes={"pipeline_commit": _commit_do_pipeline(),
