@@ -42,12 +42,18 @@ _PARAMETROS_DA_REPETICAO = ("corte", "limite", "sem_rede", "corte_associacao",
                             "teto_via", "efo")
 
 
-def verificar_manifesto(anterior: dict, atual: dict) -> list[str]:
+def verificar_manifesto(anterior: dict, atual: dict, *,
+                        versoes=_VERSOES_DA_REPETICAO,
+                        parametros=_PARAMETROS_DA_REPETICAO) -> list[str]:
     """Divergencias entre o manifesto gravado e a execucao de agora; lista vazia
-    significa que repetir e seguro. So o que o anterior registrou e comparado."""
+    significa que repetir e seguro. So o que o anterior registrou e comparado.
+
+    `versoes` e `parametros` sao as chaves que importam para a repeticao. Os
+    padroes sao os da etapa 1; a etapa 2 passa os seus (politica, percentil,
+    teto de bula), porque repetir com outra politica da outro arquivo."""
     problemas = []
-    for grupo, chaves in (("versoes", _VERSOES_DA_REPETICAO),
-                          ("parametros", _PARAMETROS_DA_REPETICAO)):
+    for grupo, chaves in (("versoes", versoes),
+                          ("parametros", parametros)):
         antes, agora = anterior.get(grupo, {}), atual.get(grupo, {})
         for chave in chaves:
             if chave in antes and antes[chave] != agora.get(chave):
@@ -63,15 +69,22 @@ def verificar_manifesto(anterior: dict, atual: dict) -> list[str]:
 _ENTRADAS_HASHEADAS = ("ligantes_md5", "alvos_md5", "sintomas_md5")
 
 
-def hashes_de_entrada_ausentes(anterior: dict) -> list[str]:
-    """Chaves de MD5 que o manifesto deveria ter e nao tem: as tres entradas
-    sempre, e checkpoint/rotulos/evidencias medidas quando o manifesto diz que
-    foram usados. Sem elas a repeticao nao tem como conferir e deve recusar."""
+_CONDICIONAIS_ETAPA1 = (("checkpoint", "checkpoint_md5"),
+                        ("rotulos", "rotulos_md5"),
+                        ("evidencias_chembl", "evidencias_chembl_md5"))
+
+
+def hashes_de_entrada_ausentes(anterior: dict, *,
+                               entradas=_ENTRADAS_HASHEADAS,
+                               condicionais=_CONDICIONAIS_ETAPA1) -> list[str]:
+    """Chaves de MD5 que o manifesto deveria ter e nao tem: as entradas sempre,
+    e as condicionais quando o manifesto diz que foram usadas. Sem elas a
+    repeticao nao tem como conferir e deve recusar. Os padroes sao os da etapa
+    1; a etapa 2 passa os seus."""
     versoes = anterior.get("versoes", {})
     parametros = anterior.get("parametros", {})
-    exigidas = list(_ENTRADAS_HASHEADAS)
-    for parametro, chave in (("checkpoint", "checkpoint_md5"), ("rotulos", "rotulos_md5"),
-                             ("evidencias_chembl", "evidencias_chembl_md5")):
+    exigidas = list(entradas)
+    for parametro, chave in condicionais:
         if parametros.get(parametro):
             exigidas.append(chave)
     return [c for c in exigidas if not versoes.get(c)]

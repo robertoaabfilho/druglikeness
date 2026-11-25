@@ -35,11 +35,18 @@ ORGANISMO = "Homo sapiens"
 PAGINA = 100
 
 COLUNAS_ENRIQUECIDOS = [
-    "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "gene", "origem",
-    "efo_id", "sintoma", "escore_associacao", "familia", "familia_colapsados",
-    "via_origem", "alvo_semente", "n_moleculas_treino", "no_modelo",
-    "observacao",
+    "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "gene", "ensembl",
+    "origem", "efo_id", "sintoma", "escore_associacao", "escore_rna_expression",
+    "familia", "familia_colapsados", "via_origem", "alvo_semente",
+    "n_moleculas_treino", "no_modelo", "observacao",
 ]
+# `ensembl` e `escore_rna_expression` ja vinham na resposta do Open Targets e
+# eram descartados na escrita. Ficam na saida porque a etapa 2 precisa dos
+# dois: o Ensembl e a chave da expressao por tecido (`baselineExpression`), e
+# `rna_expression` e o escore de expressao DIFERENCIAL da associacao -- a
+# contribuicao do Expression Atlas, que indexa os experimentos do GEO. Buscar
+# o Ensembl de novo na etapa 2 custaria uma requisicao por alvo para um dado
+# que esta etapa ja tinha em maos.
 
 _BUSCA = """query Busca($q: String!) {
   search(queryString: $q, entityNames: ["disease"], page: {index: 0, size: 10}) {
@@ -131,7 +138,9 @@ def alvos_do_chembl(candidatos: list[dict], rotulos: list[dict], *,
     for c in candidatos:
         linha = {**c, "origem": "open_targets", "alvo_chembl_id": "",
                  "alvo": "", "organismo": organismo, "tipo_alvo": "",
-                 "no_modelo": False, "n_moleculas_treino": "", "observacao": ""}
+                 "no_modelo": False, "n_moleculas_treino": "", "observacao": "",
+                 "escore_rna_expression": (c.get("datatypes") or {}).get(
+                     "rna_expression", "")}
         saida.append(linha)
         if not c.get("uniprot"):
             linha["observacao"] = "sem UniProt Swiss-Prot no Open Targets"

@@ -92,18 +92,19 @@ def test_commit_e_hash_de_40_hex_em_execucao_normal(tmp_path):
 
 def test_arvore_suja_e_marcada_e_o_repositorio_de_fora_fica_visivel(monkeypatch):
     from pathlib import Path
-    import mods.coletar_evidencias as cli
+    # A procedencia e compartilhada entre as etapas (mods/evidencias/procedencia.py).
+    import mods.evidencias.procedencia as cli
     respostas = {}
     monkeypatch.setattr(cli, "_git", lambda args, cwd: respostas.get(args[0]))
     respostas = {"rev-parse": "a" * 40, "status": ""}
-    assert cli._commit_do_pipeline() == "a" * 40
+    assert cli.commit_do_pipeline() == "a" * 40
     respostas = {"rev-parse": "a" * 40, "status": " M mods/evidencias/entrada.py"}
-    assert cli._commit_do_pipeline() == "a" * 40 + "+sujo"
+    assert cli.commit_do_pipeline() == "a" * 40 + "+sujo"
     respostas = {"rev-parse": "a" * 40, "status": None}
-    assert cli._commit_do_pipeline() == "a" * 40 + "+estado_desconhecido"
+    assert cli.commit_do_pipeline() == "a" * 40 + "+estado_desconhecido"
     # Pacote embutido: o commit e de outro repositorio, e isso tem de aparecer.
     respostas = {"rev-parse": str(Path("/outro/repo"))}
-    dados = cli._repositorio_do_pipeline()
+    dados = cli.repositorio_do_pipeline()
     assert dados["pipeline_repositorio"] == "/outro/repo"
     assert "embutido em outro repositorio" in dados["pipeline_repositorio_aviso"]
 

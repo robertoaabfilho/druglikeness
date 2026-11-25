@@ -40,6 +40,13 @@ URL_OPEN_TARGETS = "https://api.platform.opentargets.org/api/v4/graphql"
 URL_CHEMBL_STATUS = "https://www.ebi.ac.uk/chembl/api/data/status.json"
 URL_REACTOME_VERSAO = "https://reactome.org/ContentService/data/database/version"
 _BASE_REACTOME = "https://reactome.org/ContentService/"
+# openFDA (etapa 2): nao tem numero de versao; `meta.last_updated` identifica
+# a carga. Uma busca sem resultado responde 404, que aqui vira lista vazia --
+# e uma resposta legitima e cacheavel ("este nome nao tem bula"), nao uma
+# falha. Sem isso, a base inteira de produtos naturais, que quase nao tem
+# bula, consultaria o openFDA de novo a cada execucao.
+URL_OPENFDA_VERSAO = "https://api.fda.gov/drug/label.json?limit=1"
+_BASE_OPENFDA = "https://api.fda.gov/"
 
 _CONSULTA_VERSAO_OT = "query Versao { meta { dataVersion { year month iteration } } }"
 
@@ -62,7 +69,19 @@ def _buscar_padrao(url: str, corpo: dict | None = None):
         return open_targets._post_json_requests(url, corpo)
     if url.startswith(_BASE_REACTOME):
         return reactome._obter_json_requests(url)
+    if url.startswith(_BASE_OPENFDA):
+        return _obter_json_openfda(url)
     return chembl._obter_json_requests(url)
+
+
+def _obter_json_openfda(url: str) -> dict:
+    """GET no openFDA; 404 e "nenhuma bula com esse nome", nao erro."""
+    import requests
+    resposta = requests.get(url, timeout=60)
+    if resposta.status_code == 404:
+        return {"results": [], "openfda_sem_resultado": True}
+    resposta.raise_for_status()
+    return resposta.json()
 
 
 def _chave(url: str, corpo: dict | None) -> str:
@@ -137,9 +156,18 @@ def _segmento(texto: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", texto)
 
 
+_SERVICOS_BASE = ("open_targets", "chembl", "reactome")
+
+
 def pasta_das_versoes(versoes: dict) -> str:
-    return "__".join(f"{k}-{_segmento(str(versoes[k]))}"
-                     for k in ("open_targets", "chembl", "reactome"))
+    """Nome da pasta do cache. Os tres servicos da etapa 1 vem primeiro e nessa
+    ordem, para que o nome de um cache ja gravado nao mude; servico extra (o
+    `openfda` da etapa 2) entra depois, em ordem alfabetica. Pasta diferente
+    por conjunto de servicos e o certo: um cache sem a versao do openFDA nao
+    pode servir respostas do openFDA."""
+    extras = sorted(k for k in versoes if k not in _SERVICOS_BASE)
+    chaves = [k for k in _SERVICOS_BASE if k in versoes] + extras
+    return "__".join(f"{k}-{_segmento(str(versoes[k]))}" for k in chaves)
 
 
 def _versao_valida(valor, servico: str) -> str:
@@ -153,10 +181,14 @@ def _versao_valida(valor, servico: str) -> str:
     return texto
 
 
-def consultar_versoes(buscar: Callable | None = None) -> dict:
-    """Versoes ATUAIS dos tres servicos, direto da rede (nunca do cache).
-    Falha com `VersaoIndeterminada`: sem versao nao ha como garantir que o
-    cache vale."""
+def consultar_versoes(buscar: Callable | None = None, *,
+                      com_openfda: bool = False) -> dict:
+    """Versoes ATUAIS dos servicos, direto da rede (nunca do cache). Falha com
+    `VersaoIndeterminada`: sem versao nao ha como garantir que o cache vale.
+
+    `com_openfda` acrescenta a data de carga do openFDA (etapa 2). Fica
+    opcional para que a etapa 1, que nao consulta bula, nao pague a
+    requisicao nem mude o nome das pastas que ela ja gravou."""
     buscar = buscar or _buscar_padrao
     try:
         ot = buscar(URL_OPEN_TARGETS, {"query": _CONSULTA_VERSAO_OT, "variables": {}})
@@ -170,16 +202,22 @@ def consultar_versoes(buscar: Callable | None = None) -> dict:
         versao_ot = _versao_valida(versao_ot, "Open Targets")
         chembl = _versao_valida(buscar(URL_CHEMBL_STATUS)["chembl_db_version"], "ChEMBL")
         reactome = _versao_valida(buscar(URL_REACTOME_VERSAO), "Reactome")
+        versoes = {"open_targets": versao_ot, "chembl": chembl,
+                   "reactome": reactome}
+        if com_openfda:
+            carga = (buscar(URL_OPENFDA_VERSAO)["meta"]["last_updated"])
+            versoes["openfda"] = _versao_valida(carga, "openFDA")
     except (KeyError, TypeError, ValueError) as e:
         raise VersaoIndeterminada(f"resposta de versao inesperada: {e!r}") from e
     except OSError as e:
         raise VersaoIndeterminada(f"consulta de versao falhou: {e}") from e
-    return {"open_targets": versao_ot, "chembl": chembl, "reactome": reactome}
+    return versoes
 
 
-def abrir_ao_vivo(raiz, buscar: Callable | None = None) -> tuple[Cache, dict]:
+def abrir_ao_vivo(raiz, buscar: Callable | None = None, *,
+                  com_openfda: bool = False) -> tuple[Cache, dict]:
     """Cache da execucao normal: descobre as versoes e usa a pasta delas."""
-    versoes = consultar_versoes(buscar)
+    versoes = consultar_versoes(buscar, com_openfda=com_openfda)
     pasta = Path(raiz) / pasta_das_versoes(versoes)
     pasta.mkdir(parents=True, exist_ok=True)
     (pasta / "versoes.json").write_text(

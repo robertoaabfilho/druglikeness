@@ -33,11 +33,8 @@ e era o que sobrava quando a escrita do manifesto falhava depois da troca.
 """
 
 import argparse
-import hashlib
 import importlib.util
-import os
 import pickle
-import subprocess
 import sys
 from datetime import datetime, timezone
 from functools import partial
@@ -47,7 +44,7 @@ from pathlib import Path
 # caminho para que `mods.evidencias.*` resolva (com `python -m` ja resolve).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from mods.evidencias import atomico
+from mods.evidencias import atomico, procedencia
 from mods.evidencias.cache import FaltaNoCache, VersaoIndeterminada
 from mods.evidencias.entrada import (
     ORIGENS_DE_ENRIQUECIMENTO, ler_alvos, ler_ligantes, ler_sintomas)
@@ -63,69 +60,15 @@ SAIDA_ERRO = 2
 SAIDA_PARCIAL = 3
 
 
-def _git(args: list[str], cwd: Path) -> str | None:
-    try:
-        r = subprocess.run(["git", *args], capture_output=True, text=True,
-                           timeout=10, cwd=cwd)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return r.stdout.strip() if r.returncode == 0 else None
-
-
-def _commit_do_pipeline() -> str:
-    """Hash do commit atual; 'desconhecido' sem git (ex.: pacote sem .git).
-
-    Duas coisas que um hash sozinho esconderia:
-    * arvore suja -- o sufixo '+sujo' diz que o codigo que rodou NAO e o do
-      commit, e um hash limpo de uma arvore modificada e uma afirmacao falsa
-      de reprodutibilidade;
-    * pacote embutido em outro repositorio -- o hash seria o do repositorio de
-      fora. Vem acompanhado do caminho da raiz (`pipeline_repositorio`) e do
-      aviso quando essa raiz nao e a do proprio pacote.
-    """
-    pasta = Path(__file__).resolve().parent
-    commit = _git(["rev-parse", "HEAD"], pasta)
-    if not commit:
-        return "desconhecido"
-    sujo = _git(["status", "--porcelain"], pasta)
-    if sujo is None:
-        return commit + "+estado_desconhecido"
-    return commit + ("+sujo" if sujo else "")
-
-
-def _repositorio_do_pipeline() -> dict:
-    """Onde o commit foi lido, para que um pacote embutido fique visivel."""
-    pasta = Path(__file__).resolve().parent
-    raiz = _git(["rev-parse", "--show-toplevel"], pasta)
-    esperada = pasta.parent  # a raiz do proprio druglikeness
-    dados = {"pipeline_repositorio": raiz or "nenhum"}
-    if raiz and Path(raiz).resolve() != esperada.resolve():
-        dados["pipeline_repositorio_aviso"] = (
-            f"o commit e do repositorio {raiz}, que nao e a raiz do pacote "
-            f"({esperada}): o pacote esta embutido em outro repositorio e o "
-            "hash nao identifica o codigo desta etapa")
-    return dados
-
-
-def _versoes_do_ambiente() -> dict:
-    """Python e RDKit: o manifesto e a citacao, e o RDKit decide a quimica
-    (InChIKey parental, fingerprint). Caminho nao resolvido nao e problema --
-    os MD5 prendem o conteudo, que e mais forte."""
-    versoes = {"python": sys.version.split()[0]}
-    try:
-        import rdkit
-        versoes["rdkit"] = getattr(rdkit, "__version__", "desconhecida")
-    except ImportError:
-        versoes["rdkit"] = "ausente"
-    return versoes
-
-
-def _md5(caminho: str) -> str:
-    h = hashlib.md5(usedforsecurity=False)
-    with open(caminho, "rb") as f:
-        for bloco in iter(lambda: f.read(1 << 20), b""):
-            h.update(bloco)
-    return h.hexdigest()
+# Procedencia (commit, repositorio, versoes, MD5) e compartilhada com a etapa
+# 2: duas etapas da mesma analise nao podem registrar quem rodou de formas
+# diferentes. Os aliases abaixo existem porque este modulo ja expunha esses
+# nomes.
+_git = procedencia._git
+_commit_do_pipeline = procedencia.commit_do_pipeline
+_repositorio_do_pipeline = procedencia.repositorio_do_pipeline
+_versoes_do_ambiente = procedencia.versoes_do_ambiente
+_md5 = procedencia.md5
 
 
 def _relatar(nome: str, problemas) -> None:
@@ -351,12 +294,7 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, RuntimeError, ValueError, VersaoIndeterminada) as e:
         print(f"[erro] cache de rede: {e}", file=sys.stderr)
         return SAIDA_ERRO
-    def md5_ou_none(caminho):
-        # Arquivo ilegivel aqui nao e o erro a relatar: a etapa que o usa o faz.
-        try:
-            return _md5(os.path.expanduser(caminho)) if caminho else None
-        except OSError:
-            return None
+    md5_ou_none = procedencia.md5_ou_none
     md5s = {"checkpoint_md5": md5_ou_none(args.checkpoint),
             "rotulos_md5": md5_ou_none(args.rotulos),
             "evidencias_chembl_md5": md5_ou_none(args.evidencias_chembl),
