@@ -4,7 +4,7 @@ import json
 import pytest
 
 import mods.coletar_evidencias as cli
-from mods.coletar_evidencias import main
+from mods.coletar_evidencias import SAIDA_PARCIAL, main
 from mods.evidencias.cache import (
     Cache, FaltaNoCache, VersaoIndeterminada, abrir_ao_vivo,
     abrir_para_repeticao, consultar_versoes)
@@ -178,7 +178,7 @@ def test_manifesto_grava_versoes_e_repeticao_funciona_sem_rede(tmp_path, monkeyp
                         lambda *a: [{"alvo_chembl_id": "CHEMBL222",
                                                        "origem": "usuario"}])
     codigo, pasta = _rodar_enriquecido(tmp_path, "um")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     m = ler_manifesto(pasta / "manifesto.json")
     assert m["versoes"]["open_targets"] == "24.09" and m["versoes"]["chembl"] == "ChEMBL_35"
     assert m["parametros"]["cache_pasta"].startswith("open_targets-24.09")
@@ -190,7 +190,7 @@ def test_manifesto_grava_versoes_e_repeticao_funciona_sem_rede(tmp_path, monkeyp
     original = (pasta / "manifesto.json").read_text()
     codigo, pasta2 = _rodar_enriquecido(
         tmp_path, "dois", ["--manifesto", str(pasta / "manifesto.json")])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert (pasta / "manifesto.json").read_text() == original
     assert (pasta2 / "e.tsv").read_text() == (pasta / "e.tsv").read_text()
 
@@ -199,7 +199,7 @@ def test_repeticao_recusa_cache_de_outra_versao(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", _servicos())
     monkeypatch.setattr(cli, "_enriquecer", lambda *a: [])
     codigo, pasta = _rodar_enriquecido(tmp_path, "um")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     caminho = pasta / "manifesto.json"
     m = json.loads(caminho.read_text())
     m["versoes"]["open_targets"] = "23.12"
@@ -270,7 +270,7 @@ def test_enriquecimento_real_repetido_so_do_cache_e_entrada_alterada_recusa(
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
     _entrada_real(tmp_path)
     codigo, vivo = _cli_real(tmp_path, "vivo")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     enr = (vivo / "enr.tsv").read_text(encoding="utf-8")
     assert "CHEMBL4296" in enr and "\t0.6\t" in enr and len(chamadas) > 3
     m = ler_manifesto(vivo / "manifesto.json")
@@ -281,7 +281,7 @@ def test_enriquecimento_real_repetido_so_do_cache_e_entrada_alterada_recusa(
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", proibido)
     ref = ["--manifesto", str(vivo / "manifesto.json")]
     codigo, rep = _cli_real(tmp_path, "rep", ref)     # socket bloqueado tambem
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert (rep / "enr.tsv").read_text(encoding="utf-8") == enr
 
     # --limite diferente: recusa.
@@ -301,7 +301,7 @@ def test_manifesto_sem_hash_de_entrada_recusa_a_repeticao(tmp_path, monkeypatch,
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
     _entrada_real(tmp_path)
     codigo, vivo = _cli_real(tmp_path, "vivo")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     caminho = vivo / "manifesto.json"
     m = json.loads(caminho.read_text())
     del m["versoes"]["ligantes_md5"]
@@ -325,7 +325,7 @@ def test_falta_no_cache_na_repeticao_sai_com_2_sem_saida(tmp_path, monkeypatch, 
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
     _entrada_real(tmp_path)
     codigo, vivo = _cli_real(tmp_path, "vivo")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     for f in (tmp_path / "cache").glob("*/*.json"):   # esvazia o cache
         if f.name != "versoes.json":
             f.unlink()
@@ -364,15 +364,16 @@ def test_falhas_de_item_ficam_no_manifesto_e_a_repeticao_as_cita(tmp_path, monke
     monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
     _entrada_real(tmp_path)
     codigo, vivo = _cli_real(tmp_path, "vivo")
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     caminho = vivo / "manifesto.json"
     m = json.loads(caminho.read_text())
-    assert m["contagens"]["falhas_de_item"] == {"enriquecimento": [], "medido": []}
+    assert m["contagens"]["falhas_de_item"] == {
+        "previsto": [], "enriquecimento": [], "medido": []}
     m["contagens"]["falhas_de_item"]["enriquecimento"] = ["alvo X: resposta inesperada"]
     caminho.write_text(json.dumps(m))
     capsys.readouterr()
     codigo, _ = _cli_real(tmp_path, "rep", ["--manifesto", str(caminho)])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert "falhas de item diferem" in capsys.readouterr().err
 
 
@@ -386,3 +387,31 @@ def test_hash_obrigatorio_quando_a_entrada_foi_usada(chave, param):
     assert hashes_de_entrada_ausentes(m) == [chave]
     m["versoes"][chave] = "x"
     assert hashes_de_entrada_ausentes(m) == []
+
+
+def test_falha_de_item_real_entra_no_manifesto(tmp_path, monkeypatch, capsys):
+    """Falha de item DE VERDADE, ponta a ponta: o ChEMBL responde sem
+    `pref_name` para o alvo pedido e a resolucao dele falha. E o unico
+    mecanismo que impede uma coleta incompleta de parecer completa, e o outro
+    teste apenas injeta o valor no JSON do manifesto."""
+    base = _servicos()
+
+    def servico(url, corpo=None):
+        if "target/CHEMBL999.json" in url:
+            return {"target_chembl_id": "CHEMBL999"}   # sem pref_name/organism
+        return base(url, corpo)
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    alvos = tmp_path / "alvos.tsv"
+    alvos.write_text("alvo_chembl_id\nCHEMBL999\n", encoding="utf-8")
+    saida = tmp_path / "e.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(alvos), "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(saida), "--cache", str(tmp_path / "cache"),
+                   "--evidencias-chembl", "tests/dados/evidencias_amostra.csv"])
+    assert codigo == SAIDA_PARCIAL
+    m = ler_manifesto(tmp_path / "manifesto.json")
+    medido = m["contagens"]["falhas_de_item"]["medido"]
+    assert any("CHEMBL999" in p and "RespostaInesperada" in p for p in medido)
+    assert m["contagens"]["execucao_parcial"] is True
+    err = capsys.readouterr().err
+    assert "[aviso] evidencia medida" in err and "CHEMBL999" in err

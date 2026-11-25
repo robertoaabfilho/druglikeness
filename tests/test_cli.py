@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
-from mods.coletar_evidencias import main
+from mods.coletar_evidencias import SAIDA_PARCIAL, main
 from mods.evidencias.manifesto import ler_manifesto
+
+# As fixtures tests/dados/*_minimo.* tem, de proposito, uma linha ruim cada:
+# toda execucao com elas e PARCIAL, e e assim que se prova que o codigo de
+# saida distingue "completa" de "incompleta" (automacao nao le o stderr).
 
 
 def test_execucao_minima_produz_tabela_valida_e_manifesto(tmp_path):
@@ -9,11 +13,26 @@ def test_execucao_minima_produz_tabela_valida_e_manifesto(tmp_path):
                    "--alvos", "tests/dados/alvos_minimo.tsv",
                    "--sintomas", "tests/dados/sintomas.txt",
                    "--saida", str(saida), "--sem-rede"])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert saida.read_text(encoding="utf-8").splitlines()[0].startswith("#ligante\t")
     m = ler_manifesto(tmp_path / "manifesto.json")
     assert m["parametros"]["corte"] == 0.1
     assert "pipeline_commit" in m["versoes"]
+    assert m["versoes"]["python"] and m["versoes"]["rdkit"] not in ("", "ausente")
+    assert m["contagens"]["execucao_parcial"] is True
+
+
+def test_entrada_limpa_sai_com_zero_e_manifesto_diz_completa(tmp_path):
+    lig = tmp_path / "lig.tsv"
+    lig.write_text("nome\tsmiles\naspirina\tCC(=O)Oc1ccccc1C(=O)O\n", encoding="utf-8")
+    alv = tmp_path / "alvos.tsv"
+    alv.write_text("alvo_chembl_id\nCHEMBL222\n", encoding="utf-8")
+    codigo = main(["--ligantes", str(lig), "--alvos", str(alv), "--sintomas",
+                   "tests/dados/sintomas.txt", "--saida", str(tmp_path / "e.tsv"),
+                   "--sem-rede"])
+    assert codigo == 0
+    assert ler_manifesto(tmp_path / "manifesto.json")[
+        "contagens"]["execucao_parcial"] is False
 
 
 def test_erro_de_entrada_interrompe_antes_de_escrever(tmp_path):
@@ -32,7 +51,7 @@ def test_cria_diretorio_de_saida_ausente(tmp_path):
                    "--alvos", "tests/dados/alvos_minimo.tsv",
                    "--sintomas", "tests/dados/sintomas.txt",
                    "--saida", str(saida), "--sem-rede"])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert saida.exists() and (saida.parent / "manifesto.json").exists()
 
 
@@ -49,7 +68,9 @@ def test_execucao_como_script_direto(tmp_path):
          "--sintomas", "tests/dados/sintomas.txt",
          "--saida", str(saida), "--sem-rede"],
         cwd=raiz, capture_output=True, text=True, env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)})
-    assert r.returncode == 0, r.stderr
+    # Codigo PROPRIO para execucao parcial: antes era 0, e automacao nao tinha
+    # como distinguir uma coleta completa de uma que descartou linhas de entrada.
+    assert r.returncode == SAIDA_PARCIAL, r.stderr
     assert saida.exists()
     assert "PARCIAL" in r.stderr
 
@@ -62,8 +83,29 @@ ARGS = ["--ligantes", "tests/dados/ligantes_minimo.tsv",
 def test_commit_e_hash_de_40_hex_em_execucao_normal(tmp_path):
     import re
     main(ARGS + ["--saida", str(tmp_path / "e.tsv")])
-    c = ler_manifesto(tmp_path / "manifesto.json")["versoes"]["pipeline_commit"]
-    assert re.fullmatch(r"[0-9a-f]{40}", c)
+    versoes = ler_manifesto(tmp_path / "manifesto.json")["versoes"]
+    # Arvore suja ganha sufixo: hash limpo de codigo modificado seria uma
+    # afirmacao falsa de reprodutibilidade.
+    assert re.fullmatch(r"[0-9a-f]{40}(\+sujo)?", versoes["pipeline_commit"])
+    assert versoes["pipeline_repositorio"].endswith("druglikeness")
+
+
+def test_arvore_suja_e_marcada_e_o_repositorio_de_fora_fica_visivel(monkeypatch):
+    from pathlib import Path
+    import mods.coletar_evidencias as cli
+    respostas = {}
+    monkeypatch.setattr(cli, "_git", lambda args, cwd: respostas.get(args[0]))
+    respostas = {"rev-parse": "a" * 40, "status": ""}
+    assert cli._commit_do_pipeline() == "a" * 40
+    respostas = {"rev-parse": "a" * 40, "status": " M mods/evidencias/entrada.py"}
+    assert cli._commit_do_pipeline() == "a" * 40 + "+sujo"
+    respostas = {"rev-parse": "a" * 40, "status": None}
+    assert cli._commit_do_pipeline() == "a" * 40 + "+estado_desconhecido"
+    # Pacote embutido: o commit e de outro repositorio, e isso tem de aparecer.
+    respostas = {"rev-parse": str(Path("/outro/repo"))}
+    dados = cli._repositorio_do_pipeline()
+    assert dados["pipeline_repositorio"] == "/outro/repo"
+    assert "embutido em outro repositorio" in dados["pipeline_repositorio_aviso"]
 
 
 def test_sem_git_o_commit_e_desconhecido(tmp_path, monkeypatch):
@@ -72,7 +114,7 @@ def test_sem_git_o_commit_e_desconhecido(tmp_path, monkeypatch):
     def sem_git(*a, **k):
         raise FileNotFoundError("git")
     monkeypatch.setattr(subprocess, "run", sem_git)
-    assert main(ARGS + ["--saida", str(tmp_path / "e.tsv")]) == 0
+    assert main(ARGS + ["--saida", str(tmp_path / "e.tsv")]) == SAIDA_PARCIAL
     m = ler_manifesto(tmp_path / "manifesto.json")
     assert m["versoes"]["pipeline_commit"] == "desconhecido"
 
@@ -81,7 +123,7 @@ def test_sintomas_vazio_e_aviso_e_a_execucao_continua(tmp_path, capsys):
     vazio = tmp_path / "sintomas.txt"
     vazio.write_text("# so comentario\n", encoding="utf-8")
     args = [a if a != "tests/dados/sintomas.txt" else str(vazio) for a in ARGS]
-    assert main(args + ["--saida", str(tmp_path / "e.tsv")]) == 0
+    assert main(args + ["--saida", str(tmp_path / "e.tsv")]) == SAIDA_PARCIAL
     err = capsys.readouterr().err
     assert "[aviso] sintomas" in err and "NENHUM enriquecimento" in err
 
@@ -175,7 +217,7 @@ def _rodar_com_modelo(tmp_path, modelo, rotulos, corte, nome):
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
                    "--checkpoint", modelo, "--rotulos", str(rot),
                    "--corte", str(corte)])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     return list(ler_evidencias(saida)), ler_manifesto(saida.parent / "manifesto.json"), rot
 
 
@@ -244,7 +286,7 @@ def test_sucesso_substitui_saida_preexistente(tmp_path, modelo_falso, rotulos_fa
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
                    "--checkpoint", modelo_falso, "--corte", "0",
                    "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert b"lixo" not in saida.read_bytes()
     assert list(ler_evidencias(saida))
     assert [p.name for p in tmp_path.glob("*.tmp")] == []
@@ -283,7 +325,7 @@ def test_modo_da_tabela_igual_ao_do_manifesto(tmp_path, modelo_falso, rotulos_fa
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
                    "--checkpoint", modelo_falso,
                    "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     modo = lambda p: stat.S_IMODE(p.stat().st_mode)
     assert modo(saida) == modo(saida.parent / "manifesto.json")
 
@@ -319,7 +361,7 @@ def test_chmod_que_falha_nao_custa_a_tabela(tmp_path, modelo_falso, rotulos_fals
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
                    "--checkpoint", modelo_falso, "--corte", "0",
                    "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos))])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     assert len(saida.read_text(encoding="utf-8").splitlines()) > 1
 
 
@@ -339,17 +381,120 @@ def test_enriquecimento_avisa_que_a_evidencia_nao_o_usou(tmp_path, monkeypatch, 
                    "--alvos", "tests/dados/alvos_minimo.tsv",
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(tmp_path / "e.tsv"),
                    "--rotulos", str(rotulos), "--alvos-enriquecidos", str(enr)])
-    assert codigo == 0
+    assert codigo == SAIDA_PARCIAL
     erro = capsys.readouterr().err
     assert "2 alvos gravados" in erro and "NAO os usou" in erro and f"--alvos {enr}" in erro
     c = json.loads((tmp_path / "manifesto.json").read_text())["contagens"]
     assert c["alvos_enriquecidos_escritos"] == 2
     assert c["alvos_enriquecidos_usados_na_evidencia"] is False
-    # Rodar a coleta com o proprio arquivo enriquecido muda o flag e some o aviso.
-    saida2 = tmp_path / "e2.tsv"
+    # Passo 2 do README: coletar COM a lista enriquecida, sem --alvos-enriquecidos.
+    # O flag vem da procedencia dos alvos lidos, nao da flag da linha de comando:
+    # antes, este passo registrava 'false', o contrario da verdade.
+    saida2 = tmp_path / "dois" / "e2.tsv"
     codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv", "--alvos", str(enr),
                    "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida2),
-                   "--rotulos", str(rotulos), "--alvos-enriquecidos", str(enr)])
-    assert codigo == 0
-    c = json.loads((tmp_path / "manifesto.json").read_text())["contagens"]
+                   "--rotulos", str(rotulos)])
+    assert codigo == SAIDA_PARCIAL
+    c = json.loads((saida2.parent / "manifesto.json").read_text())["contagens"]
     assert c["alvos_enriquecidos_usados_na_evidencia"] is True
+    assert c["origem_dos_alvos_da_evidencia"] == {"usuario": 1, "open_targets": 1}
+
+
+def test_alvos_e_alvos_enriquecidos_no_mesmo_arquivo_e_recusado(tmp_path, capsys):
+    lista = tmp_path / "alvos.tsv"
+    lista.write_text("alvo_chembl_id\nCHEMBL222\n", encoding="utf-8")
+    antes = lista.read_bytes()
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv", "--alvos", str(lista),
+               "--sintomas", "tests/dados/sintomas.txt", "--saida", str(tmp_path / "e.tsv"),
+               "--rotulos", "tests/dados/alvos_minimo.tsv",
+               "--alvos-enriquecidos", str(lista)])
+    assert rc == 2
+    assert lista.read_bytes() == antes   # a revisao do usuario fica de pe
+    assert "mesmo arquivo" in capsys.readouterr().err
+
+
+def test_saida_e_alvos_enriquecidos_no_mesmo_arquivo_e_recusado(tmp_path, capsys):
+    saida = tmp_path / "e.tsv"
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", "tests/dados/alvos_minimo.tsv",
+               "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+               "--rotulos", "tests/dados/alvos_minimo.tsv",
+               "--alvos-enriquecidos", str(saida)])
+    assert rc == 2 and not saida.exists()
+    assert "uma apagaria a outra" in capsys.readouterr().err
+
+
+def _args_minimos(tmp_path, *extra):
+    return ["--ligantes", "tests/dados/ligantes_minimo.tsv",
+            "--alvos", "tests/dados/alvos_minimo.tsv",
+            "--sintomas", "tests/dados/sintomas.txt",
+            "--saida", str(tmp_path / "evidencias.tsv"), "--sem-rede", *extra]
+
+
+def test_falha_ao_preparar_o_manifesto_nao_publica_a_tabela(tmp_path, monkeypatch, capsys):
+    """Tabela sem manifesto nao e citavel: era o que sobrava quando a escrita
+    do manifesto falhava DEPOIS da troca da tabela."""
+    from mods.evidencias import atomico
+    real = atomico.temporario
+
+    def falha(destino):
+        if str(destino).endswith("manifesto.json"):
+            raise OSError("disco cheio")
+        return real(destino)
+    monkeypatch.setattr(atomico, "temporario", falha)
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nprecioso\n")
+    (tmp_path / "manifesto.json").write_text('{"antigo": true}', encoding="utf-8")
+    assert main(_args_minimos(tmp_path)) == 2
+    assert saida.read_bytes() == b"#antigo\nprecioso\n"
+    assert (tmp_path / "manifesto.json").read_text(encoding="utf-8") == '{"antigo": true}'
+    assert list(tmp_path.glob("*.tmp")) == []
+    assert "Traceback" not in capsys.readouterr().err
+
+
+def test_falha_na_lista_enriquecida_nao_publica_a_tabela(tmp_path, monkeypatch, capsys):
+    import mods.coletar_evidencias as cli
+    from mods.evidencias import atomico
+    rotulos = tmp_path / "labels.tsv"
+    rotulos.write_text("target_idx\tchembl_id\tpref_name\torganism\ttarget_type\t"
+                       "active_molecules\n0\tCHEMBL222\tNET\tHomo sapiens\t"
+                       "SINGLE PROTEIN\t5\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "_abrir_cache", lambda *a: (None, {}, None, None))
+    monkeypatch.setattr(cli, "_enriquecer", lambda *a: [{"alvo_chembl_id": "CHEMBL222"}])
+    real = atomico.temporario
+
+    def falha(destino):
+        if str(destino).endswith("enr.tsv"):
+            raise OSError("disco cheio")
+        return real(destino)
+    monkeypatch.setattr(atomico, "temporario", falha)
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nprecioso\n")
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", "tests/dados/alvos_minimo.tsv",
+               "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+               "--rotulos", str(rotulos),
+               "--alvos-enriquecidos", str(tmp_path / "enr.tsv")])
+    assert rc == 2
+    assert saida.read_bytes() == b"#antigo\nprecioso\n"
+    assert not (tmp_path / "manifesto.json").exists()
+    assert not (tmp_path / "enr.tsv").exists()
+    assert "alvos enriquecidos" in capsys.readouterr().err
+
+
+def test_largura_do_checkpoint_divergente_falha_limpo(tmp_path, modelo_falso,
+                                                      rotulos_falsos, capsys):
+    """O README manda trocar o checkpoint: par divergente e o caso esperado.
+    Antes isso dava zero linhas sem nenhuma mensagem."""
+    saida = tmp_path / "evidencias.tsv"
+    saida.write_bytes(b"#antigo\nprecioso\n")
+    rc = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+               "--alvos", str(_alvos_do_modelo_falso(tmp_path)),
+               "--sintomas", "tests/dados/sintomas.txt", "--saida", str(saida),
+               "--checkpoint", modelo_falso,
+               "--rotulos", str(_rotulos_tsv(tmp_path, rotulos_falsos[:3]))])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "espacos de alvos diferentes" in err and "Traceback" not in err
+    assert saida.read_bytes() == b"#antigo\nprecioso\n"
+    assert not (tmp_path / "manifesto.json").exists()

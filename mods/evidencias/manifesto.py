@@ -9,14 +9,24 @@ JSON, legivel por humano; escrito junto da tabela de evidencias.
 import json
 from pathlib import Path
 
+from mods.evidencias.atomico import escrever_texto
+
+
+def texto_do_manifesto(*, parametros: dict, versoes: dict,
+                       contagens: dict) -> str:
+    """O JSON do manifesto, para quem precisa prepara-lo antes de publicar as
+    outras saidas (tabela sem manifesto nao e citavel)."""
+    manifesto = {"parametros": parametros, "versoes": versoes,
+                 "contagens": contagens}
+    return json.dumps(manifesto, indent=2, ensure_ascii=False) + "\n"
+
 
 def escrever_manifesto(caminho, *, parametros: dict, versoes: dict,
                        contagens: dict) -> None:
-    manifesto = {"parametros": parametros, "versoes": versoes,
-                 "contagens": contagens}
-    Path(caminho).write_text(
-        json.dumps(manifesto, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8")
+    """Escrita atomica: o manifesto anterior (chave da repeticao) sobrevive a
+    uma falha no meio da escrita."""
+    escrever_texto(caminho, texto_do_manifesto(
+        parametros=parametros, versoes=versoes, contagens=contagens))
 
 
 def ler_manifesto(caminho) -> dict:

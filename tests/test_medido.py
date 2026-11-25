@@ -190,7 +190,8 @@ def test_cli_avisa_quando_leu_linhas_e_nenhuma_casou(tmp_path, capsys):
                "tests/dados/sintomas.txt", "--saida", str(saida), "--sem-rede",
                "--evidencias-chembl", AMOSTRA])
     err = capsys.readouterr().err
-    assert rc == 0 and "NENHUMA casou" in err
+    from mods.coletar_evidencias import SAIDA_PARCIAL
+    assert rc == SAIDA_PARCIAL and "NENHUMA casou" in err
 
 
 def test_correspondencia_desconhecida_ou_nfd_nao_vira_estereoisomero(tmp_path):

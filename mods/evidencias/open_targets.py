@@ -25,6 +25,7 @@ Regras
 
 from typing import Callable
 
+from mods.evidencias.atomico import escrever_texto
 from mods.evidencias.chembl import (
     ListaTruncada, RespostaInesperada, alvos_por_uniprot, erro_de_item)
 from mods.evidencias.esquema import escapar
@@ -188,16 +189,26 @@ def colapsar_familia(alvos: list[dict]) -> list[dict]:
     return [a for a in alvos if id(a) not in dobrados]
 
 
+def texto_dos_alvos_enriquecidos(alvos: list[dict]) -> str:
+    """O arquivo inteiro como texto. A lista de alvos tem centenas de linhas
+    (nao milhoes, como a de evidencias), entao monta-la em memoria e o que
+    permite prepara-la antes de publicar qualquer saida."""
+    linhas = ["#" + "\t".join(COLUNAS_ENRIQUECIDOS)]
+    for a in alvos:
+        celulas = []
+        for c in COLUNAS_ENRIQUECIDOS:
+            v = a.get("score") if c == "escore_associacao" and "score" in a else a.get(c)
+            if isinstance(v, bool):
+                v = "sim" if v else "nao"
+            celulas.append(escapar(v))
+        linhas.append("\t".join(celulas))
+    return "\n".join(linhas) + "\n"
+
+
 def escrever_alvos_enriquecidos(caminho, alvos: list[dict]) -> None:
     """Segunda saida da etapa. Mesmo formato do `evidencias.tsv`: TSV, cabecalho
-    '#', escape reversivel, ponto decimal. Grava tudo que recebe."""
-    with open(caminho, "w", encoding="utf-8", newline="\n") as f:
-        f.write("#" + "\t".join(COLUNAS_ENRIQUECIDOS) + "\n")
-        for a in alvos:
-            celulas = []
-            for c in COLUNAS_ENRIQUECIDOS:
-                v = a.get("score") if c == "escore_associacao" and "score" in a else a.get(c)
-                if isinstance(v, bool):
-                    v = "sim" if v else "nao"
-                celulas.append(escapar(v))
-            f.write("\t".join(celulas) + "\n")
+    '#', escape reversivel, ponto decimal. Grava tudo que recebe.
+
+    Escrita atomica: este e o arquivo que o README manda revisar a mao, e uma
+    falha no meio da escrita nao pode destruir a versao revisada."""
+    escrever_texto(caminho, texto_dos_alvos_enriquecidos(alvos))

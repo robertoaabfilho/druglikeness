@@ -18,6 +18,18 @@ deixa arquivo nenhum. Problemas `erro` de linha descartam a linha e sao
 relatados; a execucao so para quando uma entrada fica sem nenhum registro
 utilizavel (coluna obrigatoria ausente, arquivo vazio, todas as linhas ruins).
 Problemas `aviso` sao relatados e a execucao continua.
+
+Codigos de saida
+----------------
+0 execucao completa; 3 execucao PARCIAL (alguma linha de entrada descartada ou
+alguma falha de item: a saida existe, mas esta incompleta e o manifesto diz
+isso); 1 nenhuma entrada utilizavel; 2 erro (nada e publicado).
+
+Publicacao das saidas
+---------------------
+As tres saidas (tabela, lista enriquecida, manifesto) sao preparadas em
+temporarios e so entao publicadas, juntas. Tabela sem manifesto nao e citavel,
+e era o que sobrava quando a escrita do manifesto falhava depois da troca.
 """
 
 import argparse
@@ -27,7 +39,6 @@ import os
 import pickle
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
@@ -36,25 +47,77 @@ from pathlib import Path
 # caminho para que `mods.evidencias.*` resolva (com `python -m` ja resolve).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from mods.evidencias import atomico
 from mods.evidencias.cache import FaltaNoCache, VersaoIndeterminada
-from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
+from mods.evidencias.entrada import (
+    ORIGENS_DE_ENRIQUECIMENTO, ler_alvos, ler_ligantes, ler_sintomas)
 from mods.evidencias.esquema import EscritorEvidencias
 from mods.evidencias.manifesto import (
-    escrever_manifesto, hashes_de_entrada_ausentes, ler_manifesto,
+    hashes_de_entrada_ausentes, ler_manifesto, texto_do_manifesto,
     verificar_manifesto)
+
+# Codigos de saida (ver docstring do modulo).
+SAIDA_OK = 0
+SAIDA_SEM_ENTRADA = 1
+SAIDA_ERRO = 2
+SAIDA_PARCIAL = 3
+
+
+def _git(args: list[str], cwd: Path) -> str | None:
+    try:
+        r = subprocess.run(["git", *args], capture_output=True, text=True,
+                           timeout=10, cwd=cwd)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
 
 
 def _commit_do_pipeline() -> str:
-    """Hash do commit atual; 'desconhecido' sem git (ex.: pacote sem .git)."""
+    """Hash do commit atual; 'desconhecido' sem git (ex.: pacote sem .git).
+
+    Duas coisas que um hash sozinho esconderia:
+    * arvore suja -- o sufixo '+sujo' diz que o codigo que rodou NAO e o do
+      commit, e um hash limpo de uma arvore modificada e uma afirmacao falsa
+      de reprodutibilidade;
+    * pacote embutido em outro repositorio -- o hash seria o do repositorio de
+      fora. Vem acompanhado do caminho da raiz (`pipeline_repositorio`) e do
+      aviso quando essa raiz nao e a do proprio pacote.
+    """
+    pasta = Path(__file__).resolve().parent
+    commit = _git(["rev-parse", "HEAD"], pasta)
+    if not commit:
+        return "desconhecido"
+    sujo = _git(["status", "--porcelain"], pasta)
+    if sujo is None:
+        return commit + "+estado_desconhecido"
+    return commit + ("+sujo" if sujo else "")
+
+
+def _repositorio_do_pipeline() -> dict:
+    """Onde o commit foi lido, para que um pacote embutido fique visivel."""
+    pasta = Path(__file__).resolve().parent
+    raiz = _git(["rev-parse", "--show-toplevel"], pasta)
+    esperada = pasta.parent  # a raiz do proprio druglikeness
+    dados = {"pipeline_repositorio": raiz or "nenhum"}
+    if raiz and Path(raiz).resolve() != esperada.resolve():
+        dados["pipeline_repositorio_aviso"] = (
+            f"o commit e do repositorio {raiz}, que nao e a raiz do pacote "
+            f"({esperada}): o pacote esta embutido em outro repositorio e o "
+            "hash nao identifica o codigo desta etapa")
+    return dados
+
+
+def _versoes_do_ambiente() -> dict:
+    """Python e RDKit: o manifesto e a citacao, e o RDKit decide a quimica
+    (InChIKey parental, fingerprint). Caminho nao resolvido nao e problema --
+    os MD5 prendem o conteudo, que e mais forte."""
+    versoes = {"python": sys.version.split()[0]}
     try:
-        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
-                           text=True, timeout=10,
-                           cwd=Path(__file__).resolve().parent)
-        if r.returncode == 0 and r.stdout.strip():
-            return r.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
-        pass
-    return "desconhecido"
+        import rdkit
+        versoes["rdkit"] = getattr(rdkit, "__version__", "desconhecida")
+    except ImportError:
+        versoes["rdkit"] = "ausente"
+    return versoes
 
 
 def _md5(caminho: str) -> str:
@@ -176,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
         print("[erro] --checkpoint e --rotulos devem ser dados juntos "
               "(--rotulos sozinho serve so para nomear alvos dados por ID)",
               file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
 
     try:
         ligantes, p_lig = ler_ligantes(args.ligantes, args.limite)
@@ -184,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         sintomas = ler_sintomas(args.sintomas)
     except (OSError, UnicodeDecodeError) as e:
         print(f"[erro] nao foi possivel ler a entrada: {e}", file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
     _relatar("ligantes", p_lig)
     _relatar("alvos", p_alvo)
 
@@ -193,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[erro] {n}: nenhum registro utilizavel; execucao interrompida",
               file=sys.stderr)
     if vazias:
-        return 1
+        return SAIDA_SEM_ENTRADA
     if not sintomas:
         print("[aviso] sintomas: nenhum sintoma na entrada; NENHUM enriquecimento "
               "sera feito (so os alvos informados serao usados)", file=sys.stderr)
@@ -203,16 +266,29 @@ def main(argv: list[str] | None = None) -> int:
         sintoma, _, efo = par.partition("=")
         if not sintoma.strip() or not efo.strip():
             print(f"[erro] --efo espera 'SINTOMA=EFO_ID', recebido {par!r}", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
         efos[sintoma.strip()] = efo.strip()
     if args.alvos_enriquecidos and not args.rotulos:
         print("[erro] --alvos-enriquecidos precisa de --rotulos (o espaco de alvos "
               "do modelo decide o que a expansao pode acrescentar)", file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
     if args.alvos_enriquecidos and args.sem_rede:
         print("[erro] --alvos-enriquecidos precisa de rede; incompativel com --sem-rede",
               file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
+    if args.alvos_enriquecidos:
+        destino_enr = Path(args.alvos_enriquecidos).expanduser().resolve()
+        if destino_enr == Path(args.alvos).expanduser().resolve():
+            print("[erro] --alvos e --alvos-enriquecidos apontam para o mesmo "
+                  f"arquivo ({args.alvos_enriquecidos}): a execucao leria a lista "
+                  "revisada e a reescreveria por cima da sua revisao. Grave a lista "
+                  "nova em outro caminho", file=sys.stderr)
+            return SAIDA_ERRO
+        if destino_enr == Path(args.saida).expanduser().resolve():
+            print("[erro] --saida e --alvos-enriquecidos apontam para o mesmo "
+                  f"arquivo ({args.saida}): sao duas saidas diferentes e uma "
+                  "apagaria a outra", file=sys.stderr)
+            return SAIDA_ERRO
     if efos and not args.alvos_enriquecidos:
         print("[aviso] --efo ignorado: sem --alvos-enriquecidos nao ha enriquecimento",
               file=sys.stderr)
@@ -226,14 +302,14 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as e:
             print(f"[erro] --manifesto: nao foi possivel ler {args.manifesto}: {e}",
                   file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
         ausentes = hashes_de_entrada_ausentes(anterior)
         if ausentes:
             print(f"[erro] repeticao recusada: o manifesto {args.manifesto} e anterior "
                   f"ao registro de MD5 das entradas e nao permite conferir os arquivos "
                   f"de entrada (ausentes: {', '.join(ausentes)}). Gere um manifesto novo "
                   "com uma execucao normal", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
         if manifesto.resolve() == Path(args.manifesto).resolve():
             manifesto = saida.parent / "manifesto_repeticao.json"
 
@@ -249,13 +325,13 @@ def main(argv: list[str] | None = None) -> int:
         if faltam:
             print(f"[erro] --checkpoint/--rotulos precisam de {', '.join(faltam)}: "
                   f"pip install {' '.join(faltam)}", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
         try:
             from mods.prever_alvos import carregar_rotulos
             rotulos = carregar_rotulos(args.rotulos)
         except (OSError, RuntimeError, ValueError) as e:
             print(f"[erro] rotulos: {e}", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
         if args.checkpoint:
             from mods.evidencias.predito import linhas_preditas
 
@@ -274,7 +350,7 @@ def main(argv: list[str] | None = None) -> int:
                 args, saida, anterior)
     except (OSError, RuntimeError, ValueError, VersaoIndeterminada) as e:
         print(f"[erro] cache de rede: {e}", file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
     def md5_ou_none(caminho):
         # Arquivo ilegivel aqui nao e o erro a relatar: a etapa que o usa o faz.
         try:
@@ -298,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
         if divergencias:
             print("[erro] repeticao recusada, a execucao difere do manifesto:\n  "
                   + "\n  ".join(divergencias), file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
     if args.alvos_enriquecidos:
         # Antes de tocar nas saidas: erro de rede aqui nao deixa tabela nenhuma.
         try:
@@ -306,12 +382,12 @@ def main(argv: list[str] | None = None) -> int:
                                               contagens_enriquecimento, cache)
         except (OSError, RuntimeError, ValueError, FaltaNoCache) as e:
             print(f"[erro] enriquecimento: {e}", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
 
     if args.evidencias_chembl and not Path(args.evidencias_chembl).expanduser().is_file():
         print(f"[erro] --evidencias-chembl: arquivo nao encontrado: "
               f"{args.evidencias_chembl}", file=sys.stderr)
-        return 2
+        return SAIDA_ERRO
     contagens_medido: dict = {}
     if args.evidencias_chembl:
         from mods.evidencias.medido import validar_cabecalho
@@ -319,19 +395,19 @@ def main(argv: list[str] | None = None) -> int:
             validar_cabecalho(args.evidencias_chembl)
         except (OSError, ValueError, UnicodeDecodeError) as e:
             print(f"[erro] evidencia medida: {e}", file=sys.stderr)
-            return 2
+            return SAIDA_ERRO
 
-    # Escrita atomica: a tabela nasce num temporario NO MESMO diretorio (mesmo
-    # sistema de arquivos) e so substitui o destino ao fim de uma execucao
-    # bem-sucedida. Qualquer falha deixa o evidencias.tsv anterior intacto.
-    tmp = None
+    # Escrita atomica: cada saida nasce num temporario NO MESMO diretorio
+    # (mesmo sistema de arquivos) e so toma o lugar do destino quando TODAS
+    # estao prontas. Qualquer falha deixa os arquivos anteriores intactos, e
+    # nunca se publica uma tabela sem o manifesto que a torna citavel.
+    pendentes: list[tuple[Path, Path]] = []
+    publicados: list[Path] = []
     etapa = "evidencia prevista"
     try:
-        fd, nome_tmp = tempfile.mkstemp(dir=saida.parent, prefix=saida.name + ".",
-                                        suffix=".tmp")
-        os.close(fd)
-        tmp = Path(nome_tmp)
-        with EscritorEvidencias(tmp) as escritor:
+        tabela = atomico.temporario(saida)
+        pendentes.append((tabela, saida))
+        with EscritorEvidencias(tabela) as escritor:
             if args.checkpoint:
                 for linha in linhas_preditas(
                         ligantes, alvos, checkpoint=args.checkpoint,
@@ -353,90 +429,114 @@ def main(argv: list[str] | None = None) -> int:
                     escritor.escrever(linha)
                     n_linhas += 1
             # as demais fontes de evidencia entram nas proximas tarefas
-        # mkstemp cria 0600; o arquivo publicado deve ter o modo de uma escrita
-        # normal (0666 menos a umask), igual ao do manifesto.
-        mascara = os.umask(0)
-        os.umask(mascara)
-        try:
-            os.chmod(tmp, 0o666 & ~mascara)
-        except OSError:
-            pass  # ajuste de cortesia: nunca custa o resultado (vfat, FUSE, SMB)
-        os.replace(tmp, saida)
+
+        for problema in contagens_modelo.get("problemas", []):
+            print(f"[aviso] evidencia prevista, {problema}", file=sys.stderr)
+        if args.alvos_enriquecidos:
+            for problema in contagens_enriquecimento.get("problemas", []):
+                print(f"[aviso] enriquecimento, {problema}", file=sys.stderr)
+        for problema in contagens_medido.get("problemas", []):
+            print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
+        if (contagens_medido.get("linhas_lidas") and
+                not contagens_medido.get("linhas_emitidas")):
+            print(f"[aviso] evidencia medida: {contagens_medido['linhas_lidas']} linhas "
+                  "lidas de --evidencias-chembl e NENHUMA casou com os ligantes e alvos "
+                  "pedidos; confira o arquivo, os InChIKeys e os nomes/organismos dos alvos "
+                  "(zero linhas nao significa 'sem evidencia')", file=sys.stderr)
+        ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
+        if ilegiveis:
+            print(f"[aviso] {ilegiveis} ligante(s) com SMILES ilegivel para o modelo: "
+                  "NAO foram pontuados (zero linhas deles nao significa 'sem atividade')",
+                  file=sys.stderr)
+
+        if args.alvos_enriquecidos:
+            etapa = "alvos enriquecidos"
+            from mods.evidencias.open_targets import texto_dos_alvos_enriquecidos
+            destino_enriquecidos = Path(args.alvos_enriquecidos)
+            destino_enriquecidos.parent.mkdir(parents=True, exist_ok=True)
+            arquivo = atomico.temporario(destino_enriquecidos)
+            pendentes.append((arquivo, destino_enriquecidos))
+            arquivo.write_text(texto_dos_alvos_enriquecidos(linhas_enriquecidas),
+                               encoding="utf-8")
+
+        etapa = "manifesto"
+        descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
+        falhas_de_item = {
+            "previsto": list(contagens_modelo.get("problemas", [])),
+            "enriquecimento": list(contagens_enriquecimento.get("problemas", [])),
+            "medido": list(contagens_medido.get("problemas", []))}
+        parcial = bool(descartadas) or any(falhas_de_item.values())
+        # Derivado do que a execucao usou, nao do que a linha de comando pediu:
+        # a evidencia usou enriquecimento se a LISTA DE ALVOS lida carrega
+        # procedencia de enriquecimento. Passar --alvos-enriquecidos nao faz a
+        # evidencia usa-la, e usa-la sem passar a flag era registrado como
+        # 'false' -- o manifesto afirmava o contrario da verdade.
+        origens_dos_alvos: dict[str, int] = {}
+        for a in alvos:
+            origem = a.get("origem_alvo") or "(sem origem)"
+            origens_dos_alvos[origem] = origens_dos_alvos.get(origem, 0) + 1
+        enriquecido_usado = any(o in ORIGENS_DE_ENRIQUECIMENTO for o in origens_dos_alvos)
+        arquivo = atomico.temporario(manifesto)
+        pendentes.append((arquivo, manifesto))
+        arquivo.write_text(texto_do_manifesto(
+            parametros={**parametros_de_saida,
+                        "checkpoint": args.checkpoint,
+                        "rotulos": args.rotulos,
+                        "evidencias_chembl": args.evidencias_chembl,
+                        "evidencias_chembl_md5": md5s["evidencias_chembl_md5"],
+                        "rotulos_md5": md5s["rotulos_md5"],
+                        "cache_raiz": raiz_cache, "cache_pasta": pasta_cache,
+                        "repeticao_de": args.manifesto,
+                        "ligantes": args.ligantes,
+                        "alvos": args.alvos, "sintomas": args.sintomas},
+            versoes={**versoes_rede, **md5s, **_versoes_do_ambiente(),
+                     **_repositorio_do_pipeline(),
+                     "pipeline_commit": _commit_do_pipeline(),
+                     "data": datetime.now(timezone.utc).isoformat(timespec="seconds")},
+            contagens={"ligantes": len(ligantes), "alvos": len(alvos),
+                       "sintomas": len(sintomas),
+                       "problemas_ligantes": len(p_lig), "problemas_alvos": len(p_alvo),
+                       "linhas_descartadas": descartadas,
+                       "execucao_parcial": parcial,
+                       "smiles_ilegiveis_modelo": ilegiveis,
+                       "linhas_evidencia": n_linhas,
+                       "medido_problemas": len(contagens_medido.get("problemas", [])),
+                       "falhas_de_item": falhas_de_item,
+                       "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
+                       "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
+                       "alvos_enriquecidos_escritos": len(linhas_enriquecidas) if args.alvos_enriquecidos else 0,
+                       "origem_dos_alvos_da_evidencia": origens_dos_alvos,
+                       "alvos_enriquecidos_usados_na_evidencia": enriquecido_usado,
+                       "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
+                       "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)}),
+            encoding="utf-8")
+
+        # So aqui algum arquivo do usuario e substituido, e todos de uma vez.
+        etapa = "publicacao"
+        for arquivo, destino in pendentes:
+            atomico.publicar(arquivo, destino)
+            publicados.append(destino)
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
             pickle.UnpicklingError, FaltaNoCache) as e:
-        # Execucao falha nao deixa tabela nova nem manifesto.
-        print(f"[erro] {etapa}: {e}", file=sys.stderr)
-        return 2
+        if etapa == "publicacao":
+            # Troca de nome que falha no meio: dizer exatamente o que ficou de
+            # fora, em vez de deixar o usuario supor que a saida esta completa.
+            faltaram = [str(d) for _, d in pendentes if d not in publicados]
+            print(f"[erro] publicacao incompleta: {e}. Publicado(s): "
+                  f"{', '.join(str(d) for d in publicados) or 'nenhum'}; NAO "
+                  f"publicado(s): {', '.join(faltaram)}", file=sys.stderr)
+        else:
+            # Execucao falha nao deixa saida nova nenhuma.
+            print(f"[erro] {etapa}: {e}", file=sys.stderr)
+        return SAIDA_ERRO
     finally:
-        if tmp is not None:
-            tmp.unlink(missing_ok=True)  # so o temporario, nunca o arquivo do usuario
+        # So os temporarios; o que foi publicado ja nao esta aqui.
+        for arquivo, _ in pendentes:
+            arquivo.unlink(missing_ok=True)
 
-    if args.alvos_enriquecidos:
-        from mods.evidencias.open_targets import escrever_alvos_enriquecidos
-        try:
-            Path(args.alvos_enriquecidos).parent.mkdir(parents=True, exist_ok=True)
-            escrever_alvos_enriquecidos(args.alvos_enriquecidos, linhas_enriquecidas)
-        except OSError as e:
-            print(f"[erro] alvos enriquecidos: {e}", file=sys.stderr)
-            return 2
-        for problema in contagens_enriquecimento.get("problemas", []):
-            print(f"[aviso] enriquecimento, {problema}", file=sys.stderr)
-
-    for problema in contagens_medido.get("problemas", []):
-        print(f"[aviso] evidencia medida, {problema}", file=sys.stderr)
-    if (contagens_medido.get("linhas_lidas") and
-            not contagens_medido.get("linhas_emitidas")):
-        print(f"[aviso] evidencia medida: {contagens_medido['linhas_lidas']} linhas "
-              "lidas de --evidencias-chembl e NENHUMA casou com os ligantes e alvos "
-              "pedidos; confira o arquivo, os InChIKeys e os nomes/organismos dos alvos "
-              "(zero linhas nao significa 'sem evidencia')", file=sys.stderr)
-    ilegiveis = contagens_modelo.get("smiles_ilegiveis", 0)
-    if ilegiveis:
-        print(f"[aviso] {ilegiveis} ligante(s) com SMILES ilegivel para o modelo: "
-              "NAO foram pontuados (zero linhas deles nao significa 'sem atividade')",
-              file=sys.stderr)
-
-    descartadas = sum(p.gravidade == "erro" for p in p_lig + p_alvo)
-    # Derivado do que a execucao fez: a evidencia so usou o enriquecido se
-    # --alvos aponta para o proprio arquivo enriquecido.
-    enriquecido_usado = bool(args.alvos_enriquecidos) and (
-        Path(args.alvos).expanduser().resolve()
-        == Path(args.alvos_enriquecidos).expanduser().resolve())
-    escrever_manifesto(
-        manifesto,
-        parametros={**parametros_de_saida,
-                    "checkpoint": args.checkpoint,
-                    "rotulos": args.rotulos,
-                    "evidencias_chembl": args.evidencias_chembl,
-                    "evidencias_chembl_md5": md5s["evidencias_chembl_md5"],
-                    "rotulos_md5": md5s["rotulos_md5"],
-                    "cache_raiz": raiz_cache, "cache_pasta": pasta_cache,
-                    "repeticao_de": args.manifesto,
-                    "ligantes": args.ligantes,
-                    "alvos": args.alvos, "sintomas": args.sintomas},
-        versoes={**versoes_rede, **md5s,
-                 "pipeline_commit": _commit_do_pipeline(),
-                 "data": datetime.now(timezone.utc).isoformat(timespec="seconds")},
-        contagens={"ligantes": len(ligantes), "alvos": len(alvos),
-                   "sintomas": len(sintomas),
-                   "problemas_ligantes": len(p_lig), "problemas_alvos": len(p_alvo),
-                   "linhas_descartadas": descartadas,
-                   "smiles_ilegiveis_modelo": ilegiveis,
-                   "linhas_evidencia": n_linhas,
-                   "medido_problemas": len(contagens_medido.get("problemas", [])),
-                   "falhas_de_item": {
-                       "enriquecimento": list(contagens_enriquecimento.get("problemas", [])),
-                       "medido": list(contagens_medido.get("problemas", []))},
-                   "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
-                   "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
-                   "alvos_enriquecidos_escritos": len(linhas_enriquecidas) if args.alvos_enriquecidos else 0,
-                   "alvos_enriquecidos_usados_na_evidencia": enriquecido_usado,
-                   "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
-                   "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
     if anterior is not None:
         antes = anterior.get("contagens", {}).get("falhas_de_item")
-        agora = {"enriquecimento": list(contagens_enriquecimento.get("problemas", [])),
-                 "medido": list(contagens_medido.get("problemas", []))}
+        agora = falhas_de_item
         if antes is None:
             print("[aviso] repeticao: o manifesto nao registra as falhas de item da "
                   "execucao original; nao ha como saber se esta as reproduziu",
@@ -451,9 +551,13 @@ def main(argv: list[str] | None = None) -> int:
                   f"{sum(map(len, antes.values()))} falha(s) de item (registradas no "
                   "manifesto): a saida repete essas ausencias, nao as resolve",
                   file=sys.stderr)
-    if descartadas:
-        print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
-              "descartada(s) por erro (detalhes acima)", file=sys.stderr)
+    if parcial:
+        n_falhas = sum(map(len, falhas_de_item.values()))
+        print(f"[ATENCAO] execucao PARCIAL (codigo {SAIDA_PARCIAL}): "
+              f"{descartadas} linha(s) de entrada descartada(s) por erro e "
+              f"{n_falhas} falha(s) de item (detalhes acima). A saida existe, mas "
+              "esta incompleta; o manifesto registra isso em execucao_parcial",
+              file=sys.stderr)
     if args.alvos_enriquecidos and not enriquecido_usado:
         proximo = (f"python mods/coletar_evidencias.py --ligantes {args.ligantes} "
                    f"--alvos {args.alvos_enriquecidos} --sintomas {args.sintomas} "
@@ -467,7 +571,7 @@ def main(argv: list[str] | None = None) -> int:
               "usou (so os alvos de --alvos). Revise o arquivo e rode a coleta com ele:\n  "
               + proximo, file=sys.stderr)
     print(f"{n_linhas} linhas de evidencia em {saida}; manifesto em {manifesto}")
-    return 0
+    return SAIDA_PARCIAL if parcial else SAIDA_OK
 
 
 if __name__ == "__main__":
