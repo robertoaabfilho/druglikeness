@@ -49,7 +49,7 @@ def escapar(valor) -> str:
     return _RE_ESCAPAR.sub(lambda m: _ESCAPE[m.group()], str(valor))
 
 
-def _desescapar(texto: str) -> str:
+def desescapar(texto: str) -> str:
     # Sequencia desconhecida (arquivo escrito por outra ferramenta) fica como esta.
     return _RE_DESESCAPAR.sub(
         lambda m: _DESESCAPE.get(m.group(1), m.group()), texto)
@@ -107,4 +107,4 @@ def ler_evidencias(caminho):
                 raise ValueError(
                     f"linha {numero} de {caminho}: {len(campos)} campos "
                     f"encontrados, {len(colunas)} esperados")
-            yield {c: _desescapar(v) for c, v in zip(colunas, campos)}
+            yield {c: desescapar(v) for c, v in zip(colunas, campos)}

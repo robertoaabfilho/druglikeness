@@ -21,7 +21,7 @@ import pandas as pd
 import streamlit as st
 
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
-from mods.evidencias.esquema import _desescapar, escapar, ler_evidencias
+from mods.evidencias.esquema import desescapar, escapar, ler_evidencias
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS, buscar_efo
 from mods.evidencias.resumo import (
     montar_comando, pares_previstos, resumo_alvos, resumo_ligantes)
@@ -60,7 +60,7 @@ def ler_rotulos(caminho, mtime):
 def tabela_de_alvos(caminho) -> pd.DataFrame:
     linhas = Path(caminho).read_text(encoding="utf-8").splitlines()
     colunas = linhas[0].lstrip("#").split("\t")
-    return pd.DataFrame([[_desescapar(c) for c in l.split("\t")]
+    return pd.DataFrame([[desescapar(c) for c in l.split("\t")]
                          for l in linhas[1:] if l], columns=colunas)
 
 

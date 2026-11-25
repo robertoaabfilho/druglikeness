@@ -6,12 +6,12 @@ Contagens que o painel mostra assim que um arquivo e enviado, antes de rodar
 qualquer coisa. Ficam fora de `painel.py` para serem testaveis sem Streamlit.
 
 `resumo_alvos` usa a mesma regra de casamento da evidencia prevista
-(`predito._indices_dos_alvos`): o que o painel chama "fora do modelo" e
+(`predito.indices_dos_alvos`): o que o painel chama "fora do modelo" e
 exatamente o que a previsao vai omitir.
 """
 
 from mods.evidencias.entrada import Problema
-from mods.evidencias.predito import _indices_dos_alvos
+from mods.evidencias.predito import indices_dos_alvos
 from mods.importar_prospector import molecula
 
 # Abaixo disto a previsao e fragil (README, validacao: recall@10 0,127 com <50
@@ -45,7 +45,7 @@ def resumo_alvos(alvos: list[dict], rotulos: list[dict],
                 a.get("organismo") or "").strip():
             sem_organismo.append(a)
             continue
-        indices = _indices_dos_alvos([a], rotulos)
+        indices = indices_dos_alvos([a], rotulos)
         if not indices:
             fora.append(a)
         elif rotulos[indices[0]]["n_ativos"] < minimo_treino:

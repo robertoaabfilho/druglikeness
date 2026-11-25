@@ -26,7 +26,7 @@ from mods.prever_alvos import carregar_modelo, fingerprint_de
 LOTE = 256
 
 
-def _indices_dos_alvos(alvos: list[dict], rotulos: list[dict]) -> list[int]:
+def indices_dos_alvos(alvos: list[dict], rotulos: list[dict]) -> list[int]:
     """Indices do modelo para os alvos pedidos; ausentes sao omitidos."""
     por_id = {r["chembl_id"].upper(): i for i, r in enumerate(rotulos)
               if r["chembl_id"]}
@@ -60,7 +60,7 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
     import numpy as np
     import torch
 
-    indices = _indices_dos_alvos(alvos, rotulos)
+    indices = indices_dos_alvos(alvos, rotulos)
     if not indices:
         return
     rede, cfg, dispositivo, nome_ckpt = carregar_modelo(
