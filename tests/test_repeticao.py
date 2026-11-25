@@ -208,3 +208,89 @@ def test_repeticao_recusa_cache_de_outra_versao(tmp_path, monkeypatch, capsys):
     assert codigo == 2
     assert "open_targets" in capsys.readouterr().err
     assert not (pasta2 / "e.tsv").exists()
+
+
+def test_verificar_nomeia_o_arquivo_de_entrada_que_mudou():
+    anterior = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "c"}}
+    atual = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "X"}}
+    msg = " ".join(verificar_manifesto(anterior, atual))
+    assert "sintomas" in msg and "ligantes" not in msg and "alvos" not in msg
+
+
+def _servico_falso():
+    """Os tres servicos, no formato real, para um alvo (SCN9A)."""
+    scn9a = {"target_chembl_id": "CHEMBL4296", "pref_name": "SCN9A",
+             "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+    chamadas = []
+
+    def servico(url, corpo=None):
+        chamadas.append(url)
+        if corpo and "Versao" in corpo["query"] or url.endswith(("status.json", "database/version")):
+            return _servicos()(url, corpo)
+        if corpo is not None:
+            return {"data": {"disease": {"associatedTargets": {"count": 1, "rows": [
+                {"score": 0.6, "datatypeScores": [],
+                 "target": {"id": "E", "approvedSymbol": "SCN9A",
+                            "proteinIds": [{"id": "Q15858", "source": "uniprot_swissprot"}]}}]}}}}
+        if url.startswith("https://reactome.org"):
+            if "mapping" in url:
+                return [{"stId": "R-X", "displayName": "x"}]
+            return [{"databaseName": "UniProt", "identifier": "Q15858"}]
+        if "target/CHEMBL4296.json" in url:
+            return {**scn9a, "target_components": [{"accession": "Q15858"}]}
+        if "accession=Q15858" in url:
+            return {"targets": [scn9a], "page_meta": {"total_count": 1}}
+        return {"targets": [], "page_meta": {"total_count": 0}}
+    return servico, chamadas
+
+
+def _entrada_real(tmp_path):
+    (tmp_path / "alvos.tsv").write_text("alvo_chembl_id\nCHEMBL4296\n", encoding="utf-8")
+    (tmp_path / "sint.txt").write_text("dor\n", encoding="utf-8")
+    (tmp_path / "lig.tsv").write_text(
+        open("tests/dados/ligantes_minimo.tsv", encoding="utf-8").read(), encoding="utf-8")
+    (tmp_path / "labels.tsv").write_text(
+        "target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\tactive_molecules\tis_ckd\n"
+        "0\t1\tCHEMBL4296\tSCN9A\tSINGLE PROTEIN\tHomo sapiens\t50\tTrue\n", encoding="utf-8")
+
+
+def _cli_real(tmp_path, nome, extra=()):
+    pasta = tmp_path / nome
+    codigo = main(["--ligantes", str(tmp_path / "lig.tsv"), "--alvos", str(tmp_path / "alvos.tsv"),
+                   "--sintomas", str(tmp_path / "sint.txt"), "--saida", str(pasta / "e.tsv"),
+                   "--rotulos", str(tmp_path / "labels.tsv"), "--efo", "dor=EFO_1",
+                   "--alvos-enriquecidos", str(pasta / "enr.tsv"),
+                   "--cache", str(tmp_path / "cache"), *extra])
+    return codigo, pasta
+
+
+def test_enriquecimento_real_repetido_so_do_cache_e_entrada_alterada_recusa(
+        tmp_path, monkeypatch, capsys):
+    servico, chamadas = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == 0
+    enr = (vivo / "enr.tsv").read_text(encoding="utf-8")
+    assert "CHEMBL4296" in enr and "\t0.6\t" in enr and len(chamadas) > 3
+    m = ler_manifesto(vivo / "manifesto.json")
+    assert {"ligantes_md5", "alvos_md5", "sintomas_md5"} <= m["versoes"].keys()
+
+    def proibido(url, corpo=None):
+        raise AssertionError(f"repeticao foi a rede: {url}")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", proibido)
+    ref = ["--manifesto", str(vivo / "manifesto.json")]
+    codigo, rep = _cli_real(tmp_path, "rep", ref)     # socket bloqueado tambem
+    assert codigo == 0
+    assert (rep / "enr.tsv").read_text(encoding="utf-8") == enr
+
+    # --limite diferente: recusa.
+    codigo, _ = _cli_real(tmp_path, "rep2", [*ref, "--limite", "1"])
+    assert codigo == 2 and "limite" in capsys.readouterr().err
+
+    # Entrada alterada: recusa nomeando o arquivo.
+    (tmp_path / "sint.txt").write_text("dor\nfadiga\n", encoding="utf-8")
+    codigo, rep3 = _cli_real(tmp_path, "rep3", ref)
+    err = capsys.readouterr().err
+    assert codigo == 2 and "sintomas_md5" in err and "ligantes_md5" not in err
+    assert not (rep3 / "enr.tsv").exists()

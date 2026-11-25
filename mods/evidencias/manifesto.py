@@ -25,7 +25,8 @@ def ler_manifesto(caminho) -> dict:
 
 # Versoes que, se mudarem, fazem a repeticao dar outro arquivo.
 _VERSOES_DA_REPETICAO = ("open_targets", "chembl", "reactome",
-                         "checkpoint_md5", "rotulos_md5", "evidencias_chembl_md5")
+                         "checkpoint_md5", "rotulos_md5", "evidencias_chembl_md5",
+                         "ligantes_md5", "alvos_md5", "sintomas_md5")
 # Parametros que mudam o conteudo da saida (caminhos de saida nao entram).
 _PARAMETROS_DA_REPETICAO = ("corte", "limite", "sem_rede", "corte_associacao",
                             "teto_via", "efo")
@@ -40,6 +41,10 @@ def verificar_manifesto(anterior: dict, atual: dict) -> list[str]:
         antes, agora = anterior.get(grupo, {}), atual.get(grupo, {})
         for chave in chaves:
             if chave in antes and antes[chave] != agora.get(chave):
+                if chave.endswith("_md5"):
+                    problemas.append(f"{chave}: o arquivo mudou desde o manifesto "
+                                     f"(MD5 {antes[chave]!r} -> {agora.get(chave)!r})")
+                    continue
                 problemas.append(f"{chave}: manifesto registra {antes[chave]!r}, "
                                  f"agora {agora.get(chave)!r}")
     return problemas

@@ -274,7 +274,10 @@ def main(argv: list[str] | None = None) -> int:
             return None
     md5s = {"checkpoint_md5": md5_ou_none(args.checkpoint),
             "rotulos_md5": md5_ou_none(args.rotulos),
-            "evidencias_chembl_md5": md5_ou_none(args.evidencias_chembl)}
+            "evidencias_chembl_md5": md5_ou_none(args.evidencias_chembl),
+            "ligantes_md5": md5_ou_none(args.ligantes),
+            "alvos_md5": md5_ou_none(args.alvos),
+            "sintomas_md5": md5_ou_none(args.sintomas)}
     parametros_de_saida = {"corte": args.corte, "limite": args.limite,
                            "sem_rede": args.sem_rede,
                            "corte_associacao": args.corte_associacao,
