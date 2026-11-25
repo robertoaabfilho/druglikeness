@@ -29,3 +29,29 @@ def rotulos_falsos():
          "tipo": "SINGLE PROTEIN", "n_ativos": 4000 if i == 0 else 8 + i}
         for i in range(N_ALVOS_FALSO)
     ]
+
+
+BASE_CHEMBL = "https://www.ebi.ac.uk/chembl/api/data/"
+
+
+def arquivo_da_resposta(url: str) -> str:
+    """Nome do arquivo gravado para uma URL: a URL sem a base, com tudo que
+    nao for [A-Za-z0-9._=-] trocado por '_'. Determinístico e legivel."""
+    import re
+    assert url.startswith(BASE_CHEMBL), url
+    return re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(BASE_CHEMBL):]) + ".json"
+
+
+@pytest.fixture
+def respostas():
+    """`obter_json` falso: le a resposta gravada em tests/dados/respostas/.
+    URL sem arquivo gravado FALHA o teste; nunca cai para a rede."""
+    import json
+    from pathlib import Path
+    pasta = Path(__file__).parent / "dados" / "respostas"
+
+    def obter(url: str) -> dict:
+        caminho = pasta / arquivo_da_resposta(url)
+        assert caminho.exists(), f"resposta nao gravada: {url} -> {caminho.name}"
+        return json.loads(caminho.read_text(encoding="utf-8"))
+    return obter
