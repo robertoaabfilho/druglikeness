@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Conjunto-controle versionado (`dados/evidencias_controle.tsv`).
 
-Existe para que os critérios de aceite do desenho sejam verificáveis SEM rede
-e sem o `evidencias_chembl.csv` de 60 MB. Até aqui nenhum teste o lia: o
-arquivo estava no repositório e o critério de aceite 2 não era afirmado em
+Existe para que os criterios de aceite do desenho sejam verificaveis SEM rede
+e sem o `evidencias_chembl.csv` de 60 MB. Ate aqui nenhum teste o lia: o
+arquivo estava no repositorio e o criterio de aceite 2 nao era afirmado em
 lugar nenhum.
 """
 from pathlib import Path
@@ -18,7 +18,7 @@ def _linhas():
 
 
 def test_criterio_2_amitriptilina_tem_medido_para_o_transportador_de_noradrenalina():
-    """Critério de aceite 2: o conjunto-controle produz evidência em que a
+    """Criterio de aceite 2: o conjunto-controle produz evidencia em que a
     amitriptilina tem linhas `medido` para o transportador de noradrenalina
     (NET, CHEMBL222, humano)."""
     net = [l for l in _linhas()
