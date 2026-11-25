@@ -54,7 +54,14 @@ _ENTRADAS_HASHEADAS = ("ligantes_md5", "alvos_md5", "sintomas_md5")
 
 
 def hashes_de_entrada_ausentes(anterior: dict) -> list[str]:
-    """Chaves de MD5 de entrada que o manifesto nao tem. Sem elas a repeticao
-    nao tem como conferir as entradas e deve recusar, nao seguir."""
+    """Chaves de MD5 que o manifesto deveria ter e nao tem: as tres entradas
+    sempre, e checkpoint/rotulos/evidencias medidas quando o manifesto diz que
+    foram usados. Sem elas a repeticao nao tem como conferir e deve recusar."""
     versoes = anterior.get("versoes", {})
-    return [c for c in _ENTRADAS_HASHEADAS if not versoes.get(c)]
+    parametros = anterior.get("parametros", {})
+    exigidas = list(_ENTRADAS_HASHEADAS)
+    for parametro, chave in (("checkpoint", "checkpoint_md5"), ("rotulos", "rotulos_md5"),
+                             ("evidencias_chembl", "evidencias_chembl_md5")):
+        if parametros.get(parametro):
+            exigidas.append(chave)
+    return [c for c in exigidas if not versoes.get(c)]

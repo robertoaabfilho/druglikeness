@@ -36,6 +36,7 @@ from pathlib import Path
 # caminho para que `mods.evidencias.*` resolva (com `python -m` ja resolve).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from mods.evidencias.cache import FaltaNoCache, VersaoIndeterminada
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
 from mods.evidencias.esquema import EscritorEvidencias
 from mods.evidencias.manifesto import (
@@ -271,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
         if usa_rede:
             cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(
                 args, saida, anterior)
-    except (OSError, RuntimeError, ValueError) as e:
+    except (OSError, RuntimeError, ValueError, VersaoIndeterminada) as e:
         print(f"[erro] cache de rede: {e}", file=sys.stderr)
         return 2
     def md5_ou_none(caminho):
@@ -303,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             linhas_enriquecidas = _enriquecer(args, alvos, sintomas, efos, rotulos,
                                               contagens_enriquecimento, cache)
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, FaltaNoCache) as e:
             print(f"[erro] enriquecimento: {e}", file=sys.stderr)
             return 2
 
@@ -362,7 +363,7 @@ def main(argv: list[str] | None = None) -> int:
             pass  # ajuste de cortesia: nunca custa o resultado (vfat, FUSE, SMB)
         os.replace(tmp, saida)
     except (OSError, RuntimeError, ValueError, ImportError, EOFError,
-            pickle.UnpicklingError) as e:
+            pickle.UnpicklingError, FaltaNoCache) as e:
         # Execucao falha nao deixa tabela nova nem manifesto.
         print(f"[erro] {etapa}: {e}", file=sys.stderr)
         return 2
@@ -423,12 +424,33 @@ def main(argv: list[str] | None = None) -> int:
                    "smiles_ilegiveis_modelo": ilegiveis,
                    "linhas_evidencia": n_linhas,
                    "medido_problemas": len(contagens_medido.get("problemas", [])),
+                   "falhas_de_item": {
+                       "enriquecimento": list(contagens_enriquecimento.get("problemas", [])),
+                       "medido": list(contagens_medido.get("problemas", []))},
                    "medido_linhas_lidas": contagens_medido.get("linhas_lidas", 0),
                    "alvos_enriquecidos_open_targets": contagens_enriquecimento.get("open_targets", 0),
                    "alvos_enriquecidos_escritos": len(linhas_enriquecidas) if args.alvos_enriquecidos else 0,
                    "alvos_enriquecidos_usados_na_evidencia": enriquecido_usado,
                    "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
                    "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)})
+    if anterior is not None:
+        antes = anterior.get("contagens", {}).get("falhas_de_item")
+        agora = {"enriquecimento": list(contagens_enriquecimento.get("problemas", [])),
+                 "medido": list(contagens_medido.get("problemas", []))}
+        if antes is None:
+            print("[aviso] repeticao: o manifesto nao registra as falhas de item da "
+                  "execucao original; nao ha como saber se esta as reproduziu",
+                  file=sys.stderr)
+        elif antes != agora:
+            print("[ATENCAO] repeticao: as falhas de item diferem das da execucao "
+                  f"original ({sum(map(len, antes.values()))} registradas, "
+                  f"{sum(map(len, agora.values()))} agora); a saida pode diferir",
+                  file=sys.stderr)
+        elif any(antes.values()):
+            print(f"[aviso] repeticao reproduziu uma execucao que ja tinha "
+                  f"{sum(map(len, antes.values()))} falha(s) de item (registradas no "
+                  "manifesto): a saida repete essas ausencias, nao as resolve",
+                  file=sys.stderr)
     if descartadas:
         print(f"[ATENCAO] execucao PARCIAL: {descartadas} linha(s) de entrada "
               "descartada(s) por erro (detalhes acima)", file=sys.stderr)

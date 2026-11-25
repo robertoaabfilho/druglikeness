@@ -44,11 +44,13 @@ _BASE_REACTOME = "https://reactome.org/ContentService/"
 _CONSULTA_VERSAO_OT = "query Versao { meta { dataVersion { year month iteration } } }"
 
 
-class FaltaNoCache(RuntimeError):
-    """Repeticao pediu uma resposta que o cache nao tem; nao ha rede de reserva."""
+class FaltaNoCache(Exception):
+    """Repeticao pediu uma resposta que o cache nao tem; nao ha rede de reserva.
+    Herda de Exception (nao de RuntimeError) de proposito: nenhum tratador de
+    item, hoje ou depois de alargado, pode engoli-la; so a `main` a trata."""
 
 
-class VersaoIndeterminada(RuntimeError):
+class VersaoIndeterminada(Exception):
     """Nao foi possivel saber a versao de um servico (sem ela o cache nao e seguro)."""
 
 
@@ -140,6 +142,17 @@ def pasta_das_versoes(versoes: dict) -> str:
                      for k in ("open_targets", "chembl", "reactome"))
 
 
+def _versao_valida(valor, servico: str) -> str:
+    """Escalar com cara de versao (letras, digitos, '.', '_', '-', com ao menos
+    um digito). Lista/dict/bool/vazio (ex.: o `[]` do 404 do Reactome) abortam."""
+    if isinstance(valor, bool) or not isinstance(valor, (str, int)):
+        raise VersaoIndeterminada(f"versao do {servico} nao e escalar: {valor!r}")
+    texto = str(valor).strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", texto) or not re.search(r"\d", texto):
+        raise VersaoIndeterminada(f"versao do {servico} nao parece versao: {valor!r}")
+    return texto
+
+
 def consultar_versoes(buscar: Callable | None = None) -> dict:
     """Versoes ATUAIS dos tres servicos, direto da rede (nunca do cache).
     Falha com `VersaoIndeterminada`: sem versao nao ha como garantir que o
@@ -153,16 +166,14 @@ def consultar_versoes(buscar: Callable | None = None) -> dict:
             if v.get("iteration"):
                 versao_ot += f".{v['iteration']}"
         else:
-            versao_ot = str(v)
-        chembl = str(buscar(URL_CHEMBL_STATUS)["chembl_db_version"])
-        reactome = buscar(URL_REACTOME_VERSAO)
-        reactome = str(reactome).strip()
+            versao_ot = v
+        versao_ot = _versao_valida(versao_ot, "Open Targets")
+        chembl = _versao_valida(buscar(URL_CHEMBL_STATUS)["chembl_db_version"], "ChEMBL")
+        reactome = _versao_valida(buscar(URL_REACTOME_VERSAO), "Reactome")
     except (KeyError, TypeError, ValueError) as e:
         raise VersaoIndeterminada(f"resposta de versao inesperada: {e!r}") from e
     except OSError as e:
         raise VersaoIndeterminada(f"consulta de versao falhou: {e}") from e
-    if not (versao_ot and chembl and reactome):
-        raise VersaoIndeterminada("versao vazia")
     return {"open_targets": versao_ot, "chembl": chembl, "reactome": reactome}
 
 

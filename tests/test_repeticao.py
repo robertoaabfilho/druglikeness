@@ -313,3 +313,76 @@ def test_manifesto_sem_hash_de_entrada_recusa_a_repeticao(tmp_path, monkeypatch,
     assert "anterior ao registro de MD5" in err and "ligantes_md5" in err
     assert "alvos_md5" not in err
     assert not (rep / "e.tsv").exists() and not (rep / "manifesto.json").exists()
+
+
+def test_falta_no_cache_nao_e_runtimeerror():
+    assert not issubclass(FaltaNoCache, RuntimeError)
+    assert not issubclass(VersaoIndeterminada, RuntimeError)
+
+
+def test_falta_no_cache_na_repeticao_sai_com_2_sem_saida(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == 0
+    for f in (tmp_path / "cache").glob("*/*.json"):   # esvazia o cache
+        if f.name != "versoes.json":
+            f.unlink()
+    capsys.readouterr()
+    codigo, rep = _cli_real(tmp_path, "rep", ["--manifesto", str(vivo / "manifesto.json")])
+    assert codigo == 2 and "ausente do cache" in capsys.readouterr().err
+    assert not (rep / "e.tsv").exists() and not (rep / "enr.tsv").exists()
+
+
+@pytest.mark.parametrize("reactome", [[], {}, "", None, "[]", True])
+def test_versao_do_reactome_malformada_aborta(reactome):
+    base = _servicos()
+
+    def buscar(url, corpo=None):
+        return reactome if url.endswith("database/version") else base(url, corpo)
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(buscar)
+
+
+@pytest.mark.parametrize("onde", ["ot", "chembl"])
+def test_versao_malformada_de_ot_e_chembl_aborta(onde):
+    base = _servicos()
+
+    def buscar(url, corpo=None):
+        if onde == "ot" and corpo:
+            return {"data": {"meta": {"dataVersion": []}}}
+        if onde == "chembl" and url.endswith("status.json"):
+            return {"chembl_db_version": ""}
+        return base(url, corpo)
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(buscar)
+
+
+def test_falhas_de_item_ficam_no_manifesto_e_a_repeticao_as_cita(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == 0
+    caminho = vivo / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    assert m["contagens"]["falhas_de_item"] == {"enriquecimento": [], "medido": []}
+    m["contagens"]["falhas_de_item"]["enriquecimento"] = ["alvo X: resposta inesperada"]
+    caminho.write_text(json.dumps(m))
+    capsys.readouterr()
+    codigo, _ = _cli_real(tmp_path, "rep", ["--manifesto", str(caminho)])
+    assert codigo == 0
+    assert "falhas de item diferem" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("chave,param", [("checkpoint_md5", "checkpoint"),
+                                         ("rotulos_md5", "rotulos"),
+                                         ("evidencias_chembl_md5", "evidencias_chembl")])
+def test_hash_obrigatorio_quando_a_entrada_foi_usada(chave, param):
+    from mods.evidencias.manifesto import hashes_de_entrada_ausentes
+    m = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "c"},
+         "parametros": {param: "arquivo"}}
+    assert hashes_de_entrada_ausentes(m) == [chave]
+    m["versoes"][chave] = "x"
+    assert hashes_de_entrada_ausentes(m) == []
