@@ -5,5 +5,12 @@ rdkit
 torch
 requests
 pandas
+scipy
 streamlit
 pytest
+
+# Opcionais: sem elas o pipeline principal roda.
+# transformers: somente para o ranking por embeddings ChemBERTa (mods/ranking_embeddings.py).
+transformers
+# psycopg2: somente para a consulta ao DrugCentral (mods/ranking_multibase.py), que tem fallback quando ausente.
+psycopg2
