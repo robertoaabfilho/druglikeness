@@ -639,9 +639,11 @@ O **código** é MIT (`LICENSE`). Os **dados derivados do ChEMBL** em `dados/` s
 python -m pytest tests/        # nenhum teste usa a rede nem sobe o Streamlit
 ```
 
-O painel em si não tem teste unitário: a lógica que ele exibe (`mods/evidencias/resumo.py`) tem; a casca Streamlit foi verificada rodando-a.
+Cobertura do painel, dita sem enfeite:
 
----
+- A lógica que ele exibe (`mods/evidencias/resumo.py`) tem testes unitários (`tests/test_resumo.py`).
+- A casca Streamlit tem casos de `AppTest` em `tests/test_painel.py`: erro quando falta o `target_labels.tsv`, aviso de modo degradado sem pesos, avisos de validação no upload (com o `file_uploader` substituído pelos arquivos de `tests/dados`) e a lista de alvos enriquecidos ligada aos arquivos e EFO que a geraram.
+- **Não verificados:** navegador real, o widget de upload real, uma execução ao vivo (rede, pesos reais), o botão Cancelar, e a tabela de resultado e os downloads com dados reais.
 
 ---
 

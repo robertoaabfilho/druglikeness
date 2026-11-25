@@ -10,7 +10,13 @@ qualquer coisa. Ficam fora de `painel.py` para serem testaveis sem Streamlit.
 exatamente o que a previsao vai omitir.
 """
 
+import hashlib
+import json
+from pathlib import Path
+
 from mods.evidencias.entrada import Problema
+from mods.evidencias.esquema import desescapar
+from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS
 from mods.evidencias.predito import indices_dos_alvos
 from mods.importar_prospector import molecula
 
@@ -102,3 +108,35 @@ def montar_comando(modo: str, *, python: str, ligantes: str, alvos: str,
         if evidencias_chembl:
             cmd += ["--evidencias-chembl", evidencias_chembl]
     return cmd
+
+
+def chave_enriquecimento(chave_entrada: str, efos: dict[str, str],
+                         corte_associacao: float, teto_via: int,
+                         limite: int | None) -> str:
+    """Identifica um enriquecimento pelo que o determina: os tres arquivos
+    enviados (`chave_entrada`, MD5 deles), os EFO escolhidos e os parametros.
+    Nomeia a pasta da execucao: lista de outra escolha nunca e confundida com
+    a atual."""
+    texto = json.dumps([chave_entrada, sorted(efos.items()), corte_associacao,
+                        teto_via, limite or 0])
+    return hashlib.md5(texto.encode("utf-8")).hexdigest()[:12]
+
+
+def edicao_pendente(estado_do_editor) -> bool:
+    """O `st.data_editor` guarda suas edicoes em session_state como
+    {edited_rows, added_rows, deleted_rows}. True se ha alguma: o painel nao
+    pode redesenhar a pagina por cima do trabalho manual do pesquisador."""
+    if not isinstance(estado_do_editor, dict):
+        return False
+    return any(estado_do_editor.get(k) for k in
+               ("edited_rows", "added_rows", "deleted_rows"))
+
+
+def ler_tabela_de_alvos(caminho) -> tuple[list[str], list[list[str]]]:
+    """(colunas, linhas) de um alvos_enriquecidos.tsv. Arquivo vazio ou so com
+    cabecalho nao e erro: um enriquecimento sem resultado e plausivel."""
+    linhas = Path(caminho).read_text(encoding="utf-8").splitlines()
+    if not linhas:
+        return list(COLUNAS_ENRIQUECIDOS), []
+    colunas = linhas[0].lstrip("#").split("\t")
+    return colunas, [[desescapar(c) for c in l.split("\t")] for l in linhas[1:] if l]

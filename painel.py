@@ -12,6 +12,7 @@ coleta vive aqui; tudo o que o painel faz tambem se faz pela linha de comando.
 import hashlib
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -21,10 +22,11 @@ import pandas as pd
 import streamlit as st
 
 from mods.evidencias.entrada import ler_alvos, ler_ligantes, ler_sintomas
-from mods.evidencias.esquema import desescapar, escapar, ler_evidencias
+from mods.evidencias.esquema import escapar, ler_evidencias
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS, buscar_efo
 from mods.evidencias.resumo import (
-    montar_comando, pares_previstos, resumo_alvos, resumo_ligantes)
+    chave_enriquecimento, edicao_pendente, ler_tabela_de_alvos, montar_comando,
+    pares_previstos, resumo_alvos, resumo_ligantes)
 
 RAIZ = Path(__file__).resolve().parent
 LINHAS_NA_TELA = 200_000
@@ -58,10 +60,8 @@ def ler_rotulos(caminho, mtime):
 
 
 def tabela_de_alvos(caminho) -> pd.DataFrame:
-    linhas = Path(caminho).read_text(encoding="utf-8").splitlines()
-    colunas = linhas[0].lstrip("#").split("\t")
-    return pd.DataFrame([[desescapar(c) for c in l.split("\t")]
-                         for l in linhas[1:] if l], columns=colunas)
+    colunas, linhas = ler_tabela_de_alvos(caminho)
+    return pd.DataFrame(linhas, columns=colunas)
 
 
 def gravar_tabela_de_alvos(df: pd.DataFrame, caminho: Path) -> None:
@@ -88,6 +88,11 @@ def iniciar(tipo: str, comando: list[str], saida: Path, pasta: Path) -> None:
         "saida": saida}
 
 
+def edicao_em_curso() -> bool:
+    return any(edicao_pendente(v) for k, v in st.session_state.items()
+               if k.startswith("editor_alvos"))
+
+
 @st.fragment(run_every=2)
 def acompanhar():
     t = st.session_state.get("trabalho")
@@ -105,11 +110,22 @@ def acompanhar():
                     text="tempo decorrido (estimativa, não progresso real)"
                     if t["tipo"] == "enriquecer" else "sem estimativa de duração")
         if st.button("Cancelar", key="cancelar"):
-            t["proc"].terminate()
+            try:  # o grupo todo: a previsao pode ter processos filhos
+                os.killpg(t["proc"].pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
     else:
         if "concluido" not in t:
             t["concluido"] = codigo
-            st.rerun(scope="app")  # redesenha o app com o resultado
+            if not edicao_em_curso():
+                st.rerun(scope="app")  # redesenha o app com o resultado
+        if edicao_em_curso():
+            st.warning("Execução terminada, mas há edições não aplicadas na lista "
+                       "de alvos: a página não foi redesenhada para não as perder.")
+            if st.button("Mostrar o resultado (descarta o que não foi aplicado)"):
+                for k in [k for k in st.session_state if k.startswith("editor_alvos")]:
+                    st.session_state.pop(k)
+                st.rerun(scope="app")
         (st.success if codigo == 0 else st.error)(
             f"{nome} {'concluído' if codigo == 0 else f'falhou (código {codigo})'} "
             f"em {decorrido // 60} min {decorrido % 60} s.")
@@ -235,6 +251,9 @@ st.markdown(
     "revise e edite a lista antes de gastar a coleta. Um caso real deu 235 alvos "
     "contra 108.935 ligantes, cerca de 23 milhões de pares previstos.")
 
+efos: dict[str, str] = {}
+pasta_enr = pasta_trabalho / "enriquecimento"
+ponteiro = pasta_enr / f"ultimo_{chave}.json"  # EFO da ultima execucao destes arquivos
 if sintomas:
     st.subheader("Sintoma → EFO")
     st.caption("O Open Targets sugere condições; a escolha errada gera uma lista de "
@@ -245,7 +264,6 @@ if sintomas:
         except Exception as e:  # rede/servico: mostrar, nao esconder
             st.error(f"Busca de EFO falhou: {e}")
     candidatos = st.session_state.get("efos_candidatos", {})
-    efos: dict[str, str] = {}
     for s in sintomas:
         cands = candidatos.get(s)
         if cands is None:
@@ -259,8 +277,19 @@ if sintomas:
             efos[s] = escolha
     ocupado = bool(st.session_state.get("trabalho")) and \
         st.session_state["trabalho"]["proc"].poll() is None
+
+    def pasta_de(efos_):
+        return pasta_enr / chave_enriquecimento(
+            chave, efos_, corte_assoc, int(teto_via), int(limite) or None)
+
     if st.button("Enriquecer alvos", disabled=not efos or ocupado):
-        saida_e = pasta_trabalho / "enriquecimento"
+        saida_e = pasta_de(efos)
+        # Nova execucao: nada da anterior (lista ou revisao) sobrevive a ela.
+        for velho in (saida_e / "alvos_enriquecidos.tsv", saida_e / "alvos_revisados.tsv"):
+            velho.unlink(missing_ok=True)
+        saida_e.mkdir(parents=True, exist_ok=True)
+        ponteiro.write_text(json.dumps(efos), encoding="utf-8")
+        st.session_state.pop("alvos_da_coleta", None)
         iniciar("enriquecer", montar_comando(
             "enriquecer", python=sys.executable, ligantes=str(caminho_lig),
             alvos=str(caminho_alv), sintomas=str(caminho_sin),
@@ -270,19 +299,47 @@ if sintomas:
             limite=int(limite) or None), saida_e, saida_e)
         st.rerun()
 
-arq_enriq = pasta_trabalho / "enriquecimento" / "alvos_enriquecidos.tsv"
-revisados = pasta_trabalho / "alvos_revisados.tsv"
-if arq_enriq.exists():
+    # A lista exibida e a destes arquivos, destes EFO e destes parametros: a
+    # pasta e nomeada por eles. Sem EFO escolhido na tela (pagina recarregada),
+    # vale o da ultima execucao registrada para estes mesmos arquivos.
+    efos_vigentes = efos
+    if not candidatos and ponteiro.exists():
+        try:
+            efos_vigentes = json.loads(ponteiro.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            efos_vigentes = {}
+    pasta_vigente = pasta_de(efos_vigentes) if efos_vigentes else None
+else:
+    pasta_vigente = None
+
+arq_enriq = pasta_vigente / "alvos_enriquecidos.tsv" if pasta_vigente else None
+revisados = pasta_vigente / "alvos_revisados.tsv" if pasta_vigente else None
+if arq_enriq and arq_enriq.exists():
     st.subheader("Lista proposta (edite à vontade)")
-    editado = st.data_editor(tabela_de_alvos(arq_enriq), num_rows="dynamic",
-                             hide_index=True, key="editor_alvos")
-    if st.button("Usar esta lista na coleta"):
+    st.caption("Calculada para estes arquivos, com os EFO: "
+               + "; ".join(f"{k} = {v}" for k, v in efos_vigentes.items()))
+    tabela = tabela_de_alvos(arq_enriq)
+    if tabela.empty:
+        st.info("O enriquecimento não acrescentou nenhum alvo.")
+    editado = st.data_editor(tabela, num_rows="dynamic", hide_index=True,
+                             key=f"editor_alvos_{pasta_vigente.name}")
+    b1, b2 = st.columns(2)
+    if b1.button("Usar esta lista na coleta"):
         gravar_tabela_de_alvos(editado, revisados)
         st.session_state["alvos_da_coleta"] = str(revisados)
         st.success(f"{len(editado)} alvos gravados em {revisados}")
+    if b2.button("Voltar à lista enviada"):
+        revisados.unlink(missing_ok=True)
+        st.session_state.pop("alvos_da_coleta", None)
 
 # ---------------------------------------------------------------- 3. coletar
 st.header("3. Coletar evidências")
+# A escolha sobrevive ao recarregar a pagina: ela mora em disco, ao lado da lista
+# de que veio (mesma pasta por arquivos + EFO + parametros).
+if revisados is not None and revisados.exists():
+    st.session_state["alvos_da_coleta"] = str(revisados)
+else:
+    st.session_state.pop("alvos_da_coleta", None)
 alvos_da_coleta = st.session_state.get("alvos_da_coleta") or str(caminho_alv)
 st.write("Alvos da coleta: **" + ("lista enriquecida e revisada" if
          alvos_da_coleta != str(caminho_alv) else "lista enviada, sem enriquecimento")

@@ -57,3 +57,32 @@ def test_comando_de_coleta_nao_enriquece_e_o_de_enriquecer_nao_preve():
     import pytest
     with pytest.raises(ValueError):
         montar_comando("enriquecer", **base)
+
+
+def test_chave_de_enriquecimento_muda_com_efo_e_parametros():
+    from mods.evidencias.resumo import chave_enriquecimento as k
+    base = k("abc", {"dor": "EFO_1"}, 0.4, 150, None)
+    assert base == k("abc", {"dor": "EFO_1"}, 0.4, 150, None)
+    assert base != k("abc", {"dor": "EFO_2"}, 0.4, 150, None)
+    assert base != k("abd", {"dor": "EFO_1"}, 0.4, 150, None)
+    assert base != k("abc", {"dor": "EFO_1"}, 0.5, 150, None)
+    assert base != k("abc", {"dor": "EFO_1"}, 0.4, 150, 10)
+
+
+def test_edicao_pendente_so_com_edicao_de_verdade():
+    from mods.evidencias.resumo import edicao_pendente
+    assert not edicao_pendente(None)
+    assert not edicao_pendente({"edited_rows": {}, "added_rows": [], "deleted_rows": []})
+    assert edicao_pendente({"edited_rows": {1: {"alvo": "x"}}, "added_rows": [],
+                            "deleted_rows": []})
+
+
+def test_tabela_de_alvos_vazia_nao_quebra(tmp_path):
+    from mods.evidencias.resumo import ler_tabela_de_alvos
+    vazio = tmp_path / "v.tsv"
+    vazio.write_text("")
+    colunas, linhas = ler_tabela_de_alvos(vazio)
+    assert "alvo_chembl_id" in colunas and linhas == []
+    so_cabecalho = tmp_path / "c.tsv"
+    so_cabecalho.write_text("#alvo_chembl_id\talvo\n")
+    assert ler_tabela_de_alvos(so_cabecalho) == (["alvo_chembl_id", "alvo"], [])
