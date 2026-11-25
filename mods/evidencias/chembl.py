@@ -17,8 +17,14 @@ Regras
 * Ligante: InChIKey exato primeiro; depois o bloco de conectividade (14
   primeiros caracteres), porque o ChEMBL indexa por forma salina e so o bloco
   reconhece cloridrato e base livre como o mesmo composto. No bloco, so se
-  aceita o estereoisomero igual ao pedido ou um candidato unico; entre varios
-  estereoisomeros diferentes, devolve None em vez de chutar.
+  aceita candidato com a camada de estereo IGUAL a pedida, ou quando a pedida
+  ou a do candidato e plana (UHFFFAOYSA, estereo nao informado) e o bloco tem
+  um unico candidato. Enantiomeros compartilham o bloco e costumam ser farmacos
+  diferentes: estereo diferente devolve None, nunca outro estereoisomero.
+* Lista que a API devolveu truncada (total_count maior que a pagina) nao
+  serve de base para decidir: levanta `ListaTruncada`.
+* Alvo por UniProt consulta primeiro so `SINGLE PROTEIN` no servidor, para que
+  a paginacao nunca corte a proteina; so sem resultado volta sem o filtro.
 * Resolucao por item; nada aqui materializa o conjunto de ligantes.
 * `obter_json` e injetavel (a tarefa 9 passa uma versao com cache). O padrao
   usa `requests`; os testes passam um falso que le respostas gravadas.
@@ -29,6 +35,18 @@ from urllib.parse import quote
 
 BASE = "https://www.ebi.ac.uk/chembl/api/data/"
 SINGLE = "SINGLE PROTEIN"
+
+
+class ListaTruncada(Exception):
+    """A API devolveu so parte dos resultados; decidir sobre ela seria chutar."""
+
+
+def _sem_truncar(resposta: dict, chave: str, consulta: str) -> list[dict]:
+    itens = resposta.get(chave, [])
+    total = (resposta.get("page_meta") or {}).get("total_count")
+    if total is not None and total > len(itens):
+        raise ListaTruncada(f"{consulta}: {total} resultados, pagina trouxe {len(itens)}")
+    return itens
 
 
 class AlvoAmbiguo(Exception):
@@ -56,12 +74,16 @@ def alvos_por_uniprot(acc: str, organismo: str, *,
                       ) -> list[dict]:
     """Alvos do ChEMBL que contem o UniProt `acc`, `SINGLE PROTEIN` primeiro.
     Organismo vazio nao filtra."""
-    filtros = {"target_components__accession": acc}
+    base = {"target_components__accession": acc}
     if organismo:
-        filtros["organism"] = organismo
-    filtros["limit"] = "5"
-    alvos = obter_json(_url("target.json", **filtros)).get("targets", [])
-    # sorted e estavel: dentro de cada grupo vale a ordem da API.
+        base["organism"] = organismo
+    # Filtro no servidor: com varios alvos por UniProt, a pagina poderia
+    # cortar a proteina antes de qualquer ordenacao local.
+    alvos = obter_json(_url("target.json", **base, target_type=SINGLE,
+                            limit="5")).get("targets", [])
+    if alvos:
+        return alvos
+    alvos = obter_json(_url("target.json", **base, limit="50")).get("targets", [])
     return sorted(alvos, key=lambda a: a.get("target_type") != SINGLE)
 
 
@@ -74,7 +96,8 @@ def resolver_alvo_por_nome(nome: str, organismo: str, *,
     if organismo:
         filtros["organism__iexact"] = organismo
     filtros["limit"] = "20"
-    achados = obter_json(_url("target.json", **filtros)).get("targets", [])
+    achados = _sem_truncar(obter_json(_url("target.json", **filtros)),
+                           "targets", f"alvos para {nome!r}")
     if not achados:
         raise LookupError(f"nenhum alvo no ChEMBL para {nome!r} ({organismo or 'qualquer organismo'})")
     if len(achados) > 1:
@@ -90,7 +113,14 @@ def resolver_alvo_por_nome(nome: str, organismo: str, *,
 
 def _moleculas(filtro: str, valor: str, obter_json, limite: int) -> list[dict]:
     url = _url("molecule.json", **{filtro: valor, "limit": str(limite)})
-    return obter_json(url).get("molecules", [])
+    return _sem_truncar(obter_json(url), "molecules", f"moleculas {valor}")
+
+
+PLANO = "UHFFFAOYSA"
+
+
+def _estereo(chave: str) -> str:
+    return chave.partition("-")[2].split("-")[0]
 
 
 def _chave(molecula: dict) -> str:
@@ -110,16 +140,20 @@ def resolver_ligante(inchikey: str, inchikey_parental: str, *,
         if achados:
             return achados[0]["molecule_chembl_id"]
     for chave in chaves:
-        bloco, _, resto = chave.partition("-")
+        bloco = chave.partition("-")[0]
         if len(bloco) != 14:
             continue
         achados = _moleculas("molecule_structures__standard_inchi_key__istartswith",
                              bloco, obter_json, 20)
-        estereo = resto.split("-")[0]
-        iguais = [m for m in achados if _chave(m).partition("-")[2].split("-")[0] == estereo]
+        pedido = _estereo(chave)
+        iguais = [m for m in achados if _estereo(_chave(m)) == pedido]
         if iguais:
             return iguais[0]["molecule_chembl_id"]
-        if len(achados) == 1:
+        # Leniencia so quando um dos lados nao informa estereo, e so se for
+        # inequivoco; estereo diferente e outra molecula.
+        # Mesmo assim so se o bloco inteiro tem um unico candidato: havendo
+        # outros estereoisomeros, o plano e so mais uma molecula.
+        if len(achados) == 1 and PLANO in (pedido, _estereo(_chave(achados[0]))):
             return achados[0]["molecule_chembl_id"]
     return None
 

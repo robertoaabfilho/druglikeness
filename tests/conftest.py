@@ -39,7 +39,8 @@ def arquivo_da_resposta(url: str) -> str:
     nao for [A-Za-z0-9._=-] trocado por '_'. Determinístico e legivel."""
     import re
     assert url.startswith(BASE_CHEMBL), url
-    return re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(BASE_CHEMBL):]) + ".json"
+    nome = re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(BASE_CHEMBL):])
+    return nome if nome.endswith(".json") else nome + ".json"
 
 
 @pytest.fixture
@@ -49,9 +50,14 @@ def respostas():
     import json
     from pathlib import Path
     pasta = Path(__file__).parent / "dados" / "respostas"
+    vistas: dict[str, str] = {}
 
     def obter(url: str) -> dict:
-        caminho = pasta / arquivo_da_resposta(url)
+        nome = arquivo_da_resposta(url)
+        # Injetividade: duas URLs distintas no mesmo arquivo falham alto.
+        assert vistas.setdefault(nome, url) == url, (
+            f"colisao: {url} e {vistas[nome]} -> {nome}")
+        caminho = pasta / nome
         assert caminho.exists(), f"resposta nao gravada: {url} -> {caminho.name}"
         return json.loads(caminho.read_text(encoding="utf-8"))
     return obter
