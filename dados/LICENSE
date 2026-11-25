@@ -1,0 +1,15 @@
+Os arquivos deste diretorio (dados) derivam do ChEMBL e estao sob a licenca
+Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0):
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Esta licenca de compartilhamento pela mesma licenca (share-alike) se aplica
+apenas a estes dados. O codigo do repositorio e distribuido sob a licenca MIT
+(ver LICENSE na raiz).
+
+Fonte dos dados: ChEMBL (EMBL-EBI), https://www.ebi.ac.uk/chembl/
+
+Ao usar estes dados, cite o ChEMBL:
+
+Zdrazil B, Felix E, Hunter F, et al. The ChEMBL Database in 2023: a drug
+discovery platform spanning multiple bioactivity data types and time periods.
+Nucleic Acids Research. 2024;52(D1):D1180-D1192. doi:10.1093/nar/gkad1004

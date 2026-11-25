@@ -1,0 +1,9 @@
+# Dependencias do pipeline. Versoes nao fixadas, exceto numpy>=2:
+# o pacote upstream pp4ckd exige numpy<2, mas este repositorio nao o importa.
+numpy>=2
+rdkit
+torch
+requests
+pandas
+streamlit
+pytest
