@@ -7,7 +7,8 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
 ```
 ./main.py                  <- orquestrador (único arquivo solto na raiz)
 ./config.txt                <- você cria/edita (main.py gera um modelo na 1ª vez)
-./input.txt                 <- você edita (lista de SMILES)
+./input.txt                 <- você edita (lista de compostos)
+./input.exemplo.tsv         <- 200 compostos reais, para testar sem montar entrada
 ./mods/                     <- todos os scripts do pipeline
     configuracao.py
     farmaco_completo.py
@@ -17,6 +18,7 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
     ranking_embeddings.py
     checar_alertas_adversos.py
     calibrar_deeppk.py
+    importar_prospector.py
 ./results/                  <- criada automaticamente; todas as saídas vão aqui
     farmaco.csv
     farmaco.deeppk_raw.csv
@@ -147,13 +149,72 @@ Une o cálculo de descritores de drogabilidade com a consulta ADMET em um único
 
 ### Formato do `input.txt`
 
-Um composto por linha, aceitando qualquer um destes formatos (pode misturar entre linhas):
+**Formato recomendado — TSV com cabeçalho iniciado por `#`:**
+
+```
+#nome	smiles	inchikey	inchikey_parental	fonte_smiles	conferencia	chembl_id
+Cardamomin	COc1cc(O)cc(O)c1C(=O)/C=C/c1ccccc1	NYSZJNUIVUBQMM-BQYQJAHWSA-N	NYSZJNUIVUBQMM-BQYQJAHWSA-N	NPASS	mesma molécula	CHEMBL378104
+```
+
+Só `nome` e `smiles` são obrigatórios; as outras colunas são preservadas e
+seguem para o `farmaco.csv`. Veja `input.exemplo.tsv` (200 compostos reais).
+
+**Formatos simples** (uma molécula por linha, sem cabeçalho) continuam valendo:
 
 ```
 CC(=O)Oc1ccccc1C(=O)O
-Aspirina,CC(=O)Oc1ccccc1C(=O)O
+Aspirina	CC(=O)Oc1ccccc1C(=O)O
 Aspirina;CC(=O)Oc1ccccc1C(=O)O
+Aspirina,CC(=O)Oc1ccccc1C(=O)O
 ```
+
+> **Use TAB, não vírgula, para nome de produto natural.** O separador é
+> procurado nesta ordem: TAB, `;`, `,` — e, para `;` e `,`, a divisão é feita
+> a partir da **direita**, já que o SMILES é sempre o último campo. Isso é
+> obrigatório porque nome de produto natural quase sempre tem vírgula
+> (`1,2,3,4,6-pentagaloilglucose`, `3,3'-diindolilmetano`): numa base real,
+> 42,8% dos nomes. Dividir pela *primeira* vírgula truncava o nome e
+> corrompia o SMILES, que o RDKit então rejeitava — invalidando o composto
+> em silêncio.
+
+### Trazendo compostos de um pipeline de prospecção
+
+`mods/importar_prospector.py` converte a tabela de compostos de um pipeline
+de prospecção de plantas (`resultados/atividades_compostos_parcial.csv`) para
+o formato acima:
+
+```bash
+python mods/importar_prospector.py \
+    --origem ~/prospector/pipeline_prospeccao_v4/resultados/atividades_compostos_parcial.csv \
+    --saida input.txt
+
+# amostra de teste, metade com evidência ChEMBL (útil para validação)
+python mods/importar_prospector.py --origem ... --saida input.exemplo.tsv \
+    --limite 200 --preferir-com-chembl
+```
+
+Ele replica o tratamento químico da prospecção, de forma independente (os dois
+projetos são repositórios separados — nada do código de lá é importado):
+
+- **SMILES:** escolhe o da primeira fonte cujo SMILES o RDKit consegue ler, na
+  ordem **NPASS > COCONUT > LOTUS > PubChem**, e grava a forma canônica.
+- **Conferência:** preserva o veredito da comparação entre as bases
+  (`mesma molécula`, `estereoquímica diferente: …`, `estruturas diferentes: …`).
+  Compostos divergentes entram **marcados, não descartados** — a decisão é do
+  pesquisador.
+- **Identidade:** recalcula dois InChIKeys — `inchikey` da molécula como está e
+  `inchikey_parental` depois de *Cleanup → maior fragmento orgânico →
+  neutralização*. **A chave parental é a correta para cruzar as duas bases**,
+  porque reconhece que sal e base livre são o mesmo composto, e a deduplicação
+  é feita por ela. Exemplo real: a neferina tem dois `[NH+]` no SMILES, então
+  seu `inchikey` sai `MIBATSHDJRIUJK-ROJLCIKYSA-P`, enquanto o `-…-N` que as
+  bases declaram só aparece na forma parental.
+- Divergência entre o InChIKey declarado e o recalculado também é reportada em
+  `conferencia`, sem descartar a linha.
+
+> **Procedência dos dados:** `input.exemplo.tsv` traz estruturas públicas de
+> NPASS, COCONUT, LOTUS e PubChem, trazidas pela prospecção. Ao publicar
+> resultados, cite as bases de origem.
 
 ### O que ele calcula
 

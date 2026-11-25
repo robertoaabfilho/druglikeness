@@ -129,45 +129,92 @@ def avaliar_regra_de_veber(descritores: dict) -> dict:
     return {"Passa_Veber": passa}
 
 
-def ler_smiles_do_arquivo(caminho: str) -> list[tuple[str, str]]:
+def ler_entrada(caminho: str) -> list[dict]:
     """
-    Lê um arquivo de texto com um SMILES por linha e retorna uma lista
-    de tuplas (nome, smiles).
+    Lê o arquivo de entrada e devolve uma lista de registros. Cada registro
+    tem sempre 'nome' e 'smiles'; os demais campos aparecem quando o arquivo
+    os traz.
 
-    Formatos aceitos por linha:
+    FORMATO RECOMENDADO -- TSV com cabeçalho iniciado por '#':
+
+        #nome<TAB>smiles<TAB>inchikey<TAB>inchikey_parental<TAB>...
+        1,8-cineol<TAB>CC1(C)...<TAB>WEEGYLXZBRQIMU-UHFFFAOYSA-N<TAB>...
+
+        É o que `mods/importar_prospector.py` gera. Qualquer coluna extra é
+        preservada no registro (e vai para o farmaco.csv).
+
+    FORMATOS SIMPLES (uma molécula por linha, sem cabeçalho):
+
         SMILES
-        Nome,SMILES
-        Nome;SMILES
         Nome<TAB>SMILES
+        Nome;SMILES
+        Nome,SMILES
 
-    Linhas vazias ou iniciadas com '#' são ignoradas.
+    Linhas vazias e comentários ('#' que não seja o cabeçalho) são ignorados.
+
+    SEPARADORES: o TAB tem prioridade. Para ';' e ',' a divisão é feita a
+    partir da DIREITA, porque o SMILES é o último campo e nome de produto
+    natural quase sempre tem vírgula ("1,2,3,4,6-pentagaloilglucose",
+    "3,3'-diindolilmetano" -- 42,8% dos nomes numa base real). Dividir pela
+    primeira vírgula truncava o nome e corrompia o SMILES.
     """
-    moleculas = []
+    registros: list[dict] = []
+    colunas: list[str] | None = None
     contador = 0
 
-    with open(caminho, "r", encoding="utf-8") as f:
+    with open(caminho, "r", encoding="utf-8-sig") as f:
         for linha in f:
-            linha = linha.strip()
-
-            if not linha or linha.startswith("#"):
+            linha = linha.rstrip("\n").rstrip("\r")
+            if not linha.strip():
                 continue
 
-            # Tenta separar por vírgula, ponto-e-vírgula ou tab, nessa ordem
-            partes = None
-            for separador in (",", ";", "\t"):
-                if separador in linha:
-                    partes = linha.split(separador, 1)
-                    break
+            if linha.startswith("#"):
+                # Primeiro comentário que parece um cabeçalho TSV define as colunas.
+                if colunas is None:
+                    candidatas = [c.strip().lower() for c in linha.lstrip("#").split("\t")]
+                    if len(candidatas) >= 2 and "smiles" in candidatas:
+                        colunas = candidatas
+                continue
 
-            if partes and len(partes) == 2:
-                nome, smiles = partes[0].strip(), partes[1].strip()
+            if colunas:
+                valores = linha.split("\t")
+                registro = {
+                    coluna: valores[i].strip() if i < len(valores) else ""
+                    for i, coluna in enumerate(colunas)
+                }
+                nome = registro.get("nome", "")
+                smiles = registro.get("smiles", "")
             else:
+                registro = {}
+                if "\t" in linha:
+                    partes = [p.strip() for p in linha.split("\t")]
+                    nome, smiles = partes[0], partes[1] if len(partes) > 1 else ""
+                elif ";" in linha:
+                    nome, _, smiles = (p.strip() for p in linha.rpartition(";"))
+                elif "," in linha:
+                    nome, _, smiles = (p.strip() for p in linha.rpartition(","))
+                else:
+                    nome, smiles = "", linha.strip()
+
+            if not smiles:
+                continue
+            if not nome:
                 contador += 1
-                nome, smiles = f"Molecula_{contador}", linha
+                nome = f"Molecula_{contador}"
 
-            moleculas.append((nome, smiles))
+            registro["nome"] = nome
+            registro["smiles"] = smiles
+            registros.append(registro)
 
-    return moleculas
+    return registros
+
+
+def ler_smiles_do_arquivo(caminho: str) -> list[tuple[str, str]]:
+    """
+    Compatibilidade: mesma leitura de `ler_entrada`, devolvendo apenas as
+    tuplas (nome, smiles) que o resto do pipeline consome.
+    """
+    return [(r["nome"], r["smiles"]) for r in ler_entrada(caminho)]
 
 
 def processar_lista_druglikeness(moleculas: list[tuple[str, str]]) -> list[dict]:
