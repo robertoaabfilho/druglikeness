@@ -114,11 +114,21 @@ nenhuma. Alvo do enriquecimento nunca cai no canal negativo porque o Open
 Targets so tem alvos humanos, e o canal negativo e so nao humano -- os dois
 lados sao consistentes sem regra extra.
 
-**Consequencia da faixa estrita, declarada aqui para poder ser contestada:**
-uma evidencia medida FRACA num alvo do enriquecimento (1b) vem antes de uma
-previsao de 0,99 no alvo que o usuario pediu (2a). Isso decorre de "medido
-sempre antes de previsto", que foi a escolha. A extensao permeavel, se vier,
-e medida com conjunto independente.
+**Consequencia da faixa estrita:** uma evidencia medida FRACA num alvo do
+enriquecimento (1b) vem antes de uma previsao de 0,99 no alvo que o usuario
+pediu (2a). Decorre de "medido sempre antes de previsto".
+
+Apresentada ao parceiro humano como possivel defeito, e mantida por decisao
+dele, com a razao dele: *"significa que o enriquecimento pode encontrar um alvo
+fora do meu radar"*. E o argumento mais forte do que o conservadorismo que eu
+havia dado: evidencia MEDIDA num alvo que o pesquisador nao tinha listado e
+exatamente uma descoberta, e rebaixa-la sob a previsao do alvo ja conhecido
+esconderia o unico resultado que o enriquecimento tem para dar. Por isso a
+classe de evidencia e a chave EXTERNA e a procedencia a interna, e nao o
+contrario -- a alternativa (procedencia por fora) foi considerada e descartada
+aqui.
+
+A extensao permeavel, se vier, e medida com conjunto independente.
 
 `max` e nao soma para agregar varios alvos: e o que foi medido, e soma sobre
 nove alvos premiaria o composto promiscuo -- que a medicao do canal humano
