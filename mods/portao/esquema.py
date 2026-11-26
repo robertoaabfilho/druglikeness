@@ -53,6 +53,20 @@ COLUNAS_ALVOS_EXTRA = [
 ]
 
 
+def colunas_alvos_anotados() -> list[str]:
+    """Cabecalho de `alvos_anotados.tsv`: as colunas da lista enriquecida da
+    etapa 1, as da expressao, e o veredito.
+
+    `aprovado`, `motivos` e `politica` repetem os nomes de `portao.tsv` de
+    proposito: e o mesmo julgamento, sobre outra entidade. `expressao` e
+    criterio de ALVO e nao cabe em `portao.tsv`, que tem uma linha por
+    LIGANTE -- um alvo de expressao baixa nao reprova um ligante, porque o
+    ligante pode ter outros alvos."""
+    from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS
+    return (list(COLUNAS_ENRIQUECIDOS) + list(COLUNAS_ALVOS_EXTRA)
+            + ["aprovado", "motivos", "politica"])
+
+
 def colunas_portao(criterios) -> list[str]:
     """Cabecalho de `portao.tsv`: identidade, veredito e, por criterio, o
     veredito dele e o valor que o decidiu. A lista de criterios vem da

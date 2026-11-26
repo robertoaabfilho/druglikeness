@@ -59,6 +59,7 @@ NOME_PROPRIEDADES = "propriedades.tsv"
 NOME_PORTAO = "portao.tsv"
 NOME_MANIFESTO = "manifesto.json"
 NOME_ALERTAS_BULA = "alertas_bula.tsv"
+NOME_ALVOS = "alvos_anotados.tsv"
 
 # Criterios julgados por esta tarefa. Bula e expressao entram nas proximas; ate
 # la saem `indeterminado` com o motivo escrito, e nao `passa`.
@@ -167,6 +168,20 @@ def _argumentos(argv):
                     help="num_workers do ADMET-AI (padrao 0). Medido: 1.600 "
                          "moleculas saem em 8,6 s com 0 e em 384 s com 8, porque "
                          "sao dez modelos pagando o nascimento de N processos")
+    ap.add_argument("--alvos", metavar="TSV",
+                    help="alvos_enriquecidos.tsv da etapa 1; liga a anotacao de "
+                         "expressao e escreve " + NOME_ALVOS)
+    ap.add_argument("--tecidos", metavar="ARQUIVO",
+                    help="tecidos de interesse, um por linha: ID UBERON ou nome "
+                         "EXATO do tecido ('#' comenta). Sem eles a expressao e "
+                         "anotada mas o veredito fica `indeterminado`, porque nao "
+                         "ha com o que comparar")
+    ap.add_argument("--corte-expressao", type=float, default=1.0, metavar="X",
+                    help="abaixo deste valor nos tecidos pedidos o criterio "
+                         "`expressao` MARCA (padrao 1.0, na unidade da fonte: TPM "
+                         "mediano do GTEx). Nunca reprova por padrao: medido, um "
+                         "corte de 1 TPM em tecido nervoso reprovaria SERT e NET, "
+                         "os alvos da duloxetina e da amitriptilina")
     ap.add_argument("--termos-alerta", action="append", default=[], metavar="T[,T]",
                     help="termos da condicao a buscar na bula (repetivel, aceita "
                          "virgula). SEM eles a checagem de bula NAO roda e o "
@@ -202,14 +217,16 @@ def _politica(args):
     return decisao.montar_politica(promovidos, rebaixados)
 
 
-def _abrir_cache(args, destino: Path):
+def _abrir_cache(args, destino: Path, *, com_openfda: bool = True):
     """Cache de rede da execucao: (Cache, versoes dos servicos, raiz, pasta).
 
-    `com_openfda=True` acrescenta a data de carga do openFDA a chave da pasta:
-    um cache gravado sem ela nao pode servir respostas de bula."""
+    `com_openfda` acrescenta a data de carga do openFDA a chave da pasta -- um
+    cache gravado sem ela nao pode servir respostas de bula. Fica falso quando a
+    execucao nao consulta bula, para nao pagar a requisicao de versao nem
+    inventar uma pasta que promete respostas que nao tem."""
     from mods.evidencias import cache as c
     raiz = Path(args.cache) if args.cache else destino / "cache_rede"
-    cache, versoes = c.abrir_ao_vivo(raiz, com_openfda=True)
+    cache, versoes = c.abrir_ao_vivo(raiz, com_openfda=com_openfda)
     return cache, versoes, str(Path(raiz).resolve()), cache.diretorio.name
 
 
@@ -249,6 +266,57 @@ def _consultar_bula(nome: str, termos: list[str], *, obter_json):
     lista = [por_chave[c] for c in sorted(por_chave)]
     veredito, valor = bula.veredito(resultado, lista, dirigidos)
     return veredito, valor, lista, resultado, dirigidos
+
+
+def _anotar_alvos(caminho, pedidos: list[str], *, corte: float, politica: dict,
+                  obter_json, contador, problemas: list[str]):
+    """Gera as linhas de `alvos_anotados.tsv`.
+
+    `obter_json` None (--sem-rede) anota todo alvo como `indeterminado`: nao se
+    inventa expressao, e ausencia nunca vira aprovacao nem reprovacao.
+
+    Falha de UM alvo e falha de item: aquele alvo sai `indeterminado` com o
+    motivo, a execucao fica PARCIAL e os demais continuam."""
+    from mods.portao import expressao
+    for alvo in esquema.ler_tsv(caminho):
+        colunas = dict(alvo)
+        if obter_json is None:
+            anotacao = expressao.anotar([], pedidos, corte=corte)
+            anotacao["expressao_observacao"] = "--sem-rede: expressao nao consultada"
+        else:
+            ensembl = (alvo.get("ensembl") or "").strip()
+            try:
+                if not ensembl and (alvo.get("gene") or "").strip():
+                    # A etapa 1 ja grava `ensembl`; isto cobre lista antiga.
+                    ensembl = expressao.ensembl_do_gene(
+                        alvo["gene"].strip(), obter_json=obter_json)
+                linhas = (expressao.expressao_basal(ensembl, obter_json=obter_json)
+                          if ensembl else [])
+            except Exception as e:
+                nome = (alvo.get("alvo") or alvo.get("alvo_chembl_id") or "?")
+                problemas.append(f"{nome}: {type(e).__name__}: {e}")
+                anotacao = expressao.anotar([], pedidos, corte=corte)
+                anotacao["expressao_observacao"] = f"consulta falhou: {e}"
+            else:
+                anotacao = expressao.anotar(linhas, pedidos, corte=corte)
+                if not linhas and ensembl:
+                    # Alvo humano sem GTEx e diferente de alvo nao humano, que
+                    # nao TEM GTEx; a observacao distingue os dois.
+                    anotacao["expressao_observacao"] = (
+                        anotacao["expressao_observacao"]
+                        or "sem expressao basal nesta fonte")
+                elif not ensembl:
+                    anotacao["expressao_observacao"] = (
+                        "sem Ensembl: alvo nao humano nao tem GTEx, e isso NAO e "
+                        "expressao zero")
+        valor = anotacao["expressao_observacao"] or str(
+            anotacao["expressao_nos_tecidos_pedidos"])
+        vereditos = {"expressao": (anotacao["expressao_veredito"], valor)}
+        aprovado, motivos = decisao.aplicar(vereditos, politica)
+        contador.contar(vereditos, aprovado)
+        colunas.update(anotacao, aprovado=aprovado, motivos=motivos,
+                       politica=decisao.texto_da_politica(politica))
+        yield colunas
 
 
 def _preparar_saida(args):
@@ -295,7 +363,7 @@ def _vereditos_do_ligante(linha_propriedades: dict, problema: str | None,
     }
 
 
-def _resumo(contador, politica, destino: Path) -> None:
+def _resumo(contador, politica, destino: Path, contador_alvos=None) -> None:
     """O numero que o desenho exige: quantos ligantes CADA criterio reprovaria
     se fosse promovido. O botao e medido antes de ser apertado, em vez de o
     usuario promover um criterio e descobrir depois que perdeu a
@@ -311,6 +379,17 @@ def _resumo(contador, politica, destino: Path) -> None:
               f"marca {dados['marca']}, reprova {dados['reprova']}, "
               f"passa {dados['passa']}, indeterminado {dados['indeterminado']}",
               file=sys.stderr)
+    if contador_alvos is not None:
+        resumo_alvos = contador_alvos.resumo(politica)
+        print(f"{resumo_alvos['itens']} alvo(s): {resumo_alvos['aprovados']} "
+              f"aprovado(s). Por criterio (escopo ALVO):", file=sys.stderr)
+        for criterio, dados in resumo_alvos["por_criterio"].items():
+            regra = dados["politica"]
+            efeito = ("reprovou" if regra == decisao.REPROVAR
+                      else f"reprovaria se promovido (--reprovar {criterio})")
+            print(f"  {criterio} [{regra}]: {dados['adversos']} {efeito}; "
+                  f"marca {dados['marca']}, passa {dados['passa']}, "
+                  f"indeterminado {dados['indeterminado']}", file=sys.stderr)
     print(f"Saidas em {destino}", file=sys.stderr)
 
 
@@ -327,6 +406,27 @@ def main(argv: list[str] | None = None) -> int:
     if erro:
         print(f"[erro] {erro}", file=sys.stderr)
         return SAIDA_ERRO
+
+    termos = [t for v in args.termos_alerta for t in _lista(v)]
+    if termos and args.sem_rede:
+        print("[erro] --termos-alerta precisa de rede (a bula vem do openFDA); "
+              "incompativel com --sem-rede", file=sys.stderr)
+        return SAIDA_ERRO
+
+    tecidos: list[str] = []
+    if args.tecidos:
+        try:
+            from mods.portao import expressao as _exp
+            tecidos = _exp.ler_tecidos(args.tecidos)
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"[erro] --tecidos: {e}", file=sys.stderr)
+            return SAIDA_ERRO
+    if args.tecidos and not args.alvos:
+        print("[erro] --tecidos nao serve sem --alvos: a expressao e propriedade "
+              "do ALVO, e sem a lista de alvos nao ha o que anotar",
+              file=sys.stderr)
+        return SAIDA_ERRO
+
 
     try:
         # `manter_ilegiveis`: um ligante que desaparece da tabela de vereditos
@@ -361,19 +461,16 @@ def main(argv: list[str] | None = None) -> int:
               "`indeterminado` -- que NUNCA reprova. Instale com: "
               "pip install admet-ai", file=sys.stderr)
 
-    termos = [t for v in args.termos_alerta for t in _lista(v)]
-    if termos and args.sem_rede:
-        print("[erro] --termos-alerta precisa de rede (a bula vem do openFDA); "
-              "incompativel com --sem-rede", file=sys.stderr)
-        return SAIDA_ERRO
     # Cache e versoes ANTES de abrir qualquer saida: sem versao conhecida nao
     # ha como garantir que o cache vale, e falhar aqui nao deixa arquivo algum.
     cache = None
     versoes_rede: dict = {}
     raiz_cache = pasta_cache = None
-    if termos:
+    usa_rede = bool(termos) or (bool(args.alvos) and not args.sem_rede)
+    if usa_rede:
         try:
-            cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(args, destino)
+            cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(
+                args, destino, com_openfda=bool(termos))
         except Exception as e:   # VersaoIndeterminada, OSError, ValueError
             print(f"[erro] cache de rede: {e}", file=sys.stderr)
             return SAIDA_ERRO
@@ -494,10 +591,25 @@ def main(argv: list[str] | None = None) -> int:
                     esc_portao.escrever(linha_portao)
                     contador.contar(vereditos, linha_portao["aprovado"])
 
+        contador_alvos = decisao.Contador(decisao.CRITERIOS_ALVO)
+        falhas_de_alvo: list[str] = []
+        if args.alvos:
+            etapa = "alvos anotados"
+            tmp_alvos = atomico.temporario(destino / NOME_ALVOS)
+            pendentes.append((tmp_alvos, destino / NOME_ALVOS))
+            with esquema.EscritorTSV(
+                    tmp_alvos, esquema.colunas_alvos_anotados()) as esc_alvos:
+                for linha_alvo in _anotar_alvos(
+                        args.alvos, tecidos, corte=args.corte_expressao,
+                        politica=politica,
+                        obter_json=None if args.sem_rede else cache.obter_json,
+                        contador=contador_alvos, problemas=falhas_de_alvo):
+                    esc_alvos.escrever(linha_alvo)
+
         etapa = "manifesto"
         descartadas = sum(p.gravidade == "erro" for p in problemas)
         ilegiveis = sum(1 for l in ligantes if not l.get("inchikey_parental"))
-        parcial = bool(descartadas) or bool(falhas_de_bula)
+        parcial = bool(descartadas) or bool(falhas_de_bula) or bool(falhas_de_alvo)
         resumo = contador.resumo(politica)
         tmp_manifesto = atomico.temporario(destino / NOME_MANIFESTO)
         pendentes.append((tmp_manifesto, destino / NOME_MANIFESTO))
@@ -509,11 +621,17 @@ def main(argv: list[str] | None = None) -> int:
                         "limite": args.limite,
                         "termos_alerta": termos,
                         "limite_bula": args.limite_bula,
+                        "alvos": args.alvos,
+                        "tecidos": args.tecidos,
+                        "tecidos_pedidos": tecidos,
+                        "corte_expressao": args.corte_expressao,
                         "sem_rede": args.sem_rede,
                         "cache_raiz": raiz_cache,
                         "cache_pasta": pasta_cache},
             versoes={**versoes_rede, "admet_ai": versao_admet,
                      "ligantes_md5": procedencia.md5_ou_none(args.ligantes),
+                     "alvos_md5": procedencia.md5_ou_none(args.alvos),
+                     "tecidos_md5": procedencia.md5_ou_none(args.tecidos),
                      **procedencia.versoes_do_ambiente(),
                      **procedencia.repositorio_do_pipeline(),
                      "pipeline_commit": procedencia.commit_do_pipeline(),
@@ -525,6 +643,12 @@ def main(argv: list[str] | None = None) -> int:
                        "smiles_ilegiveis_mantidos": ilegiveis,
                        "bulas_consultadas": consultados,
                        "falhas_de_bula": falhas_de_bula,
+                       "falhas_de_alvo": falhas_de_alvo,
+                       # `expressao` e criterio de ALVO: contado sobre os alvos,
+                       # nao sobre os ligantes, e por isso num bloco proprio.
+                       "alvos": {"escopo": "alvo",
+                                 **contador_alvos.resumo(politica)}
+                       if args.alvos else {},
                        "execucao_parcial": parcial,
                        "colunas_de_admet": len(mapa_admet),
                        "colunas_de_admet_renomeadas": renomeadas,
@@ -550,6 +674,8 @@ def main(argv: list[str] | None = None) -> int:
 
     for falha in falhas_de_bula:
         print(f"[aviso] bula, {falha}", file=sys.stderr)
+    for falha in falhas_de_alvo:
+        print(f"[aviso] expressao, {falha}", file=sys.stderr)
     if ilegiveis:
         # Codigo 0, nao 3: o portao DECIDIU sobre esses ligantes (reprovados
         # pelo criterio `smiles`, com o motivo na linha). Execucao parcial e
@@ -558,7 +684,7 @@ def main(argv: list[str] | None = None) -> int:
               "estao na saida com as propriedades vazias e reprovados pelo "
               "criterio `smiles` (veja a coluna `motivos`), nao apagados",
               file=sys.stderr)
-    _resumo(contador, politica, destino)
+    _resumo(contador, politica, destino, contador_alvos if args.alvos else None)
     if parcial:
         print(f"[ATENCAO] execucao PARCIAL (codigo {SAIDA_PARCIAL}): "
               f"{descartadas} linha(s) de entrada descartada(s) por erro e "

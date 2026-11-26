@@ -371,7 +371,7 @@ def cache_de_bulas(monkeypatch, respostas):
 
     monkeypatch.setattr(
         aplicar_portao, "_abrir_cache",
-        lambda args, destino: (CacheFalso(), {"openfda": "2026-11-25"},
+        lambda args, destino, **k: (CacheFalso(), {"openfda": "2026-11-25"},
                                "/raiz/cache", "openfda-2026-11-25"))
 
 
@@ -517,7 +517,7 @@ def test_falha_de_consulta_num_item_torna_a_execucao_parcial(
         diretorio = Path("p")
 
     monkeypatch.setattr(aplicar_portao, "_abrir_cache",
-                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                        lambda args, destino, **k: (CacheFalso(), {"openfda": "x"},
                                                "/r", "p"))
     saida = tmp_path / "res"
     assert _rodar_controle(saida) == 3
@@ -558,7 +558,7 @@ def test_janela_e_pedida_ordenada_por_data(tmp_path, monkeypatch, respostas,
         diretorio = Path("p")
 
     monkeypatch.setattr(aplicar_portao, "_abrir_cache",
-                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                        lambda args, destino, **k: (CacheFalso(), {"openfda": "x"},
                                                "/r", "p"))
     _rodar_controle(tmp_path / "res", "--limite-bula", "1")
     janelas = [u for u in pedidas if "limit=50" in u]
@@ -582,10 +582,178 @@ def test_tres_requisicoes_por_ligante_janela_forte_e_indicacao(
         diretorio = Path("p")
 
     monkeypatch.setattr(aplicar_portao, "_abrir_cache",
-                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                        lambda args, destino, **k: (CacheFalso(), {"openfda": "x"},
                                                "/r", "p"))
     _rodar_controle(tmp_path / "res", "--limite", "1", "--limite-bula", "1")
     assert len(pedidas) == 3, pedidas
     assert sum("limit=50" in u for u in pedidas) == 1
     assert sum("indications_and_usage" in u for u in pedidas) == 1
     assert sum("boxed_warning" in u for u in pedidas) == 1
+
+
+# --------------------------------------------------------------------------
+# Expressao do ALVO: marca, nunca reprova -- e o SERT prova por que
+# --------------------------------------------------------------------------
+
+ALVOS = "tests/dados/alvos_para_expressao.tsv"
+TECIDOS = "tests/dados/tecidos_nervoso.txt"
+
+
+@pytest.fixture
+def cache_de_expressao(monkeypatch, respostas):
+    class CacheFalso:
+        obter_json = staticmethod(respostas)
+        diretorio = Path("ot-26.09")
+
+    monkeypatch.setattr(
+        aplicar_portao, "_abrir_cache",
+        lambda args, destino, **k: (CacheFalso(), {"open_targets": "26.09"},
+                                    "/raiz", "ot-26.09"))
+
+
+def _rodar_alvos(saida, ligantes, *extra):
+    return _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--alvos", ALVOS, "--tecidos", TECIDOS, *extra)
+
+
+def test_sert_e_net_sao_marcados_e_continuam_aprovados(
+        tmp_path, ligantes, cache_de_expressao, sem_admet):
+    """A medicao que decidiu que expressao MARCA: um portao de ">= 1 TPM em
+    tecido nervoso" reprovaria SERT e NET -- os alvos da duloxetina e da
+    amitriptilina, os mais bem validados da lista. RNA-seq de tecido inteiro
+    dilui nucleo pequeno (locus coeruleus, nucleos da rafe) no cortex."""
+    saida = tmp_path / "res"
+    assert _rodar_alvos(saida, ligantes) == 0
+    alvos = {l["gene"]: l for l in _ler(saida, "alvos_anotados.tsv")}
+
+    for gene in ("SLC6A4", "SLC6A2"):
+        assert alvos[gene]["expressao_veredito"] == "marca", gene
+        assert alvos[gene]["aprovado"] == "sim", gene
+        assert "SERT" in alvos[gene]["expressao_observacao"]
+    # GRIN1 passa com folga: 255 TPM no cortex frontal.
+    assert alvos["GRIN1"]["expressao_veredito"] == "passa"
+    assert float(alvos["GRIN1"]["expressao_maxima"]) > 200
+
+
+def test_o_tecido_de_maior_expressao_nao_e_o_pedido(
+        tmp_path, ligantes, cache_de_expressao, sem_admet):
+    """O SERT tem 35 TPM no PULMAO e 0,12 no cortex frontal. As duas coisas
+    ficam na linha: sem `tecido_maximo` o 35 pareceria expressao no alvo."""
+    saida = tmp_path / "res"
+    _rodar_alvos(saida, ligantes)
+    sert = {l["gene"]: l for l in _ler(saida, "alvos_anotados.tsv")}["SLC6A4"]
+    assert "lung" in sert["tecido_maximo"]
+    assert float(sert["expressao_maxima"]) > 30
+    assert float(sert["expressao_nos_tecidos_pedidos"]) < 1
+    assert sert["unidade_expressao"] == "TPM" and sert["fonte_expressao"] == "gtex"
+
+
+def test_alvo_nao_humano_e_indeterminado_e_nao_expressao_zero(
+        tmp_path, ligantes, cache_de_expressao, sem_admet):
+    """CHEMBL360 e o fenotipo de M. tuberculosis: nao TEM GTEx. Nenhuma
+    politica o reprova."""
+    saida = tmp_path / "res"
+    _rodar_alvos(saida, ligantes, "--reprovar", "expressao")
+    alvos = {(l["gene"] or l["alvo_chembl_id"]): l
+             for l in _ler(saida, "alvos_anotados.tsv")}
+    mtb = alvos["CHEMBL360"]
+    assert mtb["expressao_veredito"] == "indeterminado"
+    assert mtb["aprovado"] == "sim"
+    assert "NAO e expressao zero" in mtb["expressao_observacao"]
+    assert mtb["expressao_maxima"] == ""
+
+
+def test_promover_expressao_reprova_sert_e_net_e_o_resumo_diz(
+        tmp_path, ligantes, cache_de_expressao, sem_admet, capsys):
+    """Quem quiser estreitar o portao pode -- e o resumo mostra o preco antes,
+    nomeando o escopo ALVO."""
+    saida = tmp_path / "res"
+    assert _rodar_alvos(saida, ligantes, "--reprovar", "expressao") == 0
+    alvos = {l["gene"]: l for l in _ler(saida, "alvos_anotados.tsv")}
+    assert alvos["SLC6A4"]["aprovado"] == "nao"
+    assert "expressao" in alvos["SLC6A4"]["motivos"]
+    assert alvos["GRIN1"]["aprovado"] == "sim"
+    erro = capsys.readouterr().err
+    assert "escopo ALVO" in erro
+
+    # O ligante NAO e afetado: expressao e criterio de alvo, e um ligante pode
+    # ter outros alvos.
+    assert "expressao_veredito" not in _ler(saida, "portao.tsv")[0]
+    assert all(l["aprovado"] == "sim" for l in _ler(saida, "portao.tsv"))
+
+
+def test_alvo_reprovado_continua_na_saida_com_o_motivo(
+        tmp_path, ligantes, cache_de_expressao, sem_admet):
+    saida = tmp_path / "res"
+    _rodar_alvos(saida, ligantes, "--reprovar", "expressao")
+    genes = [l["gene"] for l in _ler(saida, "alvos_anotados.tsv")]
+    assert genes == ["SLC6A4", "SLC6A2", "GRIN1", ""]
+
+
+def test_sem_tecidos_o_veredito_e_indeterminado(
+        tmp_path, ligantes, cache_de_expressao, sem_admet):
+    """Sem tecido pedido nao ha com o que comparar; anotar sim, julgar nao."""
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--alvos", ALVOS) == 0
+    alvos = {l["gene"]: l for l in _ler(saida, "alvos_anotados.tsv")}
+    assert alvos["SLC6A4"]["expressao_veredito"] == "indeterminado"
+    assert float(alvos["SLC6A4"]["expressao_maxima"]) > 30   # anotado mesmo assim
+
+
+def test_tecidos_sem_alvos_e_erro(tmp_path, ligantes):
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "res"),
+                  "--tecidos", TECIDOS) == 2
+
+
+def test_sem_rede_anota_indeterminado_e_nao_inventa_expressao(
+        tmp_path, ligantes, sem_admet):
+    """Sem rede a tabela sai, com o motivo em cada linha. O bloqueio de socket
+    da suite garante que nada foi consultado."""
+    saida = tmp_path / "res"
+    assert _rodar_alvos(saida, ligantes, "--sem-rede") == 0
+    alvos = _ler(saida, "alvos_anotados.tsv")
+    assert len(alvos) == 4
+    assert all(l["expressao_veredito"] == "indeterminado" for l in alvos)
+    assert all("--sem-rede" in l["expressao_observacao"] for l in alvos)
+
+
+def test_corte_de_expressao_configuravel(tmp_path, ligantes, cache_de_expressao,
+                                         sem_admet):
+    saida = tmp_path / "res"
+    _rodar_alvos(saida, ligantes, "--corte-expressao", "0.01")
+    alvos = {l["gene"]: l for l in _ler(saida, "alvos_anotados.tsv")}
+    assert alvos["SLC6A4"]["expressao_veredito"] == "passa"
+
+
+def test_manifesto_separa_o_escopo_do_alvo(tmp_path, ligantes,
+                                           cache_de_expressao, sem_admet):
+    saida = tmp_path / "res"
+    _rodar_alvos(saida, ligantes)
+    m = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert m["contagens"]["alvos"]["escopo"] == "alvo"
+    assert m["contagens"]["alvos"]["itens"] == 4
+    assert m["contagens"]["alvos"]["por_criterio"]["expressao"]["adversos"] == 2
+    assert m["parametros"]["tecidos_pedidos"] == ["UBERON_0000955"]
+    assert m["parametros"]["corte_expressao"] == 1.0
+    assert m["versoes"]["alvos_md5"] and m["versoes"]["tecidos_md5"]
+    assert m["versoes"]["open_targets"] == "26.09"
+
+
+def test_flag_invalida_falha_antes_de_carregar_o_admet(tmp_path, ligantes,
+                                                       monkeypatch):
+    """Um erro de digitacao nao deve custar o carregamento de dez modelos
+    Chemprop. Toda validacao de flag roda antes do ADMET-AI e antes de ler a
+    entrada."""
+    def nao_deveria(*a, **k):
+        raise AssertionError("o ADMET-AI foi carregado antes da validacao")
+
+    monkeypatch.setattr(admet, "colunas", nao_deveria)
+    monkeypatch.setattr(admet, "carregar", nao_deveria)
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--tecidos", TECIDOS) == 2
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--termos-alerta", "x", "--sem-rede") == 2
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--reprovar", "nao_existe") == 2

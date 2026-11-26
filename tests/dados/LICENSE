@@ -27,6 +27,14 @@ Dominio publico (CC0), sem exigencia de share-alike
     tests/dados/respostas/reactome_*.json   -- Reactome (so anotacao; nenhum
         arquivo de Functional Interaction, que e restrito, entra aqui)
     tests/dados/respostas/opentargets_*.json -- Open Targets
+
+        As respostas `opentargets_Expressao_*` (expressao basal de SLC6A4,
+        SLC6A2 e GRIN1) sao APARADAS: de ~1.450 linhas por alvo ficaram as 51
+        do GTEx, que e a fonte comparavel entre tecidos e a unica que o modulo
+        usa por padrao. O `count` da resposta nao foi alterado, e uma pagina de
+        2.000 cobre o caso, entao a paginacao percorre o mesmo caminho. Os
+        valores sao os do servico: SLC6A4 35,02 TPM no pulmao e 0,45 nos
+        tecidos nervosos pedidos; GRIN1 255,34 no cortex frontal.
     tests/dados/respostas/openfda_*.json    -- openFDA (FDA/HHS), dominio
         publico. Fonte: https://open.fda.gov/, carga de 2026-11-25
         (`meta.last_updated`).

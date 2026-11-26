@@ -1,0 +1,5 @@
+# Tecido nervoso, por ID UBERON e por ANCESTRALIDADE -- nunca por trecho de
+# nome. Medido nas fixtures: `cortex of kidney` tem 0,202 TPM de SERT e o
+# `frontal cortex` tem 0,116, entao um padrao de nome para "cortex" escolheria
+# o RIM e daria um valor MAIOR que o do cerebro.
+UBERON_0000955    # cerebro: alcanca frontal cortex, prefrontal, cingulado...
