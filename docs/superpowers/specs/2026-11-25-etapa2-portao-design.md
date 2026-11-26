@@ -419,3 +419,47 @@ Custo: **zero requisição a mais** — as seções entram no mesmo `OR` da cons
 dirigida que já existia. Verificado ao vivo depois da mudança: **0/6 de falso
 positivo e 4/6 pegos**, e o rastro passa a citar `contraindications` e
 `precautions` no etambutol, que antes só apareciam como `warnings`.
+
+### Adendo 3: a GPU não reproduz, e por isso a CPU é o padrão
+
+O critério de verificação 5 pede que `--manifesto` reproduza as mesmas saídas.
+Na primeira repetição real, `propriedades.tsv` **diferiu** — e as outras três
+saídas não. Medido:
+
+| dispositivo | colunas diferentes entre duas execuções da mesma molécula |
+|---|---|
+| GPU | **36 de 312** |
+| CPU | **0 de 312** |
+
+A diferença nos valores é de ~1e-8 relativo (`23.619516` contra `23.619518`),
+ordem de redução nos kernels da GPU. Mas o **percentil amplifica**: ~0,035 de
+diferença, porque um percentil é uma posição entre os ~2.850 aprovados do
+DrugBank e um fio de diferença inverte uma comparação.
+
+Nenhum veredito mudou — `portao.tsv` saiu idêntico nas duas. O portão decide
+por percentil ≥ 90, e 0,035 não atravessa esse limiar. Mas uma coluna que muda
+sozinha entre execuções não é citável, e o modo de repetição existe exatamente
+para isso.
+
+Preço de exigir CPU, medido nas 200 moléculas de `input.exemplo.tsv`:
+
+| dispositivo | por molécula | base de 108.935 |
+|---|---|---|
+| GPU | 20,5 ms | ~37 min |
+| CPU | 36,4 ms | ~66 min |
+
+**1,8×, não 10×.** Por 29 minutos numa execução que precisa ser citada, a CPU
+passa a ser o padrão. `--gpu` troca reprodutibilidade por tempo, avisa na hora
+que faz isso, e:
+
+- o manifesto registra o dispositivo **real**, não o pedido (`dispositivo()`
+  responde pelo que vai valer; um manifesto que registrasse o pedido mentiria
+  quando o pedido não pegasse);
+- `dispositivo` é **chave da repetição**: repetir uma execução de GPU na CPU é
+  recusado;
+- repetir uma execução feita na GPU **avisa** que as colunas de ADMET podem
+  diferir na última casa e que isso não é falha da repetição — em vez de
+  prometer bit-exatidão que a GPU não entrega.
+
+Verificado depois da mudança: `propriedades.tsv`, `portao.tsv` e
+`alertas_bula.tsv` saem byte a byte idênticos na repetição.

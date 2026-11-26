@@ -47,7 +47,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias import atomico, procedencia
 from mods.evidencias.entrada import ler_ligantes
-from mods.evidencias.manifesto import texto_do_manifesto
+from mods.evidencias.manifesto import (
+    hashes_de_entrada_ausentes, ler_manifesto, texto_do_manifesto,
+    verificar_manifesto)
 from mods.portao import admet, bula, decisao, esquema, propriedades
 
 SAIDA_OK = 0
@@ -60,6 +62,25 @@ NOME_PORTAO = "portao.tsv"
 NOME_MANIFESTO = "manifesto.json"
 NOME_ALERTAS_BULA = "alertas_bula.tsv"
 NOME_ALVOS = "alvos_anotados.tsv"
+NOME_MANIFESTO_REPETICAO = "manifesto_repeticao.json"
+
+# Chaves que, se mudarem, fazem a repeticao dar outro arquivo. As da etapa 1 nao
+# servem: esta etapa nao consulta ChEMBL nem Reactome, e consulta openFDA e
+# ADMET-AI, que a etapa 1 nao conhece.
+VERSOES_DA_REPETICAO = ("open_targets", "openfda", "admet_ai", "rdkit",
+                        "ligantes_md5", "alvos_md5", "evidencias_md5",
+                        "tecidos_md5")
+# Parametros que mudam o CONTEUDO da saida. Caminhos de saida nao entram:
+# repetir para outra pasta e repetir.
+PARAMETROS_DA_REPETICAO = ("politica", "percentil_toxicidade", "limite_bula",
+                           "corte_expressao", "termos_alerta",
+                           "tecidos_pedidos", "limite", "sem_rede", "workers",
+                           "dispositivo")
+# MD5 que o manifesto tem de trazer para a repeticao poder conferir a entrada.
+# `ligantes_md5` sempre; os outros quando o parametro correspondente foi usado.
+ENTRADAS_HASHEADAS = ("ligantes_md5",)
+CONDICIONAIS = (("alvos", "alvos_md5"), ("evidencias", "evidencias_md5"),
+                ("tecidos", "tecidos_md5"))
 
 # Criterios julgados por esta tarefa. Bula e expressao entram nas proximas; ate
 # la saem `indeterminado` com o motivo escrito, e nao `passa`.
@@ -158,16 +179,38 @@ def _argumentos(argv):
                          f"{NOME_PORTAO} e {NOME_MANIFESTO}")
     ap.add_argument("--limite", type=_inteiro_positivo,
                     help="usar so os N primeiros ligantes")
+    ap.add_argument("--manifesto", metavar="ARQUIVO",
+                    help="MODO DE REPETICAO: manifesto.json de uma execucao "
+                         "anterior. Serve toda resposta de rede do cache que ele "
+                         "aponta (sem rede; falta no cache e ERRO) e RECUSA rodar "
+                         "se um MD5 de entrada, a versao do Open Targets, do "
+                         "openFDA, do ADMET-AI ou do RDKit, ou um parametro que "
+                         "muda a saida (inclusive a politica) diferirem do "
+                         f"registrado. O manifesto novo sai como "
+                         f"{NOME_MANIFESTO_REPETICAO} e nunca sobrescreve este")
     ap.add_argument("--percentil-toxicidade", type=float, default=90.0,
                     metavar="P",
                     help="percentil contra os aprovados do DrugBank acima do qual "
                          "o criterio `toxicidade` marca (padrao 90). Percentil, e "
                          "nao probabilidade crua: 0,67 de DILI nao quer dizer nada "
                          "sozinho -- a aspirina tem 0,67 e esta aprovada")
+    ap.add_argument("--gpu", action="store_true",
+                    help="roda o ADMET-AI na GPU. MAIS RAPIDO E NAO "
+                         "REPRODUTIVEL: medido, a inferencia na GPU difere em 36 "
+                         "de 312 colunas entre duas execucoes (ultima casa; o "
+                         "percentil amplifica para ~0,035), e na CPU em 0 de 312. "
+                         "Preco da CPU: ~66 min para a base inteira contra ~37 "
+                         "min na GPU. O padrao e CPU, e o manifesto registra qual "
+                         "rodou")
     ap.add_argument("--workers", type=int, default=0, metavar="N",
                     help="num_workers do ADMET-AI (padrao 0). Medido: 1.600 "
                          "moleculas saem em 8,6 s com 0 e em 384 s com 8, porque "
                          "sao dez modelos pagando o nascimento de N processos")
+    ap.add_argument("--evidencias", metavar="TSV",
+                    help="evidencias.tsv da etapa 1: restringe o portao aos "
+                         "ligantes QUE TEM evidencia, e o resumo diz quantos "
+                         "ficaram de fora. Sem isto, todo ligante da entrada e "
+                         "julgado")
     ap.add_argument("--alvos", metavar="TSV",
                     help="alvos_enriquecidos.tsv da etapa 1; liga a anotacao de "
                          "expressao e escreve " + NOME_ALVOS)
@@ -217,7 +260,8 @@ def _politica(args):
     return decisao.montar_politica(promovidos, rebaixados)
 
 
-def _abrir_cache(args, destino: Path, *, com_openfda: bool = True):
+def _abrir_cache(args, destino: Path, *, com_openfda: bool = True,
+                 anterior: dict | None = None):
     """Cache de rede da execucao: (Cache, versoes dos servicos, raiz, pasta).
 
     `com_openfda` acrescenta a data de carga do openFDA a chave da pasta -- um
@@ -225,6 +269,17 @@ def _abrir_cache(args, destino: Path, *, com_openfda: bool = True):
     execucao nao consulta bula, para nao pagar a requisicao de versao nem
     inventar uma pasta que promete respostas que nao tem."""
     from mods.evidencias import cache as c
+    if anterior is not None:
+        # Repeticao: pasta que o manifesto aponta, so leitura, nunca a rede.
+        par = anterior.get("parametros", {})
+        pasta = par.get("cache_pasta")
+        raiz = args.cache or par.get("cache_raiz")
+        if not pasta or not raiz:
+            raise c.VersaoIndeterminada(
+                "o manifesto nao aponta para um cache de rede; so manifestos de "
+                "execucoes que usaram a rede (com cache) podem ser repetidos")
+        cache, versoes = c.abrir_para_repeticao(raiz, pasta)
+        return cache, versoes, str(Path(raiz).resolve()), cache.diretorio.name
     raiz = Path(args.cache) if args.cache else destino / "cache_rede"
     cache, versoes = c.abrir_ao_vivo(raiz, com_openfda=com_openfda)
     return cache, versoes, str(Path(raiz).resolve()), cache.diretorio.name
@@ -266,6 +321,21 @@ def _consultar_bula(nome: str, termos: list[str], *, obter_json):
     lista = [por_chave[c] for c in sorted(por_chave)]
     veredito, valor = bula.veredito(resultado, lista, dirigidos)
     return veredito, valor, lista, resultado, dirigidos
+
+
+def _ligantes_com_evidencia(caminho) -> set[str]:
+    """InChIKeys parentais que aparecem em `evidencias.tsv`.
+
+    Pela chave parental, que e como a etapa 1 identifica o ligante: sal e base
+    livre sao o mesmo composto. Ligante de SMILES ilegivel nao tem chave e
+    portanto nao tem evidencia -- quem pede este recorte esta pedindo
+    exatamente isso."""
+    chaves = set()
+    for linha in esquema.ler_tsv(caminho):
+        chave = (linha.get("ligante_inchikey_parental") or "").strip()
+        if chave:
+            chaves.add(chave)
+    return chaves
 
 
 def _anotar_alvos(caminho, pedidos: list[str], *, corte: float, politica: dict,
@@ -438,6 +508,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[erro] nao foi possivel ler --ligantes: {e}", file=sys.stderr)
         return SAIDA_ERRO
     _relatar("ligantes", problemas)
+    sem_evidencia = 0
+    if args.evidencias and ligantes:
+        try:
+            com_evidencia = _ligantes_com_evidencia(args.evidencias)
+        except (OSError, UnicodeDecodeError, ValueError) as e:
+            print(f"[erro] --evidencias: {e}", file=sys.stderr)
+            return SAIDA_ERRO
+        antes = len(ligantes)
+        ligantes = [l for l in ligantes
+                    if (l.get("inchikey_parental") or "") in com_evidencia]
+        sem_evidencia = antes - len(ligantes)
+        print(f"[info] --evidencias: {len(ligantes)} de {antes} ligante(s) tem "
+              f"evidencia e seguem para o portao; {sem_evidencia} ficaram de "
+              f"fora (nao reprovados -- nao julgados)", file=sys.stderr)
     if not ligantes:
         print("[erro] ligantes: nenhum registro utilizavel; execucao "
               "interrompida", file=sys.stderr)
@@ -449,12 +533,24 @@ def main(argv: list[str] | None = None) -> int:
     versao_admet = "ausente"
     if tem_admet:
         try:
-            colunas_admet = admet.colunas(args.workers)
+            colunas_admet = admet.colunas(args.workers, args.gpu)
             versao_admet = admet.versao()
         except (ImportError, OSError, RuntimeError, ValueError) as e:
             print(f"[erro] ADMET-AI instalado mas nao utilizavel: {e}",
                   file=sys.stderr)
             return SAIDA_ERRO
+    dispositivo = admet.dispositivo() if tem_admet else "sem admet"
+    if tem_admet:
+        if dispositivo == "gpu":
+            print("[ATENCAO] o ADMET-AI vai rodar na GPU: a inferencia nela NAO "
+                  "e deterministica (medido: 36 de 312 colunas diferem entre "
+                  "execucoes, na ultima casa), entao `--manifesto` nao "
+                  "reproduzira as colunas de ADMET byte a byte. Os vereditos do "
+                  "portao nao mudam por isso; se precisar de bit-exatidao, rode "
+                  "sem --gpu", file=sys.stderr)
+        elif args.gpu:
+            print("[aviso] --gpu pedido, mas nao ha GPU visivel: rodando na CPU",
+                  file=sys.stderr)
     else:
         print("[aviso] pacote `admet_ai` ausente: a etapa roda sem ADMET. As "
               "colunas de ADMET nao saem e o criterio `toxicidade` fica "
@@ -463,6 +559,24 @@ def main(argv: list[str] | None = None) -> int:
 
     # Cache e versoes ANTES de abrir qualquer saida: sem versao conhecida nao
     # ha como garantir que o cache vale, e falhar aqui nao deixa arquivo algum.
+    anterior = None
+    if args.manifesto:
+        try:
+            anterior = ler_manifesto(args.manifesto)
+        except (OSError, ValueError) as e:
+            print(f"[erro] --manifesto: nao foi possivel ler {args.manifesto}: {e}",
+                  file=sys.stderr)
+            return SAIDA_ERRO
+        ausentes = hashes_de_entrada_ausentes(
+            anterior, entradas=ENTRADAS_HASHEADAS, condicionais=CONDICIONAIS)
+        if ausentes:
+            print(f"[erro] repeticao recusada: o manifesto {args.manifesto} nao "
+                  f"registra o MD5 de entrada(s) que a execucao original usou "
+                  f"(ausentes: {', '.join(ausentes)}), e sem eles nao ha como "
+                  "conferir que os arquivos sao os mesmos. Gere um manifesto novo "
+                  "com uma execucao normal", file=sys.stderr)
+            return SAIDA_ERRO
+
     cache = None
     versoes_rede: dict = {}
     raiz_cache = pasta_cache = None
@@ -470,10 +584,45 @@ def main(argv: list[str] | None = None) -> int:
     if usa_rede:
         try:
             cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(
-                args, destino, com_openfda=bool(termos))
+                args, destino, com_openfda=bool(termos), anterior=anterior)
         except Exception as e:   # VersaoIndeterminada, OSError, ValueError
             print(f"[erro] cache de rede: {e}", file=sys.stderr)
             return SAIDA_ERRO
+
+    md5s = {"ligantes_md5": procedencia.md5_ou_none(args.ligantes),
+            "alvos_md5": procedencia.md5_ou_none(args.alvos),
+            "evidencias_md5": procedencia.md5_ou_none(args.evidencias),
+            "tecidos_md5": procedencia.md5_ou_none(args.tecidos)}
+    parametros_de_saida = {
+        "politica": politica,
+        "percentil_toxicidade": args.percentil_toxicidade,
+        "limite_bula": args.limite_bula,
+        "corte_expressao": args.corte_expressao,
+        "termos_alerta": termos,
+        "tecidos_pedidos": tecidos,
+        "limite": args.limite,
+        "sem_rede": args.sem_rede,
+        "workers": args.workers,
+        # O dispositivo entra na chave da repeticao porque muda a saida: a GPU
+        # nao reproduz as colunas de ADMET. Vale o REAL, nao o pedido.
+        "dispositivo": dispositivo,
+    }
+    if anterior is not None:
+        divergencias = verificar_manifesto(
+            anterior,
+            {"versoes": {**versoes_rede, **md5s, "admet_ai": versao_admet,
+                         **procedencia.versoes_do_ambiente()},
+             "parametros": parametros_de_saida},
+            versoes=VERSOES_DA_REPETICAO, parametros=PARAMETROS_DA_REPETICAO)
+        if divergencias:
+            print("[erro] repeticao recusada, a execucao difere do manifesto:\n  "
+                  + "\n  ".join(divergencias), file=sys.stderr)
+            return SAIDA_ERRO
+        if anterior.get("parametros", {}).get("dispositivo") == "gpu":
+            print("[ATENCAO] a execucao original rodou na GPU, onde a inferencia "
+                  "do ADMET-AI nao e deterministica: as colunas de ADMET podem "
+                  "diferir na ultima casa, e isso NAO e falha da repeticao. Os "
+                  "vereditos do portao reproduzem exatamente", file=sys.stderr)
 
     contador = decisao.Contador(decisao.CRITERIOS_LIGANTE)
     consultados = 0
@@ -530,7 +679,7 @@ def main(argv: list[str] | None = None) -> int:
                 if tem_admet:
                     previsoes = admet.prever(
                         [l.get("smiles", "") for l in lote],
-                        num_workers=args.workers)
+                        num_workers=args.workers, usar_gpu=args.gpu)
                 for ligante in lote:
                     linha, problema = propriedades.linha_de_propriedades(ligante)
                     # SMILES ausente do resultado e SMILES que o ADMET-AI
@@ -611,27 +760,30 @@ def main(argv: list[str] | None = None) -> int:
         ilegiveis = sum(1 for l in ligantes if not l.get("inchikey_parental"))
         parcial = bool(descartadas) or bool(falhas_de_bula) or bool(falhas_de_alvo)
         resumo = contador.resumo(politica)
-        tmp_manifesto = atomico.temporario(destino / NOME_MANIFESTO)
-        pendentes.append((tmp_manifesto, destino / NOME_MANIFESTO))
+        caminho_manifesto = destino / NOME_MANIFESTO
+        if (args.manifesto and caminho_manifesto.exists()
+                and caminho_manifesto.resolve() == Path(args.manifesto).resolve()):
+            # Repetir para a MESMA pasta nao pode apagar o manifesto que esta
+            # sendo repetido: ele e a chave da repeticao.
+            caminho_manifesto = destino / NOME_MANIFESTO_REPETICAO
+        tmp_manifesto = atomico.temporario(caminho_manifesto)
+        pendentes.append((tmp_manifesto, caminho_manifesto))
         tmp_manifesto.write_text(texto_do_manifesto(
-            parametros={"ligantes": args.ligantes,
-                        "politica": politica,
-                        "percentil_toxicidade": args.percentil_toxicidade,
-                        "workers": args.workers,
-                        "limite": args.limite,
-                        "termos_alerta": termos,
-                        "limite_bula": args.limite_bula,
+            # `parametros_de_saida` e exatamente o que a repeticao confere;
+            # grava-lo inteiro, em vez de repetir campo por campo, impede que
+            # alguem acrescente um parametro que muda a saida e esqueca de
+            # registra-lo -- a repeticao passaria a aceitar execucoes
+            # diferentes em silencio. Os caminhos ficam de fora dele porque
+            # repetir para outra pasta e repetir.
+            parametros={**parametros_de_saida,
+                        "ligantes": args.ligantes,
+                        "evidencias": args.evidencias,
                         "alvos": args.alvos,
                         "tecidos": args.tecidos,
-                        "tecidos_pedidos": tecidos,
-                        "corte_expressao": args.corte_expressao,
-                        "sem_rede": args.sem_rede,
                         "cache_raiz": raiz_cache,
-                        "cache_pasta": pasta_cache},
-            versoes={**versoes_rede, "admet_ai": versao_admet,
-                     "ligantes_md5": procedencia.md5_ou_none(args.ligantes),
-                     "alvos_md5": procedencia.md5_ou_none(args.alvos),
-                     "tecidos_md5": procedencia.md5_ou_none(args.tecidos),
+                        "cache_pasta": pasta_cache,
+                        "repeticao_de": args.manifesto},
+            versoes={**versoes_rede, **md5s, "admet_ai": versao_admet,
                      **procedencia.versoes_do_ambiente(),
                      **procedencia.repositorio_do_pipeline(),
                      "pipeline_commit": procedencia.commit_do_pipeline(),
@@ -641,6 +793,7 @@ def main(argv: list[str] | None = None) -> int:
                        "problemas_ligantes": len(problemas),
                        "linhas_descartadas": descartadas,
                        "smiles_ilegiveis_mantidos": ilegiveis,
+                       "ligantes_sem_evidencia": sem_evidencia,
                        "bulas_consultadas": consultados,
                        "falhas_de_bula": falhas_de_bula,
                        "falhas_de_alvo": falhas_de_alvo,

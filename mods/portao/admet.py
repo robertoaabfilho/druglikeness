@@ -25,6 +25,25 @@ O `ADMETModel` escolhe `num_workers=8` quando ha GPU. Medido nesta maquina,
 carregamento para um lote que a GPU resolve em milissegundos. Este modulo passa
 `num_workers=0` por padrao; `--workers` muda.
 
+CPU por padrao, e a medicao que decide
+--------------------------------------
+A inferencia na GPU NAO e deterministica: duas execucoes da mesma molecula no
+mesmo processo diferem em 36 de 312 colunas, na ultima casa (ordem de reducao
+nos kernels). A diferenca e de ~1e-8 relativo nos valores, mas o PERCENTIL a
+amplifica para ~0,035, porque um percentil e uma posicao entre os ~2.850
+aprovados do DrugBank e um fio de diferenca inverte uma comparacao. Na CPU: 0
+de 312, bit-exato.
+
+Isso quebraria o modo de repeticao desta etapa, que existe para reproduzir a
+saida. Medido o preco (200 moleculas de `input.exemplo.tsv`):
+
+    GPU ... 20,5 ms/mol -> base de 108.935 em ~37 min
+    CPU ... 36,4 ms/mol -> base de 108.935 em ~66 min
+
+1,8x, nao 10x. Por 29 minutos numa execucao que precisa ser citavel, a CPU e o
+padrao; `--gpu` troca reprodutibilidade por tempo, e o manifesto registra qual
+dos dois rodou -- pelo dispositivo REAL, nao pelo pedido.
+
 Degradacao
 ----------
 Sem o pacote `admet_ai` a etapa RODA: `disponivel()` e falso, as colunas de
@@ -34,6 +53,7 @@ nunca vira aprovacao nem reprovacao.
 
 import importlib.util
 import logging
+import os
 import warnings
 
 LOTE = 2048
@@ -69,32 +89,53 @@ def _silenciar():
     warnings.filterwarnings("ignore", module="chemprop.*")
 
 
-def carregar(num_workers: int = 0):
-    """Modelo carregado uma vez por processo (0,1 s de carga, 6 s de import)."""
+def carregar(num_workers: int = 0, usar_gpu: bool = False):
+    """Modelo carregado uma vez por processo (0,1 s de carga, 6 s de import).
+
+    `ADMETModel` nao aceita dispositivo, e o Lightning escolhe "auto" -- entao
+    a unica forma de exigir CPU e esconder a GPU ANTES de o torch ser
+    importado. Se o torch ja estiver inicializado com CUDA neste processo, isto
+    nao tem efeito: por isso quem grava o manifesto usa `dispositivo()`, que
+    responde o que de fato esta valendo."""
     global _modelo
     if _modelo is None:
+        if not usar_gpu:
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
         _silenciar()
         from admet_ai import ADMETModel
         _modelo = ADMETModel(num_workers=num_workers)
     return _modelo
 
 
-def colunas(num_workers: int = 0) -> list[str]:
+def dispositivo() -> str:
+    """"gpu" ou "cpu": o que a inferencia VAI usar, nao o que foi pedido.
+
+    Um manifesto que registre o pedido mentiria quando o pedido nao pegou --
+    e um manifesto que mente sobre o dispositivo promete uma repeticao
+    bit-exata que a GPU nao entrega."""
+    try:
+        import torch
+    except ImportError:
+        return "indeterminado"
+    return "gpu" if torch.cuda.is_available() else "cpu"
+
+
+def colunas(num_workers: int = 0, usar_gpu: bool = False) -> list[str]:
     """Os nomes das 104 colunas do ADMET-AI, descobertos da instalacao e nao
     fixados no codigo: fixa-los faria o repositorio mentir sobre a versao.
     Custa uma previsao de uma molecula trivial."""
-    modelo = carregar(num_workers)
+    modelo = carregar(num_workers, usar_gpu)
     return list(modelo.predict("C").keys())
 
 
-def prever(smiles: list[str], *, num_workers: int = 0,
+def prever(smiles: list[str], *, num_workers: int = 0, usar_gpu: bool = False,
            lote: int = LOTE) -> dict[str, dict]:
     """{smiles: {coluna: valor}} para os SMILES que o ADMET-AI aceitou.
 
     SMILES ausente do resultado e um SMILES que a ferramenta descartou (ela
     avisa "N invalid molecules removed" e os remove da tabela). Quem chama
     trata a ausencia como `indeterminado`; aqui nao se inventa valor."""
-    modelo = carregar(num_workers)
+    modelo = carregar(num_workers, usar_gpu)
     saida: dict[str, dict] = {}
     unicos = list(dict.fromkeys(s for s in smiles if s))
     for inicio in range(0, len(unicos), lote):

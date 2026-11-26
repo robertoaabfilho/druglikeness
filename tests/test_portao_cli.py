@@ -44,7 +44,9 @@ def admet_falso(monkeypatch):
 
     monkeypatch.setattr(admet, "disponivel", lambda: True)
     monkeypatch.setattr(admet, "versao", lambda: "2.0.1-falso")
-    monkeypatch.setattr(admet, "colunas", lambda num_workers=0: list(COLUNAS_FALSAS))
+    monkeypatch.setattr(admet, "colunas",
+                        lambda num_workers=0, usar_gpu=False: list(COLUNAS_FALSAS))
+    monkeypatch.setattr(admet, "dispositivo", lambda: "cpu")
     monkeypatch.setattr(admet, "prever", prever)
     return percentis
 
@@ -282,7 +284,9 @@ def test_coluna_do_admet_que_colide_com_o_esquema_e_prefixada(
     silencio -- duas colunas respondendo a mesma pergunta sem procedencia."""
     monkeypatch.setattr(admet, "disponivel", lambda: True)
     monkeypatch.setattr(admet, "versao", lambda: "2.0.1-falso")
-    monkeypatch.setattr(admet, "colunas", lambda num_workers=0: ["tpsa", "hERG"])
+    monkeypatch.setattr(admet, "colunas",
+                        lambda num_workers=0, usar_gpu=False: ["tpsa", "hERG"])
+    monkeypatch.setattr(admet, "dispositivo", lambda: "cpu")
     monkeypatch.setattr(admet, "prever", lambda smiles, **k: {
         s: {"tpsa": 999.0, "hERG": 0.5} for s in smiles})
     saida = tmp_path / "res"
@@ -308,7 +312,8 @@ def test_desvio_impossivel_erra_em_vez_de_adivinhar(tmp_path, ligantes, monkeypa
     monkeypatch.setattr(admet, "disponivel", lambda: True)
     monkeypatch.setattr(admet, "versao", lambda: "x")
     monkeypatch.setattr(admet, "colunas",
-                        lambda num_workers=0: ["tpsa", "admet_tpsa"])
+                        lambda num_workers=0, usar_gpu=False: ["tpsa", "admet_tpsa"])
+    monkeypatch.setattr(admet, "dispositivo", lambda: "cpu")
     monkeypatch.setattr(admet, "prever", lambda smiles, **k: {})
     assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "res")) == 2
     assert not (tmp_path / "res" / "propriedades.tsv").exists()
@@ -757,3 +762,260 @@ def test_flag_invalida_falha_antes_de_carregar_o_admet(tmp_path, ligantes,
                   "--termos-alerta", "x", "--sem-rede") == 2
     assert _rodar("--ligantes", ligantes, "--saida", str(saida),
                   "--reprovar", "nao_existe") == 2
+
+
+# --------------------------------------------------------------------------
+# --evidencias: restringe sem reprovar
+# --------------------------------------------------------------------------
+
+def test_evidencias_restringe_aos_ligantes_que_tem_evidencia(
+        tmp_path, ligantes, admet_falso, capsys):
+    """Ficar de fora nao e ser reprovado: e nao ser julgado. O resumo diz
+    quantos, para que a diferenca nao se perca."""
+    # A chave e a parental, calculada pelo mesmo leitor que o pipeline usa --
+    # nao uma string inventada, senao o teste passaria por engano.
+    from mods.evidencias.entrada import ler_ligantes
+    lidos, _ = ler_ligantes(ligantes)
+    chave = {l["nome"]: l["inchikey_parental"] for l in lidos}["aspirina"]
+    assert chave, "o leitor nao calculou a chave parental"
+
+    # So a aspirina tem evidencia; a amitriptilina nao.
+    evidencias = tmp_path / "evidencias.tsv"
+    evidencias.write_text(
+        "#ligante\tligante_inchikey_parental\n" + f"aspirina\t{chave}\n",
+        encoding="utf-8")
+
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--evidencias", str(evidencias)) == 0
+    assert [l["ligante"] for l in _ler(saida, "portao.tsv")] == ["aspirina"]
+    assert "1 de 2 ligante(s) tem evidencia" in capsys.readouterr().err
+    m = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert m["contagens"]["ligantes_sem_evidencia"] == 1
+    assert m["versoes"]["evidencias_md5"]
+
+
+def test_evidencias_sem_nenhum_casamento_para_em_vez_de_publicar_vazio(
+        tmp_path, ligantes, admet_falso):
+    """Tabela vazia publicada seria lida como "nada passou no portao"."""
+    evidencias = tmp_path / "evidencias.tsv"
+    evidencias.write_text("#ligante\tligante_inchikey_parental\n",
+                          encoding="utf-8")
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--evidencias", str(evidencias)) == 1
+    assert not (saida / "portao.tsv").exists()
+
+
+# --------------------------------------------------------------------------
+# Criterio 5 do desenho: repeticao por manifesto
+# --------------------------------------------------------------------------
+
+def test_repeticao_reproduz_as_saidas_byte_a_byte(tmp_path, ligantes, admet_falso):
+    """Sem rede na execucao, a repeticao e pura: mesma entrada, mesma politica,
+    mesmos arquivos."""
+    um, dois = tmp_path / "um", tmp_path / "dois"
+    assert _rodar("--ligantes", ligantes, "--saida", str(um)) == 0
+    assert _rodar("--ligantes", ligantes, "--saida", str(dois),
+                  "--manifesto", str(um / "manifesto.json")) == 0
+    for nome in ("propriedades.tsv", "portao.tsv"):
+        assert (um / nome).read_bytes() == (dois / nome).read_bytes(), nome
+    # O manifesto novo diz de quem e a repeticao.
+    novo = json.loads((dois / "manifesto.json").read_text(encoding="utf-8"))
+    assert novo["parametros"]["repeticao_de"] == str(um / "manifesto.json")
+
+
+def test_repeticao_na_mesma_pasta_nao_apaga_o_manifesto_repetido(
+        tmp_path, ligantes, admet_falso):
+    """Ele e a chave da repeticao; sobrescreve-lo destruiria o que se esta
+    conferindo."""
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    original = (saida / "manifesto.json").read_bytes()
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--manifesto", str(saida / "manifesto.json")) == 0
+    assert (saida / "manifesto.json").read_bytes() == original
+    assert (saida / "manifesto_repeticao.json").is_file()
+
+
+def test_repeticao_recusa_entrada_que_mudou(tmp_path, ligantes, admet_falso,
+                                            capsys):
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    Path(ligantes).write_text(f"nome\tsmiles\naspirina\t{ASPIRINA}\n",
+                              encoding="utf-8")
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json")) == 2
+    erro = capsys.readouterr().err
+    assert "repeticao recusada" in erro and "ligantes_md5" in erro
+    assert "o arquivo mudou desde o manifesto" in erro
+
+
+def test_repeticao_recusa_politica_diferente(tmp_path, ligantes, admet_falso,
+                                             capsys):
+    """Repetir com outra politica da outro arquivo -- nao e repeticao."""
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json"),
+                  "--reprovar", "alerta_estrutural") == 2
+    assert "politica" in capsys.readouterr().err
+
+
+def test_repeticao_recusa_versao_do_admet_diferente(tmp_path, ligantes,
+                                                    admet_falso, monkeypatch,
+                                                    capsys):
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    monkeypatch.setattr(admet, "versao", lambda: "9.9.9-outra")
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json")) == 2
+    assert "admet_ai" in capsys.readouterr().err
+
+
+def test_repeticao_recusa_parametro_que_muda_a_saida(tmp_path, ligantes,
+                                                     admet_falso, capsys):
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json"),
+                  "--percentil-toxicidade", "50") == 2
+    assert "percentil_toxicidade" in capsys.readouterr().err
+
+
+def test_repeticao_de_execucao_com_rede_serve_do_cache_e_nao_busca(
+        tmp_path, monkeypatch, respostas, sem_admet):
+    """A repeticao nunca toca a rede: o cache abre so-leitura, e falta nele e
+    ERRO, nao busca nova."""
+    raiz = tmp_path / "cache"
+    pasta = "openfda-2026-11-25"
+    (raiz / pasta).mkdir(parents=True)
+    (raiz / pasta / "versoes.json").write_text(
+        json.dumps({"openfda": "2026-11-25"}), encoding="utf-8")
+
+    from mods.evidencias import cache as c
+    gravador = c.Cache(raiz / pasta, buscar=lambda url, corpo=None: respostas(
+        url, corpo))
+
+    chamadas = {"n": 0}
+
+    def buscar_contando(url, corpo=None):
+        chamadas["n"] += 1
+        return respostas(url, corpo)
+
+    monkeypatch.setattr(
+        aplicar_portao, "_abrir_cache",
+        lambda args, destino, **k: (
+            c.Cache(raiz / pasta, buscar=buscar_contando,
+                    somente_leitura=k.get("anterior") is not None),
+            {"openfda": "2026-11-25"}, str(raiz), pasta))
+
+    um = tmp_path / "um"
+    assert _rodar_controle(um) == 0
+    buscas_na_primeira = chamadas["n"]
+    assert buscas_na_primeira > 0, "a primeira execucao deveria ter buscado"
+
+    dois = tmp_path / "dois"
+    assert _rodar("--ligantes", CONTROLE, "--saida", str(dois),
+                  "--termos-alerta", TERMOS, "--cache", str(raiz),
+                  "--manifesto", str(um / "manifesto.json")) == 0
+    assert chamadas["n"] == buscas_na_primeira, "a repeticao buscou na rede"
+    assert (um / "portao.tsv").read_bytes() == (dois / "portao.tsv").read_bytes()
+    assert (um / "alertas_bula.tsv").read_bytes() == (
+        dois / "alertas_bula.tsv").read_bytes()
+
+
+def test_manifesto_sem_md5_de_entrada_recusa_a_repeticao(tmp_path, ligantes,
+                                                         admet_falso, capsys):
+    """Manifesto antigo, de antes do registro de MD5: sem ele nao ha como
+    conferir a entrada, e repetir as cegas seria pior que recusar."""
+    velho = tmp_path / "velho.json"
+    velho.write_text(json.dumps(
+        {"parametros": {"politica": {}}, "versoes": {"admet_ai": "x"},
+         "contagens": {}}), encoding="utf-8")
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r"),
+                  "--manifesto", str(velho)) == 2
+    erro = capsys.readouterr().err
+    assert "ligantes_md5" in erro and "Gere um manifesto novo" in erro
+
+
+def test_manifesto_ilegivel_e_erro_e_nao_publica(tmp_path, ligantes, admet_falso):
+    ruim = tmp_path / "ruim.json"
+    ruim.write_text("{nao sou json", encoding="utf-8")
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida),
+                  "--manifesto", str(ruim)) == 2
+    assert not (saida / "portao.tsv").exists()
+
+
+def test_repeticao_de_execucao_sem_cache_e_recusada(tmp_path, ligantes,
+                                                    admet_falso, capsys):
+    """Execucao que nao usou rede nao aponta cache; pedir bula na repeticao
+    dela nao tem de onde servir."""
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json"),
+                  "--termos-alerta", "neuropathy") == 2
+    assert "nao aponta para um cache" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# Dispositivo: CPU por padrao, porque a GPU nao reproduz
+# --------------------------------------------------------------------------
+
+def test_dispositivo_vai_para_o_manifesto_e_para_a_chave_da_repeticao(
+        tmp_path, ligantes, admet_falso):
+    """Medido: a inferencia na GPU difere em 36 de 312 colunas entre execucoes
+    (ultima casa; o percentil amplifica para ~0,035) e na CPU em 0 de 312.
+    Logo o dispositivo muda a saida e e chave da repeticao."""
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    m = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert m["parametros"]["dispositivo"] == "cpu"
+    assert "dispositivo" in aplicar_portao.PARAMETROS_DA_REPETICAO
+
+
+def test_repeticao_recusa_dispositivo_diferente(tmp_path, ligantes, admet_falso,
+                                                monkeypatch, capsys):
+    saida = tmp_path / "res"
+    _rodar("--ligantes", ligantes, "--saida", str(saida))
+    monkeypatch.setattr(admet, "dispositivo", lambda: "gpu")
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json")) == 2
+    assert "dispositivo" in capsys.readouterr().err
+
+
+def test_gpu_avisa_que_a_saida_nao_sera_reprodutivel(tmp_path, ligantes,
+                                                     admet_falso, monkeypatch,
+                                                     capsys):
+    """Quem troca reprodutibilidade por tempo tem de ser avisado na hora, nao
+    descobrir quando a repeticao divergir."""
+    monkeypatch.setattr(admet, "dispositivo", lambda: "gpu")
+    _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "res"), "--gpu")
+    erro = capsys.readouterr().err
+    assert "NAO" in erro and "deterministica" in erro
+    assert "os vereditos do portao nao mudam" in erro.lower()
+
+
+def test_repetir_execucao_de_gpu_avisa_em_vez_de_prometer_bit_exatidao(
+        tmp_path, ligantes, admet_falso, monkeypatch, capsys):
+    saida = tmp_path / "res"
+    monkeypatch.setattr(admet, "dispositivo", lambda: "gpu")
+    _rodar("--ligantes", ligantes, "--saida", str(saida), "--gpu")
+    capsys.readouterr()
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "r2"),
+                  "--manifesto", str(saida / "manifesto.json"), "--gpu") == 0
+    erro = capsys.readouterr().err
+    assert "nao e falha da repeticao" in erro.lower()
+
+
+def test_pedir_gpu_sem_gpu_avisa_e_roda_na_cpu(tmp_path, ligantes, admet_falso,
+                                               capsys):
+    """`dispositivo()` responde o que vai valer, nao o que foi pedido: um
+    manifesto que registrasse o pedido mentiria."""
+    saida = tmp_path / "res"
+    assert _rodar("--ligantes", ligantes, "--saida", str(saida), "--gpu") == 0
+    assert "nao ha GPU visivel" in capsys.readouterr().err
+    m = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert m["parametros"]["dispositivo"] == "cpu"
