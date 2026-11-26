@@ -66,3 +66,21 @@ Dominio publico (CC0), sem exigencia de share-alike
 
 Fixtures escritas a mao (ligantes_minimo.tsv, alvos_minimo.tsv,
 ligantes_sem_coluna.tsv, sintomas.txt) seguem a licenca MIT do repositorio.
+
+Derivado do PP4CKD (saida do modelo, nao dado de treino)
+
+    tests/dados/controle_previsoes.tsv
+
+        Probabilidades do `ecfp4_fold_4.pt` do PP4CKD sobre os 12 farmacos de
+        `exemplos/controle.dor_neuropatica.tsv`: uma coluna por alvo pedido, o
+        maximo do canal negativo e a contagem de promiscuidade. Os SMILES de
+        entrada vem do controle, que e escrito a mao (MIT); os numeros sao
+        saida do modelo publicado no Zenodo pelos autores do PP4CKD.
+
+        O QUE ESTA FIXTURE FIXA E A ARITMETICA, NAO O MODELO. Se o checkpoint
+        mudar, os numeros gravados continuam valendo como entrada do teste --
+        e o teste continua provando que a conta da fase 3 reproduz 0,750 sem
+        canal negativo e 0,806 com ele. A alternativa seria exigir o
+        checkpoint real na suite, e nenhum teste deste repositorio depende de
+        arquivo fora dele. O gravador e descrito no commit que introduziu a
+        tarefa das AUC.

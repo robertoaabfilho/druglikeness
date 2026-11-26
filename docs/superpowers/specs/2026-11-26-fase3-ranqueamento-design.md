@@ -130,9 +130,18 @@ aqui.
 
 A extensao permeavel, se vier, e medida com conjunto independente.
 
-`max` e nao soma para agregar varios alvos: e o que foi medido, e soma sobre
-nove alvos premiaria o composto promiscuo -- que a medicao do canal humano
-mostrou ser enganoso neste conjunto (AUC 0,389 sozinho e invertido).
+`max` e nao soma para agregar varios alvos. **Correcao de 2026-11-26, medida ao
+implementar a tarefa 5:** a versao anterior deste paragrafo dizia que soma
+premiaria o composto promiscuo e que `max` era "o que foi medido". Nao se
+sustenta -- no controle de 12, soma sobre os 9 alvos da a MESMA AUC de 0,750
+que `max`. O conjunto nao discrimina as duas, entao `max` fica como escolha
+DECLARADA, com o motivo que vale sem medicao: somar probabilidades de alvos
+diferentes soma grandezas que nao se somam, e um composto que acerta cinco
+alvos fracos ultrapassaria um que acerta o alvo certo com forca.
+
+O que a medicao realmente rejeita e a CONTAGEM de promiscuidade (AUC 0,583, e a
+amitriptilina zerada), nao a soma. `tests/test_ranque_auc.py` fixa os tres
+numeros, inclusive este, para que a distincao nao se perca.
 
 **Afirmativo** = `origem_alvo = usuario` (sub-faixa a) ou uma das
 `ORIGENS_DE_ENRIQUECIMENTO` de `entrada.py:204`, hoje `open_targets` e
