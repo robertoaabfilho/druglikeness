@@ -46,7 +46,8 @@ from typing import Callable, NamedTuple
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias import atomico, procedencia
-from mods.evidencias.manifesto import ler_manifesto, texto_do_manifesto
+from mods.evidencias.manifesto import (ler_manifesto, texto_do_manifesto,
+                                       verificar_manifesto)
 from mods.evidencias.resumo import MINIMO_TREINO
 from mods.portao.esquema import EscritorTSV, ler_tsv
 from mods.ranque import esquema, negativo
@@ -65,6 +66,19 @@ NOME_MANIFESTO = "manifesto.json"
 
 INDETERMINADO = "indeterminado"
 LOTE = 512
+NOME_MANIFESTO_REPETICAO = "manifesto_repeticao.json"
+
+# Chaves que, se mudarem, fazem a repeticao dar outro arquivo. As da etapa 1
+# nao servem: esta fase nao consulta servico nenhum, e depende do PP4CKD, que
+# a etapa 2 nao conhece.
+VERSOES_DA_REPETICAO = ("rdkit", "pp4ckd_md5", "evidencias_md5", "portao_md5",
+                        "alvos_md5", "ligantes_md5")
+# `dispositivo` NAO entra: ele so e conhecido depois de abrir o modelo, e a
+# verificacao tem de recusar antes de escrever qualquer coisa. Divergencia de
+# dispositivo AVISA, como na etapa 2, onde repetir uma execucao de GPU avisa em
+# vez de prometer igualdade bit a bit.
+PARAMETROS_DA_REPETICAO = ("canal_negativo", "minimo_treino", "lote",
+                           "limite", "portao")
 
 
 class Modelo(NamedTuple):
@@ -136,6 +150,13 @@ def analisar(argv=None):
                     help="roda o PP4CKD na GPU. O padrao e CPU porque a GPU "
                          "nao reproduz -- medido na etapa 2: 36 de 312 colunas "
                          "diferem entre duas execucoes de GPU, e 0 de 312 na CPU")
+    ap.add_argument("--manifesto", metavar="JSON",
+                    help="MODO DE REPETICAO: manifesto.json de uma execucao "
+                         "anterior. RECUSA rodar se um MD5 de entrada, a "
+                         "versao do RDKit ou do PP4CKD, ou um parametro que "
+                         "muda a saida diferirem do registrado. O manifesto "
+                         f"novo sai como {NOME_MANIFESTO_REPETICAO} e nunca "
+                         "sobrescreve o original")
     ap.add_argument("--sem-canal-negativo", action="store_true",
                     help="desliga o canal negativo; a faixa prevista ordena "
                          "pelo p sozinho. Medido, o canal leva a AUC de 0,750 "
@@ -192,6 +213,7 @@ def _validar(args) -> str | None:
                             ("--ligantes", args.ligantes),
                             ("--rotulos", args.rotulos),
                             ("--manifesto-etapa1", args.manifesto_etapa1),
+                            ("--manifesto", args.manifesto),
                             ("--alvos", args.alvos)):
         if caminho and not Path(caminho).is_file():
             return f"{rotulo}: arquivo nao encontrado: {caminho}"
@@ -237,6 +259,24 @@ def _portao(caminho):
                 (linha.get("aprovado") or "").strip(),
                 (linha.get("motivos") or "").strip())
     return por_composto
+
+
+def _parametros(args, canal_negativo, dispositivo) -> dict:
+    """Os parametros que mudam o CONTEUDO da saida. Caminhos de saida nao
+    entram: repetir para outra pasta e repetir."""
+    return {"canal_negativo": canal_negativo,
+            "dispositivo": dispositivo,
+            "minimo_treino": args.minimo_treino,
+            "lote": args.lote,
+            "limite": args.limite,
+            "portao": bool(args.portao)}
+
+
+def _recusar(problemas: list[str]) -> None:
+    print("[ERRO] a repeticao foi recusada; nada foi escrito:",
+          file=sys.stderr)
+    for problema in problemas:
+        print(f"  - {problema}", file=sys.stderr)
 
 
 def _abrir_modelo(args) -> Modelo | None:
@@ -380,8 +420,52 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return SAIDA_SEM_ENTRADA
 
+    versoes = procedencia.versoes_do_ambiente() | {
+        "pipeline_commit": procedencia.commit_do_pipeline(),
+        "evidencias_md5": procedencia.md5(args.evidencias),
+        "portao_md5": procedencia.md5_ou_none(args.portao),
+        "alvos_md5": procedencia.md5_ou_none(args.alvos),
+        "ligantes_md5": procedencia.md5_ou_none(args.ligantes),
+        "pp4ckd_md5": procedencia.md5_ou_none(args.checkpoint)}
+
+    anterior = None
+    if args.manifesto:
+        try:
+            anterior = ler_manifesto(args.manifesto)
+        except (OSError, ValueError) as e:
+            print(f"[ERRO] --manifesto nao pode ser lido: {e}",
+                  file=sys.stderr)
+            return SAIDA_ERRO
+        # Primeira passada: tudo o que NAO depende do modelo. Assim um MD5 que
+        # mudou recusa antes de pagar o carregamento dos pesos -- a licao da
+        # etapa 2, onde a validacao rodava depois de carregar dez modelos.
+        problemas = verificar_manifesto(
+            anterior, {"versoes": versoes,
+                       "parametros": _parametros(args, None, None)},
+            versoes=VERSOES_DA_REPETICAO,
+            parametros=tuple(c for c in PARAMETROS_DA_REPETICAO
+                             if c != "canal_negativo"))
+        if problemas:
+            _recusar(problemas)
+            return SAIDA_ERRO
+
     try:
-        modelo = _abrir_modelo(args)
+        modelo = (None if args.sem_canal_negativo or not args.checkpoint
+                  else _abrir_modelo(args))
+        if anterior is not None:
+            problemas = verificar_manifesto(
+                anterior,
+                {"parametros": _parametros(args, modelo is not None, None)},
+                versoes=(), parametros=("canal_negativo",))
+            if problemas:
+                _recusar(problemas)
+                return SAIDA_ERRO
+            antes = (anterior.get("parametros") or {}).get("dispositivo")
+            agora = modelo.dispositivo if modelo else None
+            if antes != agora:
+                print(f"[AVISO] a execucao original rodou em {antes!r} e esta "
+                      f"roda em {agora!r}: a igualdade bit a bit nao e "
+                      "prometida entre dispositivos", file=sys.stderr)
         canal = ({} if modelo is None else _canal_por_composto(
             modelo, compostos, _smiles_por_composto(args.ligantes),
             args.minimo_treino, args.lote))
@@ -418,8 +502,11 @@ def main(argv=None) -> int:
 
     destino = Path(args.saida)
     destino.mkdir(parents=True, exist_ok=True)
+    nome_do_manifesto = (NOME_MANIFESTO_REPETICAO if args.manifesto
+                         else NOME_MANIFESTO)
     caminhos = {nome: destino / nome
-                for nome in (NOME_RANKING, NOME_NAO_RANQUEADOS, NOME_MANIFESTO)}
+                for nome in (NOME_RANKING, NOME_NAO_RANQUEADOS,
+                             nome_do_manifesto)}
     temporarios = {nome: atomico.temporario(c) for nome, c in caminhos.items()}
     try:
         with EscritorTSV(temporarios[NOME_RANKING],
@@ -449,18 +536,11 @@ def main(argv=None) -> int:
         # Escrita direta no temporario: a publicacao atomica das tres saidas
         # juntas e feita abaixo, e `atomico.escrever_texto` faria um segundo
         # temporario para um arquivo que ainda nem e o destino.
-        Path(temporarios[NOME_MANIFESTO]).write_text(texto_do_manifesto(
-            parametros={"canal_negativo": modelo is not None,
-                        "dispositivo": modelo.dispositivo if modelo else None,
-                        "minimo_treino": args.minimo_treino,
-                        "lote": args.lote,
-                        "limite": args.limite,
-                        "portao": bool(args.portao)},
-            versoes=procedencia.versoes_do_ambiente() | {
-                "pipeline_commit": procedencia.commit_do_pipeline(),
-                "evidencias_md5": procedencia.md5(args.evidencias),
-                "portao_md5": procedencia.md5_ou_none(args.portao),
-                "alvos_md5": procedencia.md5_ou_none(args.alvos)},
+        Path(temporarios[nome_do_manifesto]).write_text(texto_do_manifesto(
+            parametros=_parametros(
+                args, modelo is not None,
+                modelo.dispositivo if modelo else None),
+            versoes=versoes,
             contagens={"compostos": len(compostos),
                        "ranqueados": len(ranqueados),
                        "nao_ranqueados": len(fora)}), encoding="utf-8")

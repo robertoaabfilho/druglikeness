@@ -388,3 +388,109 @@ def test_canal_minimo_treino_muda_quem_entra(tmp_path, monkeypatch):
           "--ligantes", lig, "--minimo-treino", "20000"])
     # nenhum alvo passa do minimo: mascara vazia, e isso e indeterminado
     assert _ler(destino / NOME_RANKING)[0]["p_negativo"] == "indeterminado"
+
+
+# --------------------------------------------------------------------------
+# Manifesto e repeticao
+# --------------------------------------------------------------------------
+
+NOME_MANIFESTO_REPETICAO = "manifesto_repeticao.json"
+
+
+def _execucao_base(tmp_path, nome="base"):
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27), _ev("b", "B" * 27,
+                                                          pchembl="7.0")])
+    destino = tmp_path / nome
+    destino.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--sem-canal-negativo"]) == 0
+    return evid, destino
+
+
+def test_repeticao_da_o_mesmo_arquivo_byte_a_byte(tmp_path):
+    evid, base = _execucao_base(tmp_path)
+    repetida = tmp_path / "repetida"
+    repetida.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(repetida),
+                 "--sem-canal-negativo",
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 0
+    assert (base / NOME_RANKING).read_bytes() == \
+        (repetida / NOME_RANKING).read_bytes()
+    assert (base / NOME_NAO_RANQUEADOS).read_bytes() == \
+        (repetida / NOME_NAO_RANQUEADOS).read_bytes()
+
+
+def test_repeticao_escreve_manifesto_proprio_e_nao_sobrescreve_o_original(
+        tmp_path):
+    evid, base = _execucao_base(tmp_path)
+    antes = (base / NOME_MANIFESTO).read_bytes()
+    assert main(["--evidencias", evid, "--saida", str(base),
+                 "--sem-canal-negativo",
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 0
+    assert (base / NOME_MANIFESTO).read_bytes() == antes
+    assert (base / NOME_MANIFESTO_REPETICAO).is_file()
+
+
+def test_repeticao_recusa_se_o_md5_das_evidencias_mudou(tmp_path, capsys):
+    evid, base = _execucao_base(tmp_path)
+    Path(evid).write_text(
+        Path(evid).read_text(encoding="utf-8").replace("8.0", "9.0"),
+        encoding="utf-8")
+    repetida = tmp_path / "r"
+    repetida.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(repetida),
+                 "--sem-canal-negativo",
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 2
+    assert "evidencias_md5" in capsys.readouterr().err
+    assert not list(repetida.iterdir())
+
+
+def test_repeticao_recusa_se_o_minimo_treino_mudou(tmp_path, capsys):
+    evid, base = _execucao_base(tmp_path)
+    repetida = tmp_path / "r"
+    repetida.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(repetida),
+                 "--sem-canal-negativo", "--minimo-treino", "10",
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 2
+    assert "minimo_treino" in capsys.readouterr().err
+
+
+def test_repeticao_recusa_se_o_canal_negativo_mudou(tmp_path, capsys,
+                                                    monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "a", "smiles": "CCO",
+                                "inchikey_parental": "A" * 27}])
+    base = tmp_path / "base"
+    base.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(base), "--checkpoint",
+                 "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+                 "--ligantes", lig]) == 0
+    repetida = tmp_path / "r"
+    repetida.mkdir()
+    # `--ligantes` segue igual de proposito: sem ele a recusa viria por
+    # `ligantes_md5`, e o teste nao provaria nada sobre o canal.
+    assert main(["--evidencias", evid, "--saida", str(repetida),
+                 "--ligantes", lig, "--sem-canal-negativo",
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 2
+    saida = capsys.readouterr().err
+    assert "canal_negativo" in saida
+    assert "ligantes_md5" not in saida
+    assert not list(repetida.iterdir())
+
+
+def test_manifesto_registra_as_chaves_da_repeticao(tmp_path):
+    _, base = _execucao_base(tmp_path)
+    m = json.loads((base / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert set(m["parametros"]) >= {"canal_negativo", "minimo_treino",
+                                    "dispositivo", "lote", "limite", "portao"}
+    assert set(m["versoes"]) >= {"rdkit", "evidencias_md5", "pp4ckd_md5",
+                                 "portao_md5", "alvos_md5"}
+
+
+def test_manifesto_inexistente_e_erro_antes_de_escrever(tmp_path, capsys):
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--manifesto", str(tmp_path / "nao_existe.json")]) == 2
+    assert not list(destino.iterdir())
