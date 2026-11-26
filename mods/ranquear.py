@@ -306,17 +306,22 @@ def _abrir_modelo(args) -> Modelo | None:
                   prever=prever, checkpoint=nome)
 
 
-def _smiles_por_composto(caminho) -> dict[str, str]:
-    """{inchikey parental: smiles} de `ligantes.tsv`."""
+def _ligantes_de_entrada(caminho) -> dict[str, tuple[str, str]]:
+    """{inchikey parental: (nome, smiles)} de `ligantes.tsv`.
+
+    Serve a dois propositos: o SMILES alimenta o canal negativo, e a lista de
+    chaves e a unica forma de saber quem a etapa 1 conhecia e `evidencias.tsv`
+    nao menciona."""
     if not caminho:
         return {}
-    por_composto = {}
+    por_composto: dict[str, tuple[str, str]] = {}
     for linha in ler_tsv(caminho):
         chave_composto = (linha.get("inchikey_parental")
                           or linha.get("ligante_inchikey_parental") or "").strip()
-        smiles = (linha.get("smiles") or "").strip()
         if chave_composto and chave_composto not in por_composto:
-            por_composto[chave_composto] = smiles
+            por_composto[chave_composto] = (
+                (linha.get("nome") or linha.get("ligante") or "").strip(),
+                (linha.get("smiles") or "").strip())
     return por_composto
 
 
@@ -466,8 +471,10 @@ def main(argv=None) -> int:
                 print(f"[AVISO] a execucao original rodou em {antes!r} e esta "
                       f"roda em {agora!r}: a igualdade bit a bit nao e "
                       "prometida entre dispositivos", file=sys.stderr)
+        ligantes_de_entrada = _ligantes_de_entrada(args.ligantes)
         canal = ({} if modelo is None else _canal_por_composto(
-            modelo, compostos, _smiles_por_composto(args.ligantes),
+            modelo, compostos,
+            {k: smiles for k, (_, smiles) in ligantes_de_entrada.items()},
             args.minimo_treino, args.lote))
     except (OSError, ValueError, RuntimeError) as e:
         print(f"[ERRO] {e}", file=sys.stderr)
@@ -475,6 +482,22 @@ def main(argv=None) -> int:
 
     ranqueados = []
     fora = []
+    # Ligante que a etapa 1 conhece e `evidencias.tsv` nao menciona: a etapa 1
+    # so escreve LINHAS DE EVIDENCIA, entao quem nao tem evidencia alguma nao
+    # aparece la. Sem isto ele sumia -- nem ranqueado nem listado --, que e o
+    # caso mais extremo de faixa 3. Sem `--ligantes` nao ha como sabe-lo, e
+    # inventar a contagem seria pior que nao te-la.
+    for inchikey, (nome_de_entrada, _) in ligantes_de_entrada.items():
+        if inchikey in compostos:
+            continue
+        aprovado, motivos = _veredito(portao, inchikey)
+        fora.append({"ligante": nome_de_entrada,
+                     "ligante_inchikey_parental": inchikey,
+                     "motivo": "sem evidencia na etapa 1",
+                     "faixa": "3", "portao_aprovado": aprovado,
+                     "portao_motivos": motivos,
+                     "procedencia": procedencia_do_ranking()})
+
     for inchikey, (nome, linhas) in compostos.items():
         p_negativo, alvo_negativo = canal.get(inchikey, (None, ""))
         resultado = classificar(linhas, p_negativo=p_negativo)

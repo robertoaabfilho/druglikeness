@@ -494,3 +494,36 @@ def test_manifesto_inexistente_e_erro_antes_de_escrever(tmp_path, capsys):
     assert main(["--evidencias", evid, "--saida", str(destino),
                  "--manifesto", str(tmp_path / "nao_existe.json")]) == 2
     assert not list(destino.iterdir())
+
+
+def test_ligante_sem_evidencia_nenhuma_e_listado_em_vez_de_desaparecer(
+        tmp_path):
+    """Nada desaparece em silencio.
+
+    Quem nao tem linha em `evidencias.tsv` nunca chegava aqui: a etapa 1 so
+    escreve linhas de evidencia, logo um ligante sem evidencia alguma sumia --
+    nao ranqueado e nao listado, o que e o caso MAIS extremo de faixa 3."""
+    evid = _evidencias(tmp_path, [_ev("com_evidencia", "C" * 27)])
+    lig = _ligantes(tmp_path, [
+        {"nome": "com_evidencia", "smiles": "CCO",
+         "inchikey_parental": "C" * 27},
+        {"nome": "sem_evidencia", "smiles": "CCN",
+         "inchikey_parental": "S" * 27}])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--sem-canal-negativo"]) == 0
+    fora = {l["ligante"]: l for l in _ler(destino / NOME_NAO_RANQUEADOS)}
+    assert "sem_evidencia" in fora
+    assert fora["sem_evidencia"]["motivo"] == "sem evidencia na etapa 1"
+    assert fora["sem_evidencia"]["faixa"] == "3"
+    assert [l["ligante"] for l in _ler(destino / NOME_RANKING)] == \
+        ["com_evidencia"]
+
+
+def test_sem_ligantes_o_que_nao_esta_nas_evidencias_nao_e_inventado(tmp_path):
+    # Sem a lista de ligantes nao ha como saber quem ficou de fora, e o
+    # manifesto nao deve afirmar uma contagem que a execucao nao pode conhecer.
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--sem-canal-negativo"])
+    assert not _ler(destino / NOME_NAO_RANQUEADOS)
