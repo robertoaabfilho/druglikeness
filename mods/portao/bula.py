@@ -61,9 +61,24 @@ LIMITE_BULAS = 50
 JANELA_TRECHO = 120
 
 
-def url(nome: str, campo: str, limite: int = LIMITE_BULAS) -> str:
+SECOES_POR_FORCA = {"forte": SECOES_FORTES, "fraca": SECOES_FRACAS,
+                    "indicacao": SECOES_INDICACAO}
+
+# Ordenacao da janela. Medido: a capsaicina tem 211 bulas e, sem ordenar, as 50
+# que a busca devolve sao arbitrarias -- a unica que a indica para dor
+# neuropatica ficava de fora. Por data decrescente ela entra (effective_time
+# 2026-07-07). O openFDA NAO publica acesso, popularidade nem contagem de uso
+# (a bula tem 34 campos e nenhum deles), entao "as 50 mais acessadas" nao
+# existe; a data e o unico critetio de relevancia disponivel, e significa
+# "rotulagem vigente".
+ORDEM_DA_JANELA = "effective_time:desc"
+
+
+def url(nome: str, campo: str, limite: int = LIMITE_BULAS,
+        ordem: str = ORDEM_DA_JANELA) -> str:
     busca = quote(f'openfda.{campo}:"{nome}"', safe="")
-    return f"{BASE}?search={busca}&limit={int(limite)}"
+    sufixo = f"&sort={quote(ordem, safe=':')}" if ordem else ""
+    return f"{BASE}?search={busca}{sufixo}&limit={int(limite)}"
 
 
 def versao_openfda(*, obter_json: Callable) -> str:
@@ -93,6 +108,49 @@ def buscar_bulas(nome: str, *, obter_json: Callable,
     return {"campo_do_nome": "", "bulas": [], "total": 0}
 
 
+def url_dirigida(nome: str, campo: str, termos: list[str],
+                 secoes: tuple[str, ...]) -> str:
+    """Consulta DIRIGIDA: "existe alguma bula deste principio ativo com algum
+    destes termos em alguma destas secoes?".
+
+    Por que nao basta procurar na janela
+    ------------------------------------
+    A janela e um recorte; esta busca roda no acervo INTEIRO (265.009 bulas no
+    export de 2026-11-25). Medido no ciprofloxacino: 118 das 166 bulas trazem
+    `neuropathy` em secao forte, e a resposta dirigida custa 202 KB contra
+    27 MB de baixar todas as 166 (`limit=1000`, o maximo da API). Completa e
+    ~130x mais barata.
+
+    `meta.results.total` da resposta e o numero de bulas que casam -- o peso da
+    evidencia, que uma contagem feita dentro da janela nao sabe dizer: 118 de
+    166 no ciprofloxacino contra 1 de 211 na indicacao da capsaicina."""
+    termo_ou = " OR ".join(f'{secao}:"{t.strip()}"'
+                           for secao in secoes
+                           for t in termos if t.strip())
+    busca = quote(f'openfda.{campo}:"{nome}" AND ({termo_ou})', safe="")
+    return f"{BASE}?search={busca}&limit=1"
+
+
+def achados_dirigidos(nome: str, campo: str, termos: list[str], forca: str, *,
+                      obter_json: Callable) -> dict:
+    """{'total', 'achados'} da consulta dirigida de uma forca de secao.
+
+    `total` zero significa que NENHUMA bula do principio ativo casa -- no
+    acervo inteiro, nao so na janela. `achados` traz o que a bula devolvida
+    justifica, no formato de `achados()`, para o rastro."""
+    secoes = SECOES_POR_FORCA[forca]
+    if not campo or not [t for t in termos if t.strip()]:
+        return {"total": 0, "achados": []}
+    resposta = obter_json(url_dirigida(nome, campo, termos, secoes)) or {}
+    bulas = resposta.get("results") or []
+    total = (((resposta.get("meta") or {}).get("results") or {})
+             .get("total", len(bulas)))
+    # A bula devolvida tambem traz as outras secoes; so a forca perguntada
+    # interessa aqui, para que cada consulta responda uma pergunta.
+    lista = [a for a in achados(bulas, termos) if a["forca"] == forca]
+    return {"total": total, "achados": lista}
+
+
 def url_de_indicacao(nome: str, campo: str, termos: list[str]) -> str:
     """Consulta DIRIGIDA: "existe alguma bula deste principio ativo que o
     indique para a condicao?".
@@ -119,13 +177,8 @@ def achados_de_indicacao(nome: str, campo: str, termos: list[str], *,
     """Achados de INDICACAO vindos da consulta dirigida, no formato de
     `achados`. Lista vazia significa que nenhuma bula do principio ativo indica
     o farmaco para a condicao -- e nao que nao se olhou."""
-    if not campo or not [t for t in termos if t.strip()]:
-        return []
-    resposta = obter_json(url_de_indicacao(nome, campo, termos)) or {}
-    bulas = resposta.get("results") or []
-    # A bula devolvida tambem traz secoes de risco; aqui so a indicacao
-    # interessa -- o risco vem da janela, com o rastro dela.
-    return [a for a in achados(bulas, termos) if a["forca"] == "indicacao"]
+    return achados_dirigidos(nome, campo, termos, "indicacao",
+                             obter_json=obter_json)["achados"]
 
 
 def _padrao(termo: str) -> re.Pattern:
@@ -162,8 +215,13 @@ def achados(bulas: list[dict], termos: list[str]) -> list[dict]:
     return [vistos[c] for c in sorted(vistos)]
 
 
-def veredito(resultado: dict, lista: list[dict]):
+def veredito(resultado: dict, lista: list[dict], dirigidos: dict | None = None):
     """(veredito, valor) do criterio `alerta_bula`.
+
+    `dirigidos` sao as contagens das consultas dirigidas, {forca: total}. Quando
+    vem, elas DECIDEM, e a janela so fornece o rastro: a janela e um recorte de
+    50 bulas e a consulta dirigida roda no acervo inteiro. Sem elas (uso direto
+    do modulo, ou execucao sem rede para isso), vale o que a janela viu.
 
     * sem bula nenhuma -> `indeterminado`: ausencia de documento nao e ausencia
       de risco, e e o caso de quase todo produto natural;
@@ -178,13 +236,28 @@ def veredito(resultado: dict, lista: list[dict]):
     * bula sem nenhum termo -> `passa`."""
     if not resultado.get("bulas"):
         return "indeterminado", "sem bula no openFDA"
+    dirigidos = dirigidos or {}
+    bulas_do_nome = ((resultado.get("total") or len(resultado["bulas"])))
+
+    def _conta(forca: str, achados_da_forca: list[dict]) -> int:
+        """Quantas bulas sustentam a forca: o acervo quando ha consulta
+        dirigida, a janela quando nao ha."""
+        if forca in dirigidos:
+            return dirigidos[forca]
+        return 1 if achados_da_forca else 0
+
     indicacao = [a for a in lista if a["forca"] == "indicacao"]
-    if indicacao:
-        return "passa", ("indicado para " +
-                         ";".join(sorted({a["termo"] for a in indicacao})))
+    if _conta("indicacao", indicacao):
+        termos = ";".join(sorted({a["termo"] for a in indicacao})) or "a condicao"
+        return "passa", (f"indicado para {termos}"
+                         + (f" ({dirigidos['indicacao']} de {bulas_do_nome} bulas)"
+                            if "indicacao" in dirigidos else ""))
     fortes = [a for a in lista if a["forca"] == "forte"]
-    if fortes:
-        return "reprova", ";".join(f"{a['termo']}@{a['secao']}" for a in fortes)
+    if _conta("forte", fortes):
+        detalhe = ";".join(f"{a['termo']}@{a['secao']}" for a in fortes)
+        return "reprova", (detalhe or "termo em secao forte") + (
+            f" ({dirigidos['forte']} de {bulas_do_nome} bulas)"
+            if "forte" in dirigidos else "")
     fracas = [a for a in lista if a["forca"] == "fraca"]
     if fracas:
         return "passa", ("so em secao fraca (nao conta; 4/6 de falso positivo "

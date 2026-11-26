@@ -36,8 +36,15 @@ COLUNAS_PROPRIEDADES = [
 
 COLUNAS_ALERTAS_BULA = [
     "ligante", "ligante_inchikey_parental", "termo", "secao", "forca",
-    "trecho", "n_bulas_consultadas", "campo_do_nome", "procedencia",
+    "trecho", "n_bulas_consultadas", "n_bulas_com_o_termo", "campo_do_nome",
+    "procedencia",
 ]
+# `n_bulas_consultadas` e o tamanho da JANELA que forneceu o trecho;
+# `n_bulas_com_o_termo` e quantas bulas do principio ativo casam o termo no
+# ACERVO inteiro, da consulta dirigida. A diferenca e o peso da evidencia: 118
+# de 166 bulas do ciprofloxacino trazem `neuropathy` em secao forte, contra 1
+# de 211 na indicacao da capsaicina. Uma contagem feita dentro da janela nao
+# distingue esses dois casos.
 
 COLUNAS_ALVOS_EXTRA = [
     "expressao_maxima", "tecido_maximo", "expressao_nos_tecidos_pedidos",

@@ -425,26 +425,43 @@ def test_ciprofloxacino_e_pego_pela_tarja_preta(tmp_path, cache_de_bulas, sem_ad
     assert "alerta_bula" in linha["motivos"]
 
 
-def test_indicacao_dirigida_salva_a_capsaicina(tmp_path, cache_de_bulas, sem_admet,
-                                               monkeypatch):
-    """A capsaicina tem 211 bulas e a UNICA que a indica para dor neuropatica
-    (Qutenza) esta fora das 50 que a busca por nome devolve. Sem a consulta
-    dirigida, ela e reprovada -- e ela TRATA a condicao. E a mesma falha que
-    tirou o `limit=1` do modulo, so em outra escala."""
+def test_capsaicina_passa_por_indicacao_e_o_peso_fica_registrado(
+        tmp_path, cache_de_bulas, sem_admet):
+    """A capsaicina TRATA dor neuropatica e nao pode ser reprovada.
+
+    Ela tem 211 bulas no openFDA e UMA so a indica para a condicao (Qutenza).
+    Dois mecanismos independentes a salvam hoje, e isso e deliberado:
+
+    * a janela passou a ser ordenada por data, e a Qutenza entra nas 50 mais
+      recentes (effective_time 2026-07-07);
+    * a consulta dirigida de indicacao roda no acervo inteiro e nao depende de
+      a Qutenza ser recente.
+
+    A redundancia e o ponto: a ordenacao salvou este caso por SORTE DE DATA (1
+    bula de 211), e uma bula antiga com genericos novos por cima escaparia.
+    `test_dirigido_decide_sobre_a_janela`, em test_portao.py, prende a regra
+    sem depender destes dados.
+    """
     saida = tmp_path / "res"
     _rodar_controle(saida)
     linha = _por_ligante(_ler(saida, "portao.tsv"))["capsaicin"]
     assert linha["alerta_bula_veredito"] == "passa"
     assert "indicado" in linha["alerta_bula_valor"]
+    # O peso da evidencia, que uma contagem dentro da janela nao saberia dizer.
+    assert "1 de 211 bulas" in linha["alerta_bula_valor"]
+    assert linha["aprovado"] == "sim"
 
-    # Sem a consulta dirigida, o falso positivo volta: e o teste que impede
-    # alguem de "simplificar" o modulo removendo-a.
-    monkeypatch.setattr(bula, "achados_de_indicacao",
-                        lambda *a, **k: [])
-    sem_dirigida = tmp_path / "sem"
-    _rodar_controle(sem_dirigida)
-    linha = _por_ligante(_ler(sem_dirigida, "portao.tsv"))["capsaicin"]
-    assert linha["alerta_bula_veredito"] == "reprova"
+
+def test_peso_da_evidencia_distingue_118_de_166_de_1_de_211(
+        tmp_path, cache_de_bulas, sem_admet):
+    """O ciprofloxacino e reprovado por 118 das 166 bulas; a capsaicina e
+    salva por 1 de 211. Os dois numeros vem do acervo, nao da janela, e e a
+    diferenca entre um alerta robusto e um fio de cabelo."""
+    saida = tmp_path / "res"
+    _rodar_controle(saida)
+    linhas = _por_ligante(_ler(saida, "portao.tsv"))
+    assert "118 de 166 bulas" in linhas["ciprofloxacin"]["alerta_bula_valor"]
+    assert "35 de 35 bulas" in linhas["linezolid"]["alerta_bula_valor"]
 
 
 def test_alertas_bula_guarda_o_rastro_conferivel(tmp_path, cache_de_bulas, sem_admet):
@@ -522,3 +539,53 @@ def test_manifesto_registra_a_versao_do_openfda_e_os_termos(
     assert manifesto["parametros"]["termos_alerta"] == TERMOS.split(",")
     assert manifesto["parametros"]["limite_bula"] == 500
     assert manifesto["parametros"]["cache_pasta"] == "openfda-2026-11-25"
+
+
+def test_janela_e_pedida_ordenada_por_data(tmp_path, monkeypatch, respostas,
+                                           sem_admet):
+    """"As 50 mais acessadas" nao existe: a bula do openFDA tem 34 campos e
+    nenhum de acesso, popularidade ou contagem de uso. A data e o unico
+    critetio de relevancia disponivel, e significa rotulagem vigente -- em vez
+    de 50 bulas sorteadas entre 211."""
+    pedidas = []
+
+    def registrando(url, corpo=None):
+        pedidas.append(url)
+        return respostas(url, corpo)
+
+    class CacheFalso:
+        obter_json = staticmethod(registrando)
+        diretorio = Path("p")
+
+    monkeypatch.setattr(aplicar_portao, "_abrir_cache",
+                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                                               "/r", "p"))
+    _rodar_controle(tmp_path / "res", "--limite-bula", "1")
+    janelas = [u for u in pedidas if "limit=50" in u]
+    assert janelas, "nenhuma janela pedida"
+    assert all("sort=effective_time:desc" in u for u in janelas)
+
+
+def test_tres_requisicoes_por_ligante_janela_forte_e_indicacao(
+        tmp_path, monkeypatch, respostas, sem_admet):
+    """O custo por ligante e conhecido e fica prendido: a secao fraca NAO tem
+    consulta propria, porque nao decide nada -- a janela basta para
+    registra-la."""
+    pedidas = []
+
+    def registrando(url, corpo=None):
+        pedidas.append(url)
+        return respostas(url, corpo)
+
+    class CacheFalso:
+        obter_json = staticmethod(registrando)
+        diretorio = Path("p")
+
+    monkeypatch.setattr(aplicar_portao, "_abrir_cache",
+                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                                               "/r", "p"))
+    _rodar_controle(tmp_path / "res", "--limite", "1", "--limite-bula", "1")
+    assert len(pedidas) == 3, pedidas
+    assert sum("limit=50" in u for u in pedidas) == 1
+    assert sum("indications_and_usage" in u for u in pedidas) == 1
+    assert sum("boxed_warning" in u for u in pedidas) == 1

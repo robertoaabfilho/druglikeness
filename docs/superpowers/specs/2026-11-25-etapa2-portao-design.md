@@ -311,3 +311,76 @@ Os da etapa 1: `0` completa, `3` parcial, `1` nenhuma entrada utilizável,
    vazias e `toxicidade = indeterminado`.
 5. `--manifesto` de uma execução anterior reproduz as mesmas saídas e recusa
    rodar se uma entrada, a versão do ADMET-AI ou a política mudar.
+
+---
+
+## Adendo de 2026-11-25 (durante a implementação): a janela de 50 bulas
+
+Medições feitas ao implementar a tarefa da bula, que **mudaram a regra** acima.
+Ficam aqui porque a regra original foi decidida por medição e só outra medição
+a corrige.
+
+### O defeito
+
+O desenho tirou o `limit=1` porque *"devolve uma bula arbitrária entre
+centenas"*. Com `limit=50` o problema não desapareceu, só mudou de escala:
+
+- a **capsaicina** tem **211 bulas** no openFDA, e a **única** que a indica
+  para dor neuropática (Qutenza) ficava fora das 50 devolvidas;
+- o desconto por indicação falhava em silêncio, a capsaicina era reprovada, e
+  ela **trata** a condição: o falso positivo do grupo de controle ia de
+  **0/6 para 1/6**.
+
+### O que a API permite (medido)
+
+| caminho | o que vê | custo (ciprofloxacino, 166 bulas) |
+|---|---|---|
+| `limit=50` sem ordenar | 50 arbitrárias | 8,6 MB |
+| `limit=50&sort=effective_time:desc` | as 50 vigentes | 8,6 MB |
+| `limit=1000` (máximo da API) | todas | **27 MB** |
+| consulta dirigida (`search` por seção e termo, `limit=1`) | **o acervo inteiro** | **202 KB** |
+
+**"As 50 mais acessadas" não existe:** a bula do openFDA tem 34 campos e
+nenhum de acesso, popularidade, visualização ou contagem de uso. A data
+(`effective_time`) é o único critério de relevância disponível, e significa
+"rotulagem vigente".
+
+### A regra nova
+
+1. **A decisão vem de duas consultas dirigidas** — seção forte e indicação —
+   que rodam no acervo inteiro (265.009 bulas no export de 2026-11-25). A
+   seção fraca não tem consulta própria porque não decide nada.
+2. **O rastro vem da janela**, agora ordenada por `effective_time:desc`: o
+   trecho citado em `alertas_bula.tsv` sai da rotulagem vigente.
+3. **O peso da evidência passa a ser coluna** (`n_bulas_com_o_termo`): 118 das
+   166 bulas do ciprofloxacino trazem `neuropathy` em seção forte, contra
+   **1 de 211** na indicação da capsaicina. Uma contagem feita dentro da
+   janela não distingue um alerta robusto de um fio de cabelo.
+
+Custo: **três requisições por ligante** (janela, forte, indicação).
+
+A ordenação por data, só por si, também salvaria a capsaicina (a Qutenza é de
+2026-07-07 e entra nas 50 mais recentes). As duas coisas ficam porque a
+ordenação resolveu aquele caso **por sorte de data** — a indicação estava em 1
+bula de 211 — e uma bula antiga com genéricos novos por cima escaparia.
+Recência correlaciona com "ainda comercializado", não com "carrega o alerta".
+
+Verificado depois da mudança, contra o openFDA ao vivo: **0/6 de falso
+positivo e 4/6 pegos**, os mesmos números, agora com o peso visível.
+
+### Requisito para a base inteira (não implementado)
+
+O teto `--limite-bula` (padrão 500) existe porque **nenhum** dos caminhos acima
+escala para os 108.935 ligantes da base:
+
+- 3 requisições por ligante = ~327 mil requisições;
+- o openFDA permite **240 por minuto** sem chave (1.000 com chave) →
+  **~23 horas** no melhor caso, e o serviço é público.
+
+O caminho que escala é o **download em massa**: o openFDA publica o acervo de
+bulas como JSON particionado — **1,7 GB em 14 partes, 265.009 registros**,
+export de 2026-11-25, em `https://api.fda.gov/download.json`. Baixar uma vez e
+indexar localmente por nome troca 327 mil requisições por um download e
+elimina o limite de taxa. Fica como requisito de quem for rodar a base inteira;
+até então o teto é a proteção, e o que passa dele sai `indeterminado` com esse
+motivo escrito.

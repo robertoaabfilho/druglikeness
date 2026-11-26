@@ -214,23 +214,41 @@ def _abrir_cache(args, destino: Path):
 
 
 def _consultar_bula(nome: str, termos: list[str], *, obter_json):
-    """(veredito, valor, achados) do criterio `alerta_bula` para um ligante.
+    """(veredito, valor, achados, resultado, dirigidos) do criterio
+    `alerta_bula` para um ligante.
 
-    A indicacao vem de consulta DIRIGIDA, nao da janela de 50 bulas: medido, a
-    capsaicina tem 211 bulas e a unica que a indica para dor neuropatica esta
-    fora das 50 devolvidas pela busca por nome. Sem a consulta dirigida ela e
-    reprovada -- e ela TRATA a condicao, o que levaria o falso positivo do
-    grupo de controle de 0/6 a 1/6."""
+    Divisao de trabalho, com o numero que a justifica
+    ------------------------------------------------
+    * a DECISAO vem de duas consultas DIRIGIDAS -- secao forte e indicacao --
+      que rodam no acervo inteiro (265.009 bulas). Medido: 118 das 166 bulas do
+      ciprofloxacino trazem `neuropathy` em secao forte, e a resposta custa
+      202 KB contra 27 MB de baixar as 166;
+    * o RASTRO vem da janela de 50 bulas, agora ordenada por data: o trecho
+      citado em `alertas_bula.tsv` passa a sair da rotulagem vigente em vez de
+      uma bula sorteada.
+
+    Tres requisicoes por ligante (janela, forte, indicacao). A secao fraca nao
+    tem consulta propria porque nao decide nada -- ela e registrada, e a janela
+    basta para registra-la."""
     resultado = bula.buscar_bulas(nome, obter_json=obter_json)
-    achados = bula.achados(resultado["bulas"], termos)
-    indicacao = bula.achados_de_indicacao(
-        nome, resultado["campo_do_nome"], termos, obter_json=obter_json)
-    # Deduplicado por (termo, secao): a consulta dirigida pode repetir um
-    # achado que a janela ja trouxe.
-    por_chave = {(a["termo"], a["secao"]): a for a in achados + indicacao}
+    da_janela = bula.achados(resultado["bulas"], termos)
+    campo = resultado["campo_do_nome"]
+    dirigidos: dict[str, int] = {}
+    achados_dirigidos: list[dict] = []
+    if resultado["bulas"]:
+        for forca in ("forte", "indicacao"):
+            r = bula.achados_dirigidos(nome, campo, termos, forca,
+                                       obter_json=obter_json)
+            dirigidos[forca] = r["total"]
+            achados_dirigidos += r["achados"]
+    # Deduplicado por (termo, secao); o achado da janela vem primeiro, porque
+    # o trecho dele e o da rotulagem vigente.
+    por_chave: dict[tuple[str, str], dict] = {}
+    for achado in da_janela + achados_dirigidos:
+        por_chave.setdefault((achado["termo"], achado["secao"]), achado)
     lista = [por_chave[c] for c in sorted(por_chave)]
-    veredito, valor = bula.veredito(resultado, lista)
-    return veredito, valor, lista, resultado
+    veredito, valor = bula.veredito(resultado, lista, dirigidos)
+    return veredito, valor, lista, resultado, dirigidos
 
 
 def _preparar_saida(args):
@@ -437,9 +455,10 @@ def main(argv: list[str] | None = None) -> int:
                         else:
                             consultados += 1
                             try:
-                                veredito_b, valor_b, achados_b, resultado_b = (
-                                    _consultar_bula(linha["ligante"], termos,
-                                                    obter_json=cache.obter_json))
+                                (veredito_b, valor_b, achados_b, resultado_b,
+                                 dirigidos_b) = _consultar_bula(
+                                     linha["ligante"], termos,
+                                     obter_json=cache.obter_json)
                             except Exception as e:
                                 # Falha de UM item nao derruba a execucao; ela
                                 # fica PARCIAL e o manifesto diz qual item
@@ -457,6 +476,8 @@ def main(argv: list[str] | None = None) -> int:
                                             "ligante_inchikey_parental"],
                                         "n_bulas_consultadas": len(
                                             resultado_b["bulas"]),
+                                        "n_bulas_com_o_termo": dirigidos_b.get(
+                                            achado["forca"], ""),
                                         "campo_do_nome": resultado_b[
                                             "campo_do_nome"],
                                         "procedencia": procedencia_bula,

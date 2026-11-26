@@ -265,3 +265,44 @@ def test_colunas_do_portao_vem_da_politica_nao_de_uma_constante():
                            "motivos"]
     assert "alerta_bula_veredito" in colunas and "alerta_bula_valor" in colunas
     assert colunas[-1] == "politica"
+
+
+def test_dirigido_decide_sobre_a_janela():
+    """A janela e um recorte de 50 bulas; a consulta dirigida roda no acervo
+    inteiro. Quando as duas discordam, vale o acervo.
+
+    Sem dados reais de proposito: e a REGRA que esta prendida aqui, nao o
+    acervo de hoje. Era a falha que reprovava a capsaicina -- a bula que a
+    indicava existia e nao estava na janela."""
+    janela = {"campo_do_nome": "generic_name", "total": 211, "bulas": [
+        {"warnings_and_cautions": ["paresthesia was reported"]}]}
+    lista = bula.achados(janela["bulas"], ["paresthesia"])
+    assert [a["forca"] for a in lista] == ["forte"]
+
+    # So a janela: nada indica o farmaco para a condicao -> reprova.
+    assert bula.veredito(janela, lista)[0] == "reprova"
+
+    # O acervo diz que UMA bula o indica, embora ela nao esteja na janela.
+    veredito, valor = bula.veredito(
+        janela, lista, {"forte": 5, "indicacao": 1})
+    assert veredito == "passa"
+    assert "1 de 211 bulas" in valor
+
+
+def test_contagem_do_acervo_entra_no_valor_da_reprovacao():
+    """118 de 166 e um alerta robusto; 1 de 166 e um fio de cabelo. A coluna
+    tem de distinguir os dois."""
+    janela = {"campo_do_nome": "generic_name", "total": 166, "bulas": [
+        {"boxed_warning": ["PERIPHERAL NEUROPATHY"]}]}
+    lista = bula.achados(janela["bulas"], ["neuropathy"])
+    veredito, valor = bula.veredito(janela, lista, {"forte": 118, "indicacao": 0})
+    assert veredito == "reprova" and "118 de 166 bulas" in valor
+
+
+def test_sem_consulta_dirigida_a_janela_continua_valendo():
+    """Uso direto do modulo, sem rede para as consultas dirigidas: a janela
+    decide, como antes. Nenhum caminho fica sem veredito."""
+    janela = {"campo_do_nome": "generic_name", "total": 1, "bulas": [
+        {"boxed_warning": ["PERIPHERAL NEUROPATHY"]}]}
+    lista = bula.achados(janela["bulas"], ["neuropathy"])
+    assert bula.veredito(janela, lista)[0] == "reprova"
