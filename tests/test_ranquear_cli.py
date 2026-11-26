@@ -217,3 +217,174 @@ def test_manifesto_registra_as_contagens_e_a_procedencia(tmp_path):
     assert m["parametros"]["canal_negativo"] is False
     assert m["contagens"]["ranqueados"] == 1
     assert m["contagens"]["nao_ranqueados"] == 1
+
+
+# --------------------------------------------------------------------------
+# O canal negativo
+# --------------------------------------------------------------------------
+
+import json
+
+import numpy as np
+import pytest
+
+from mods import ranquear
+from mods.prever_alvos import carregar_rotulos
+
+ROTULOS_FALSOS = carregar_rotulos("tests/dados/rotulos_minimo.tsv")
+IDX_NAO_HUMANO_FORTE = 1        # CHEMBL360 M. tuberculosis, 11.049 ativos
+
+
+def _ligantes(tmp_path, linhas) -> str:
+    return _tsv(tmp_path / "ligantes.tsv",
+                ["nome", "smiles", "inchikey_parental"], linhas)
+
+
+def _modelo_falso(p_do_canal=0.9, dispositivo="cpu"):
+    """Modelo com `prever` fixo: o canal e testado, nao a rede.
+
+    O `cfg` e o do ECFP4 de verdade, para que `fingerprint_de` continue sendo
+    quem decide se o SMILES e legivel -- e esse caminho que o teste do SMILES
+    ilegivel exercita."""
+    def prever(fingerprints):
+        linha = np.zeros(len(ROTULOS_FALSOS), dtype=float)
+        linha[IDX_NAO_HUMANO_FORTE] = p_do_canal
+        return np.tile(linha, (len(fingerprints), 1))
+
+    return ranquear.Modelo(rotulos=ROTULOS_FALSOS, cfg={"raio": 2, "bits": 2048},
+                           dispositivo=dispositivo, prever=prever,
+                           checkpoint="falso.pt")
+
+
+def test_canal_recusa_checkpoint_diferente_do_que_a_etapa_1_registrou(
+        tmp_path, capsys):
+    # os dois lados de `p x (1 - p_negativo)` tem de vir do MESMO modelo
+    a = tmp_path / "a.pt"
+    a.write_bytes(b"pesos a")
+    b = tmp_path / "b.pt"
+    b.write_bytes(b"pesos b")
+    from mods.evidencias.procedencia import md5
+    manifesto = tmp_path / "manifesto_etapa1.json"
+    manifesto.write_text(json.dumps(
+        {"versoes": {"checkpoint_md5": md5(str(a))}}), encoding="utf-8")
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    assert main(["--evidencias", evid, "--saida", str(_saida(tmp_path)),
+                 "--checkpoint", str(b), "--rotulos", "tests/dados/rotulos_minimo.tsv",
+                 "--ligantes", _ligantes(tmp_path, []),
+                 "--manifesto-etapa1", str(manifesto)]) == 2
+    assert "md5" in capsys.readouterr().err.lower()
+
+
+def test_canal_aceita_o_mesmo_checkpoint_que_a_etapa_1_registrou(tmp_path):
+    a = tmp_path / "a.pt"
+    a.write_bytes(b"pesos a")
+    from mods.evidencias.procedencia import md5
+    manifesto = tmp_path / "manifesto_etapa1.json"
+    manifesto.write_text(json.dumps(
+        {"versoes": {"checkpoint_md5": md5(str(a))}}), encoding="utf-8")
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "x", "smiles": "CCO",
+                                "inchikey_parental": "X" * 27}])
+    assert ranquear._erro_de_checkpoint(str(a), str(manifesto)) is None
+    assert main(["--evidencias", evid, "--saida", str(_saida(tmp_path)),
+                 "--checkpoint", str(a), "--rotulos",
+                 "tests/dados/rotulos_minimo.tsv", "--ligantes", lig,
+                 "--manifesto-etapa1", str(manifesto),
+                 "--sem-canal-negativo"]) == 0
+
+
+def test_canal_sem_pesos_registra_falso_e_nao_usa_zero(tmp_path):
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino)]) == 0
+    m = json.loads((destino / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert m["parametros"]["canal_negativo"] is False
+    assert _ler(destino / NOME_RANKING)[0]["p_negativo"] == "indeterminado"
+
+
+def test_canal_exige_ligantes_porque_precisa_do_smiles(tmp_path, capsys):
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    assert main(["--evidencias", evid, "--saida", str(_saida(tmp_path)),
+                 "--checkpoint", str(tmp_path / "falso.pt"),
+                 "--rotulos", "tests/dados/rotulos_minimo.tsv"]) == 2
+    assert "--ligantes" in capsys.readouterr().err
+
+
+def test_canal_smiles_ilegivel_da_indeterminado_e_ranqueia_pelo_resto(
+        tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [
+        _ev("ilegivel", "I" * 27, tipo_evidencia="previsto", valor="0.5",
+            pchembl=""),
+        _ev("legivel", "L" * 27, tipo_evidencia="previsto", valor="0.5",
+            pchembl="")])
+    lig = _ligantes(tmp_path, [
+        {"nome": "ilegivel", "smiles": "C1CC", "inchikey_parental": "I" * 27},
+        {"nome": "legivel", "smiles": "CCO", "inchikey_parental": "L" * 27}])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--checkpoint", "falso.pt", "--rotulos",
+                 "tests/dados/rotulos_minimo.tsv", "--ligantes", lig]) == 0
+    por_nome = {l["ligante"]: l for l in _ler(destino / NOME_RANKING)}
+    assert por_nome["ilegivel"]["p_negativo"] == "indeterminado"
+    assert por_nome["ilegivel"]["posicao"]
+    assert por_nome["legivel"]["p_negativo"] == "0.9"
+
+
+def test_canal_multiplica_so_a_faixa_prevista(tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso(0.9))
+    evid = _evidencias(tmp_path, [
+        _ev("medido", "M" * 27, pchembl="8.0"),
+        _ev("previsto", "P" * 27, tipo_evidencia="previsto", valor="0.90",
+            pchembl="")])
+    lig = _ligantes(tmp_path, [
+        {"nome": "medido", "smiles": "CCO", "inchikey_parental": "M" * 27},
+        {"nome": "previsto", "smiles": "CCN", "inchikey_parental": "P" * 27}])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          "--ligantes", lig])
+    por_nome = {l["ligante"]: l for l in _ler(destino / NOME_RANKING)}
+    assert float(por_nome["medido"]["valor"]) == pytest.approx(8.0)
+    assert float(por_nome["previsto"]["valor"]) == pytest.approx(0.09)
+
+
+def test_canal_nomeia_o_alvo_que_produziu_o_maximo(tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "x", "smiles": "CCO",
+                                "inchikey_parental": "X" * 27}])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          "--ligantes", lig])
+    alvo = _ler(destino / NOME_RANKING)[0]["alvo_negativo"]
+    assert "CHEMBL360" in alvo and "Mycobacterium tuberculosis" in alvo
+
+
+def test_canal_registra_o_dispositivo_que_rodou_de_fato(tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo",
+                        lambda args: _modelo_falso(dispositivo="cpu"))
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "x", "smiles": "CCO",
+                                "inchikey_parental": "X" * 27}])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          "--ligantes", lig])
+    m = json.loads((destino / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert m["parametros"]["dispositivo"] == "cpu"
+    assert m["parametros"]["canal_negativo"] is True
+
+
+def test_canal_minimo_treino_muda_quem_entra(tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "x", "smiles": "CCO",
+                                "inchikey_parental": "X" * 27}])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          "--ligantes", lig, "--minimo-treino", "20000"])
+    # nenhum alvo passa do minimo: mascara vazia, e isso e indeterminado
+    assert _ler(destino / NOME_RANKING)[0]["p_negativo"] == "indeterminado"

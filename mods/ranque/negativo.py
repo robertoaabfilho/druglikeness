@@ -77,3 +77,23 @@ def agregar(probabilidades, mascara_do_canal) -> float | None:
     if not m.any():
         return None
     return float(p[m].max())
+
+
+def alvo_do_maximo(rotulos: list[dict], probabilidades,
+                   mascara_do_canal) -> str:
+    """Nome do alvo que produziu o maximo do canal, ou "" se a mascara e vazia.
+
+    Existe para que a penalidade seja auditavel: um composto punido sem dizer
+    por qual alvo nao e um resultado que alguem possa conferir."""
+    p = np.asarray(probabilidades)
+    m = np.asarray(mascara_do_canal, dtype=bool)
+    if not m.any():
+        return ""
+    indices = np.flatnonzero(m)
+    i = int(indices[int(p[indices].argmax())])
+    r = rotulos[i]
+    partes = [x for x in ((r.get("chembl_id") or "").strip(),
+                          (r.get("nome") or "").strip()) if x]
+    organismo = (r.get("organismo") or "").strip()
+    texto = " ".join(partes)
+    return f"{texto} ({organismo})" if organismo else texto
