@@ -527,3 +527,27 @@ def test_sem_ligantes_o_que_nao_esta_nas_evidencias_nao_e_inventado(tmp_path):
     destino = _saida(tmp_path)
     main(["--evidencias", evid, "--saida", str(destino), "--sem-canal-negativo"])
     assert not _ler(destino / NOME_NAO_RANQUEADOS)
+
+
+def test_ligante_sem_evidencia_e_reprovado_traz_os_dois_motivos(tmp_path):
+    """O motivo nao pode depender do CAMINHO pelo qual o composto saiu.
+
+    Quem esta nas evidencias e foi reprovado ganha "reprovado no portao" no
+    motivo; quem nao esta nas evidencias ganhava so "sem evidencia", e a
+    reprovacao ficava apenas na coluna. Dois leitores da mesma tabela tirariam
+    conclusoes diferentes sobre o mesmo fato."""
+    evid = _evidencias(tmp_path, [_ev("outro", "O" * 27)])
+    lig = _ligantes(tmp_path, [
+        {"nome": "outro", "smiles": "CCO", "inchikey_parental": "O" * 27},
+        {"nome": "cipro", "smiles": "CCN", "inchikey_parental": "R" * 27}])
+    portao = _tsv(tmp_path / "portao.tsv", COLUNAS_PORTAO, [
+        {"ligante": "cipro", "ligante_inchikey_parental": "R" * 27,
+         "aprovado": "nao", "motivos": "alerta_bula: neuropathy",
+         "politica": "x"}])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--ligantes", lig,
+          "--portao", portao, "--sem-canal-negativo"])
+    fora = {l["ligante"]: l for l in _ler(destino / NOME_NAO_RANQUEADOS)}
+    motivo = fora["cipro"]["motivo"]
+    assert "reprovado no portao" in motivo
+    assert "sem evidencia na etapa 1" in motivo

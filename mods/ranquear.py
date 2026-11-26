@@ -272,6 +272,19 @@ def _parametros(args, canal_negativo, dispositivo) -> dict:
             "portao": bool(args.portao)}
 
 
+def _motivo_do_portao(aprovado: str, motivos: str) -> list[str]:
+    """O motivo da reprovacao do portao, ou lista vazia.
+
+    Uma funcao, e nao duas escritas no lugar, porque o motivo nao pode depender
+    do CAMINHO pelo qual o composto saiu: quem nao tem evidencia e foi
+    reprovado tem de dizer as duas coisas, igual a quem tem evidencia em alvo
+    nao afirmativo."""
+    if aprovado != "nao":
+        return []
+    return [f"reprovado no portao ({motivos})" if motivos
+            else "reprovado no portao"]
+
+
 def _recusar(problemas: list[str]) -> None:
     print("[ERRO] a repeticao foi recusada; nada foi escrito:",
           file=sys.stderr)
@@ -493,7 +506,9 @@ def main(argv=None) -> int:
         aprovado, motivos = _veredito(portao, inchikey)
         fora.append({"ligante": nome_de_entrada,
                      "ligante_inchikey_parental": inchikey,
-                     "motivo": "sem evidencia na etapa 1",
+                     "motivo": "; ".join(
+                         _motivo_do_portao(aprovado, motivos)
+                         + ["sem evidencia na etapa 1"]),
                      "faixa": "3", "portao_aprovado": aprovado,
                      "portao_motivos": motivos,
                      "procedencia": procedencia_do_ranking()})
@@ -502,10 +517,7 @@ def main(argv=None) -> int:
         p_negativo, alvo_negativo = canal.get(inchikey, (None, ""))
         resultado = classificar(linhas, p_negativo=p_negativo)
         aprovado, motivos = _veredito(portao, inchikey)
-        motivos_de_fora = []
-        if aprovado == "nao":
-            motivos_de_fora.append(f"reprovado no portao ({motivos})"
-                                   if motivos else "reprovado no portao")
+        motivos_de_fora = _motivo_do_portao(aprovado, motivos)
         if resultado["faixa"] == "3":
             motivos_de_fora.append(esquema.MOTIVO_FAIXA_3)
         if motivos_de_fora:
