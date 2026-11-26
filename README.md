@@ -26,6 +26,10 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
     importar_prospector.py
     prever_alvos.py
     validar_alvos_medidos.py
+    coletar_evidencias.py    <- CLI da etapa 1 (seção 11)
+    aplicar_portao.py        <- CLI da etapa 2 (seção 12)
+    evidencias/              <- módulos da etapa 1
+    portao/                  <- módulos da etapa 2
 ./exemplos/                 <- fixtures de validação (ver exemplos/LEIA-ME.md)
     controle.dor_neuropatica.tsv
     alvos.dor_neuropatica.txt
@@ -64,6 +68,21 @@ config.txt (sintomas) ──► mods/ranking_multibase.py ──► results/rank
 ```
 
 `mods/calibrar_deeppk.py` existe como ferramenta complementar, fora do fluxo do `main.py` (decisão do projeto: não seguir com essa abordagem).
+
+**O fluxo acima é o original, e está sendo substituído.** O motivo é medido: ele
+ranqueia por semelhança físico-química com as drogas de referência, sem olhar
+alvo nenhum, e no conjunto-controle de 12 fármacos os dois **QED mais altos
+(0,89)** são ciprofloxacino e linezolida — ambos do grupo que **causa** dor
+neuropática, enquanto os que a tratam ficam entre 0,54 e 0,81. O fluxo novo
+separa o que estava misturado:
+
+```
+etapa 1  COLETAR     o que se sabe        -> nunca decide    (seção 11)
+etapa 2  O PORTÃO    o que fica marcado   -> quase nunca reprova (seção 12)
+fase 3   RANQUEAR    a ordem usando os alvos -> ainda não existe
+```
+
+Cada etapa tem CLI e manifesto próprios e não passa pelo `main.py`.
 
 ---
 
@@ -163,7 +182,11 @@ Linhas começando com `#` são comentários. Argumentos passados por linha de co
 | 3 | `mods/comparar_metodos_ranking.py` | validação vs. TOPSIS clássico/QED/Tanimoto | `rodar_comparacao_metodos` | rdkit, numpy, scipy |
 | 4 | `mods/validar_enriquecimento.py` | validação leave-one-out + decoys | `rodar_validacao_enriquecimento` | numpy, scipy, requests |
 | 5 | `mods/ranking_embeddings.py` | ranking alternativo via ChemBERTa | `rodar_embeddings` | numpy, **torch, transformers** |
-| 6 | `mods/checar_alertas_adversos.py` | sinaliza compostos que causam (em vez de tratar) o sintoma-alvo | `rodar_alertas_adversos` | requests |
+| 6 | `mods/checar_alertas_adversos.py` | sinaliza compostos que causam (em vez de tratar) o sintoma-alvo — **substituído pela etapa 2** (seção 12) | `rodar_alertas_adversos` | requests |
+
+As etapas 1 e 2 (seções 11 e 12) **não** são orquestradas pelo `main.py`: elas
+têm CLI própria e manifesto próprio, e são o fluxo para o qual o pipeline está
+sendo reestruturado.
 
 ---
 
@@ -246,6 +269,14 @@ projetos são repositórios separados — nada do código de lá é importado):
 - **Regras de drogabilidade:** Regra dos 5 de Lipinski (parcial, sem LogP) e Regra de Veber.
 - **ADMET (Deep-PK):** propriedades gerais, absorção, distribuição, metabolismo, excreção e toxicidade.
 
+> **O caminho Deep-PK está SUBSTITUÍDO pelo ADMET-AI da etapa 2** (seção 12).
+> O Deep-PK é uma API externa que rejeita 30-35% dos compostos, não tem versão
+> citável e não repete: a mesma molécula noutro dia pode voltar outro número.
+> O ADMET-AI 2.0.1 roda **local** (MIT), devolve **104 colunas** para toda
+> molécula que o RDKit lê, e a versão entra no manifesto como chave de
+> repetição. Os descritores do RDKit desta seção continuam válidos — é só a
+> consulta ADMET remota que foi substituída.
+
 ### Resiliência
 
 - Salva progresso incrementalmente (`<output>.deeppk_raw.csv` + checkpoint) — pode ser interrompido e retomado.
@@ -326,6 +357,15 @@ Desativado por padrão (`rodar_embeddings = false`, requer `transformers`+`torch
 ---
 
 ## 6. `mods/checar_alertas_adversos.py` — compostos que causam (em vez de tratar) o sintoma-alvo
+
+> **SUBSTITUÍDO pelo critério `alerta_bula` da etapa 2** (seção 12). Continua no
+> repositório porque o `main.py` antigo o chama, mas a checagem de bula da
+> etapa 2 faz o mesmo e mais: decide sobre o **acervo inteiro** do openFDA
+> (265.009 bulas) em vez das 50 mais recentes, inclui as seções
+> `contraindications` e `precautions`, registra as duas contagens que dão peso à
+> evidência (118 de 166 bulas contra 1 de 211), e sai com veredito
+> `indeterminado` — que nunca remove — quando não há bula, em vez de tratar
+> ausência de dado como ausência de risco. Para trabalho novo, use a etapa 2.
 
 ### O problema que motivou esse script
 
@@ -852,6 +892,208 @@ Cobertura do painel, dita sem enfeite:
 
 ---
 
+## 12. Etapa 2 — o portão (`mods/aplicar_portao.py`)
+
+A etapa 1 coleta e **nunca decide**. A etapa 2 é onde se decide — e o que ela
+decide, medido, é muito menos do que o nome sugere.
+
+### O nome descreve a posição, não a severidade
+
+O portão quase não reprova, e isso não é timidez: é o que a medição manda. No
+conjunto-controle de 12 fármacos (seis que tratam dor neuropática, seis que a
+causam), cada critério plausível de exclusão apaga os próprios positivos de
+referência do pipeline:
+
+- reprovar por **PAINS** apagaria a **amitriptilina**;
+- por **BRENK**, **65% da base** de 108.935 ligantes;
+- por **expressão** abaixo de 1 TPM em tecido nervoso, **SERT e NET** — os
+  alvos da duloxetina e da amitriptilina.
+
+Com `--reprovar alerta_estrutural`, o controle de 12 perde 8 — entre eles
+amitriptilina, carbamazepina e capsaicina, que **tratam** — e continua
+aprovando o ciprofloxacino, que **causa**. Promover o critério inverte o
+pipeline. Por isso o resumo diz o preço **antes**: para cada critério
+rebaixado ele imprime quantos ligantes "reprovaria se promovido".
+
+Então o portão **marca, anota e explica**. Por padrão só duas coisas reprovam:
+SMILES que o RDKit não lê (não há molécula para avaliar) e alerta forte de
+bula (0 de 6 falsos positivos medidos no controle).
+
+### Os cinco critérios e a política padrão
+
+| critério | o que olha | padrão | o número que decidiu o padrão |
+|---|---|---|---|
+| `smiles` | o RDKit lê a molécula | **reprovar** | sem molécula não há o que avaliar |
+| `alerta_bula` | termos da condição na bula (openFDA) | **reprovar** | 0/6 de falso positivo e 4/6 pegos no controle |
+| `alerta_estrutural` | PAINS, BRENK, NIH (RDKit `FilterCatalog`) | marcar | PAINS reprovaria a amitriptilina; BRENK, 65% da base |
+| `toxicidade` | ADMET-AI, percentil ≥ `--percentil-toxicidade` | marcar | percentil não validado neste conjunto |
+| `expressao` | expressão basal do alvo nos tecidos pedidos | marcar | reprovaria SERT (0,454 TPM) e NET |
+
+`expressao` é critério de **alvo**, não de ligante: ele vive em
+`alvos_anotados.tsv` e não entra em `portao.tsv`, porque um alvo de expressão
+baixa não reprova um ligante — o ligante pode ter outros alvos.
+
+`--reprovar C[,C]` promove critérios; `--marcar C[,C]` rebaixa. Nome que não
+existe é **erro** (código 2), nunca flag ignorada em silêncio: uma política que
+o usuário acredita estar valendo e não está é pior que uma mensagem de erro.
+A coluna `politica` de cada linha diz sob qual regra aquela linha foi julgada.
+
+### A semântica dos vereditos, uma só para todos os critérios
+
+Cada critério devolve um veredito **intrínseco**, independente de política:
+
+| veredito | significa |
+|---|---|
+| `passa` | o critério olhou e não achou problema |
+| `marca` | achou algo que merece ser visto |
+| `reprova` | achou algo que o próprio módulo considera impeditivo |
+| `indeterminado` | **não havia dado para julgar** |
+
+E três regras atravessam a etapa inteira:
+
+1. **`indeterminado` NUNCA tira um ligante**, com política nenhuma. Ausência de
+   dado não é evidência de problema — é o caso de quase todo produto natural na
+   checagem de bula e de **todo alvo não humano** na expressão.
+2. **Critério que a execução não pediu sai `indeterminado`, nunca `passa`.** Sem
+   `--termos-alerta` a checagem de bula não roda, e "não perguntei" não é a
+   mesma afirmação que "sem alerta". O mesmo vale para o que passou do
+   `--limite-bula`: sai `indeterminado` com esse motivo escrito.
+3. **Nada desaparece em silêncio.** Reprovado continua na tabela, com o
+   critério e o valor que decidiu em `motivos`. Ligante cujo SMILES o RDKit não
+   lê também: ele é **julgado**, não descartado na leitura.
+
+### As quatro saídas (`--saida` é um diretório)
+
+| arquivo | uma linha por | colunas |
+|---|---|---|
+| `propriedades.tsv` | ligante | 120: as 16 de identidade/descritores + as 104 do ADMET-AI |
+| `portao.tsv` | ligante | 13: identidade, `aprovado`, `motivos`, `<critério>_veredito`/`<critério>_valor` × 4, `politica` |
+| `alertas_bula.tsv` | (ligante, termo, seção) | 10: termo, seção, força, trecho literal, contagens, `campo_do_nome`, procedência |
+| `alvos_anotados.tsv` | alvo | 30: as 18 da lista enriquecida da etapa 1 + 9 de expressão + `aprovado`, `motivos`, `politica` |
+
+Mais o `manifesto.json`. **As cinco saídas são publicadas juntas**: cada uma
+nasce num temporário no mesmo diretório e só toma o lugar do destino quando
+todas estão prontas. Tabela sem manifesto não é citável.
+
+Três detalhes das colunas que mudam leitura:
+
+- **`alerta_pains`, `alerta_brenk` e `alerta_nih` trazem os nomes dos filtros**
+  (`nitro_group`, não `1`). Um contador não diz o que casou, e é o nome que
+  permite julgar se o alerta importa para aquele composto.
+- **O ADMET-AI publica uma coluna `tpsa`, que colidia com a TPSA do RDKit.** As
+  colunas do ADMET entram com os nomes originais dele, exceto as que colidem
+  com o esquema deste repositório, que recebem o prefixo `admet_` —
+  `admet_tpsa`. O manifesto registra cada renomeação. Antes disso o cabeçalho
+  tinha `tpsa` duas vezes e o valor do RDKit era substituído em silêncio.
+- **`toxicidade_valor` é percentil, não probabilidade crua.** 0,67 de DILI não
+  quer dizer nada sozinho: a aspirina tem 0,67 e está aprovada. O percentil é
+  contra os aprovados do DrugBank que o ADMET-AI traz.
+
+### Por que a bula decide no acervo e cita na janela
+
+A checagem de bula faz **três requisições por ligante**:
+
+1. uma **janela de 50 bulas ordenada por data** (`sort=effective_time:desc`),
+   que fornece o **trecho** citado em `alertas_bula.tsv` — da rotulagem
+   vigente, não de uma bula sorteada;
+2. duas **consultas dirigidas** (seção forte e indicação) que rodam no **acervo
+   inteiro**, 265.009 bulas, e é delas que vem a **decisão**.
+
+A janela sozinha não bastava, e isso foi medido: a capsaicina tem 211 bulas e a
+única que a indica para dor neuropática (Qutenza) estava fora das 50 — o
+desconto por indicação falhava em silêncio e o falso positivo ia de 0/6 para
+1/6. Medido também o preço: 118 das 166 bulas do ciprofloxacino trazem
+`neuropathy` em seção forte, e a resposta dirigida custa 202 KB contra 27 MB de
+baixar as 166.
+
+Daí as duas contagens em `alertas_bula.tsv`: `n_bulas_consultadas` é o tamanho
+da janela que forneceu o trecho, e `n_bulas_com_o_termo` é quantas bulas do
+princípio ativo casam o termo no acervo. A diferença é o peso da evidência —
+**118 de 166** no ciprofloxacino contra **1 de 211** na indicação da capsaicina.
+Uma contagem feita dentro da janela não distingue esses dois casos.
+
+As seções fortes são `boxed_warning`, `warnings`, `warnings_and_cautions`,
+`contraindications` e `precautions`. `adverse_reactions` é registrada mas não
+decide, e `indications_and_usage` **desconta**: uma droga que trata o sintoma
+não é confundida com uma que o causa.
+
+### A GPU é mais rápida e não é reprodutível
+
+O padrão é **CPU**. Medido entre duas execuções idênticas: na GPU, 36 de 312
+colunas diferem (última casa, ~1e-8 relativo, que o ranqueamento por percentil
+amplifica para ~0,035); na CPU, 0 de 312. Nenhum veredito mudou nessa medição,
+mas um manifesto que promete repetição byte a byte e não entrega é pior que um
+que avisa. O preço da CPU é ~66 min para a base inteira contra ~37 min na GPU.
+
+`--gpu` avisa de saída, o manifesto registra **qual dispositivo realmente
+rodou** (não o pedido), e repetir uma execução de GPU avisa em vez de prometer
+igualdade bit a bit.
+
+E `--workers 0` é o padrão porque é **45× mais rápido**: 1.600 moléculas saem
+em 8,6 s com 0 e em 384 s com 8 — são dez modelos pagando o nascimento de N
+processos cada.
+
+### Comando completo
+
+```bash
+python mods/aplicar_portao.py \
+    --ligantes ligantes.tsv \
+    --evidencias evidencias.tsv \
+    --alvos alvos_enriquecidos.tsv \
+    --tecidos tecidos.txt \
+    --termos-alerta "neuropathy,neuropathic,neuritis,paresthesia" \
+    --saida portao/
+```
+
+- `--evidencias` restringe o portão aos ligantes **que têm** evidência da etapa
+  1, e o resumo diz quantos ficaram de fora; sem ele, toda a entrada é julgada.
+- `--tecidos` recebe ID UBERON ou nome **exato** do tecido, um por linha
+  (`#` comenta). O casamento é por ID e por ancestralidade na UBERON, nunca por
+  trecho de nome: `cortex of kidney` não casa com `cortex`. Sem tecidos a
+  expressão é anotada mas o veredito fica `indeterminado`, porque não há com o
+  que comparar.
+- `--limite-bula` (padrão 500) é o teto de ligantes consultados no openFDA, que
+  é serviço público com limite de taxa. Para a base inteira, 108.935 ligantes ×
+  3 requisições a 240/min dariam ~23 h; o caminho é o download em massa
+  (1,7 GB em 14 partições), **ainda não implementado**.
+- `--sem-rede` pula bula e expressão; RDKit e ADMET-AI continuam.
+
+Códigos de saída são os da etapa 1: `0` completa, `3` **parcial** (a saída
+existe mas linhas foram descartadas; o manifesto diz isso), `1` nenhum ligante
+utilizável, `2` erro (nada publicado).
+
+### Cache e repetição
+
+Toda resposta de rede (openFDA, Open Targets) é gravada em `--cache` (padrão:
+`cache_rede/` dentro de `--saida`), em subpasta por versão dos serviços.
+`--manifesto manifesto.json` repete a execução servindo tudo do cache, sem
+rede — **falta no cache é erro**, não uma requisição nova.
+
+A repetição **recusa rodar** se mudou um MD5 de entrada (ligantes, alvos,
+evidências, tecidos), uma versão (`openfda`, `admet_ai`, `rdkit`,
+`open_targets`) ou um parâmetro que muda a saída — inclusive a política e o
+dispositivo. Caminhos de saída não entram nessas chaves: repetir para outra
+pasta é repetir. O manifesto novo sai como `manifesto_repeticao.json` e nunca
+sobrescreve o original.
+
+### Testes
+
+```bash
+python -m pytest tests/test_portao.py tests/test_portao_cli.py
+```
+
+Nenhum usa rede: as respostas do openFDA e do Open Targets são fixtures
+versionadas em `tests/dados/respostas/` (aparadas; o método e as consequências
+estão em `tests/dados/LICENSE` — elas respondem fielmente só para os quatro
+termos gravados). Os testes prendem as medições que decidiram os padrões: PAINS
+pegando a amitriptilina, `indeterminado` não reprovando sob política nenhuma,
+0/6 de falso positivo e exatamente `ciprofloxacin, linezolid, ethambutol,
+metronidazole` pegos no controle, SERT e NET marcados e não reprovados, alvo
+não humano saindo `indeterminado`, exatamente 3 requisições por ligante, e a
+repetição byte a byte.
+
+---
+
 ## Dicas de busca por sintoma/condição
 
 - Use sempre o **nome em inglês**.
@@ -869,6 +1111,14 @@ Cobertura do painel, dita sem enfeite:
 - A API do Deep-PK pode rejeitar moléculas específicas; o script pula automaticamente. Em execuções reais, isso afetou ~30-35% dos candidatos.
 - **O método de ranking não é QSAR** no sentido formal (OECD, 2004) — é um ranking por similaridade a um perfil de referência combinado com decisão multicritério, que incorpora predições de modelos QSAR/QSPR de terceiros (Deep-PK) como parte de suas variáveis de entrada.
 - A fórmula de pesos e a similaridade gaussiana não têm precedente direto na literatura — são adaptações do projeto. A gaussiana centrada na média é conceitualmente próxima de uma função de desejabilidade "alvo é o melhor" (Derringer & Suich, 1980).
-- **A checagem de alertas adversos (`checar_alertas_adversos.py`) não entende negação em texto livre** — trechos sinalizados precisam de revisão humana antes de descartar um composto; por isso a penalidade é parcial por padrão, não uma exclusão.
+- **A checagem de alertas adversos não entende negação em texto livre** — em
+  `checar_alertas_adversos.py` e também no critério `alerta_bula` da etapa 2:
+  uma bula que diz "não há relatos de neuropatia" ainda casa o termo. Trechos
+  sinalizados precisam de revisão humana, e é por isso que ambos expõem o
+  trecho literal em vez de só um sinalizador. A etapa 2 mitiga um caso
+  específico — a droga que *trata* o sintoma — descontando o que aparece em
+  `indications_and_usage`, mas não resolve negação em geral.
 - **A validação por decoys não testa especificidade entre classes farmacológicas** — mostra que drogas de referência conhecidas superam controles negativos aleatórios, mas não testa diretamente se compostos de uma classe não relacionada estariam sendo indevidamente favorecidos. A checagem de alertas adversos (etapa 6) é um primeiro passo nessa direção, mas específico a efeitos já documentados em bula, não uma solução geral.
-- **Calibração do Deep-PK e comparação formal com outras ferramentas ADMET continuam sem execução.**
+- **Calibração do Deep-PK e comparação formal com outras ferramentas ADMET continuam sem execução.** Na etapa 2 a questão mudou de forma, não desapareceu: o ADMET-AI 2.0.1 substituiu o Deep-PK e é local, versionado e reprodutível, mas o **percentil de toxicidade não está validado neste conjunto** — é por isso que `toxicidade` só marca, nunca reprova, por padrão.
+- **A checagem de bula da etapa 2 não cobre a base inteira numa execução.** O teto é `--limite-bula` (padrão 500) porque o openFDA é serviço público com limite de taxa: 108.935 ligantes × 3 requisições a 240/min dariam ~23 h. O caminho certo é o download em massa (1,7 GB em 14 partições), **registrado e não implementado**. O que passa do teto sai `indeterminado`, nunca "sem alerta".
+- **A fase 3 (ranqueamento que usa os alvos) não existe ainda.** As etapas 1 e 2 entregam evidência e vereditos com procedência; quem ordena usando isso está por escrever. O requisito está em `docs/superpowers/specs/2026-11-25-fase3-alvos-no-ranqueamento-requisitos.md`.
