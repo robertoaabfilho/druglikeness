@@ -1,0 +1,20 @@
+{
+ "meta": {
+  "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+  "last_updated": "2026-11-25",
+  "license": "https://open.fda.gov/license/",
+  "results": {
+   "limit": 50,
+   "skip": 0,
+   "total": 1
+  },
+  "terms": "https://open.fda.gov/terms/"
+ },
+ "results": [
+  {
+   "adverse_reactions": [
+    "ADVERSE REACTIONS: Blood Dyscrasias The most serious adverse effect of chloramphenicol is bone marrow depression. Serious and fatal blood dyscrasias (aplastic anemia, hypoplastic anemia, thrombocytopenia, and granulocytopenia) are known to occur after the administration of chloramphenicol. An irreversible type of marrow depression leading to aplastic anemia with a high rate of mortality is characterized by the appearance weeks or months after therapy of bone marrow aplasia or hypoplasia. Peripherally, pancytopenia is most often observed, but in a small number of cases only one or two of the three major cell types (erythrocytes, leukocytes, platelets) may be depressed. A reversible type of bone marrow depression, which is dose related, may occur. This type of marrow depression is characterized by vacuolization of the erythroid cells, reduction of reticulocytes and leukopenia, and responds promptly to the withdrawal of chloramphenicol. An exact determination of the risk of serious and fatal blood dyscrasias is not possible because of lack of accurate information regarding 1) the size of the population at risk, 2) the total number of drug-associated dyscrasias, and 3) the total number of non-drug associated dyscrasias. In a report to the California State Assembly by the California Medical Association and the State Department of Public Health in January 1967, the risk of fatal aplastic anemia was estimated at 1:24,200 to 1:40,500 based on two dosage levels. There have been reports of aplastic anemia attributed to chloramphenicol which later terminated in leukemia. Paroxysmal nocturnal hemoglobinuria has been reported. Gastrointestinal Reactions Nausea, vomiting, glossitis and stomatitis, diarrhea and enterocolitis may occur in low incidence. Neurotoxic Reactions Headache, mild depression, mental confusion, and delirium have been described in patients receiving chloramphenicol. Optic and peripheral neuritis have been reported, usually following long-term therapy. If this occurs, the drug should be promptly withdrawn. Hypersensitivity Reactions Fever, macular and vesicular rashes, angioedema, urticaria, and anaphylaxis may occur. Herxheimer’s reactions have occurred during therapy for typhoid fever. \"Gray Syndrome\" Toxic reactions including fatalities have occurred in the premature and neonate; the signs and symptoms associated with these reactions have been referred to as the “gray syndrome.” One case of gray syndrome has been reported in a neonate born to a mother having received chloramphenicol during labor. One case has been reported in a 3-month-old infant. The following summarizes the clinical and laboratory studies that have been made on these patients: a) In most cases therapy with chloramphenicol had been instituted within the first 48 hours of life. b) Symptoms first appeared after 3 to 4 days of continued treatment with high doses of chloramphenicol. c) The symptoms appeared in the following order: (1) abdominal distension with or without emesis; (2) progressive pallid cyanosis; (3) vasomotor collapse, frequently accompanied by irregular respiration; (4) death within a few hours of onset of these symptoms. d) The progression of symptoms from onset to exitus was accelerated with higher dose schedules. e) Preliminary blood serum level studies revealed unusually high concentrations of chloramphenicol (over 90 mcg/mL after repeated doses). f) Termination of therapy upon early evidence of the associated symptomatology frequently reversed the process with complete recovery."
+   ]
+  }
+ ]
+}

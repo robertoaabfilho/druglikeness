@@ -63,14 +63,25 @@ def rotulos_falsos():
 
 BASE_CHEMBL = "https://www.ebi.ac.uk/chembl/api/data/"
 BASE_REACTOME = "https://reactome.org/ContentService/"
+BASE_OPENFDA = "https://api.fda.gov/"
 URL_OPEN_TARGETS = "https://api.platform.opentargets.org/api/v4/graphql"
+
+# Acima disto o sistema de arquivos recusa o nome (255 bytes no ext4), e a
+# consulta dirigida de indicacao do openFDA passa de 250 so de termos. O corte
+# e alto de proposito: nenhum nome ja gravado chega perto, entao ligar isto nao
+# renomeia fixture nenhuma.
+LIMITE_NOME = 150
 
 
 def arquivo_da_resposta(url: str, corpo: dict | None = None) -> str:
     """Nome do arquivo gravado para uma requisicao: a URL sem a base, com tudo
     que nao for [A-Za-z0-9._=-] trocado por '_'. Deterministico e legivel.
     Open Targets e POST num unico endereco: o nome sai da operacao GraphQL e
-    de suas variaveis."""
+    de suas variaveis.
+
+    Nome comprido demais e cortado e assinado com 12 digitos do SHA-256 do
+    nome inteiro: fica legivel no inicio e continua injetivo."""
+    import hashlib
     import re
     if url == URL_OPEN_TARGETS:
         assert corpo, "Open Targets exige o corpo GraphQL"
@@ -78,12 +89,20 @@ def arquivo_da_resposta(url: str, corpo: dict | None = None) -> str:
         variaveis = "_".join(f"{k}={v}" for k, v in corpo.get("variables", {}).items())
         nome = re.sub(r"[^A-Za-z0-9._=-]", "_", f"opentargets_{operacao}_{variaveis}")
     else:
-        base = next((b for b in (BASE_CHEMBL, BASE_REACTOME) if url.startswith(b)), None)
+        base = next((b for b in (BASE_CHEMBL, BASE_REACTOME, BASE_OPENFDA)
+                     if url.startswith(b)), None)
         assert base, url
         nome = re.sub(r"[^A-Za-z0-9._=-]", "_", url[len(base):])
         if base == BASE_REACTOME:
             nome = "reactome_" + nome
-    return nome if nome.endswith(".json") else nome + ".json"
+        elif base == BASE_OPENFDA:
+            nome = "openfda_" + nome
+    nome = nome if nome.endswith(".json") else nome + ".json"
+    if len(nome) > LIMITE_NOME:
+        tronco = nome[:-len(".json")]
+        assinatura = hashlib.sha256(tronco.encode("utf-8")).hexdigest()[:12]
+        nome = f"{tronco[:LIMITE_NOME - len('.json') - 13]}_{assinatura}.json"
+    return nome
 
 
 @pytest.fixture

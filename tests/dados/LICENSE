@@ -27,6 +27,34 @@ Dominio publico (CC0), sem exigencia de share-alike
     tests/dados/respostas/reactome_*.json   -- Reactome (so anotacao; nenhum
         arquivo de Functional Interaction, que e restrito, entra aqui)
     tests/dados/respostas/opentargets_*.json -- Open Targets
+    tests/dados/respostas/openfda_*.json    -- openFDA (FDA/HHS), dominio
+        publico. Fonte: https://open.fda.gov/, carga de 2026-11-25
+        (`meta.last_updated`).
+
+        ESTAS FIXTURES SAO APARADAS, nao copias integrais. A resposta bruta de
+        um principio ativo passa de 8 MB e doze delas nao cabem num
+        repositorio (7,7 MB depois de aparar os campos, 241 KB depois de
+        aparar as repeticoes). O que foi feito, e o que isso preserva:
+
+        1. de cada bula ficaram so os cinco campos que o pipeline le
+           (`boxed_warning`, `warnings`, `warnings_and_cautions`,
+           `adverse_reactions`, `indications_and_usage`);
+        2. dentro deles, ficou so o texto que casa um dos termos gravados --
+           `neuropathy`, `neuropathic`, `neuritis`, `paresthesia` -- e ficou
+           INTEGRO, nunca recortado, para que o trecho que o teste confere
+           seja byte a byte o que a producao produziria;
+        3. das 50 bulas devolvidas por principio ativo, o texto ficou so na
+           PRIMEIRA que traz cada par (termo, secao). O modulo deduplica por
+           esse par e para no primeiro casamento, entao o veredito e o trecho
+           nao mudam; 50 copias do mesmo texto de generico mudariam so o
+           tamanho do arquivo. As 50 entradas continuam la, vazias quando nao
+           contribuem, porque a CONTAGEM decide
+           `n_bulas_consultadas`.
+
+        Consequencia a saber: a fixture responde fielmente para os TERMOS
+        ACIMA. Um teste com outro termo precisa regravar a fixture, senao ela
+        dira "nenhum achado" onde a bula real tem um. O gravador esta descrito
+        no commit que introduziu a tarefa da bula.
 
 Fixtures escritas a mao (ligantes_minimo.tsv, alvos_minimo.tsv,
 ligantes_sem_coluna.tsv, sintomas.txt) seguem a licenca MIT do repositorio.

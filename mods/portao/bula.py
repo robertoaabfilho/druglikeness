@@ -93,6 +93,41 @@ def buscar_bulas(nome: str, *, obter_json: Callable,
     return {"campo_do_nome": "", "bulas": [], "total": 0}
 
 
+def url_de_indicacao(nome: str, campo: str, termos: list[str]) -> str:
+    """Consulta DIRIGIDA: "existe alguma bula deste principio ativo que o
+    indique para a condicao?".
+
+    Por que nao basta procurar na janela de 50 bulas
+    ------------------------------------------------
+    Medido: a capsaicina tem 211 bulas no openFDA, e a UNICA que a indica para
+    dor neuropatica (Qutenza) esta fora das 50 que a busca por nome devolve.
+    Sem esta consulta, a capsaicina -- que TRATA a condicao -- e reprovada por
+    `paresthesia@warnings_and_cautions`, e o grupo de controle que trata passa
+    de 0/6 para 1/6 de falso positivo.
+
+    E a mesma falha que tirou o `limit=1` deste modulo: uma bula arbitraria
+    entre centenas. Aumentar a janela nao a resolve, so a adia -- 211 hoje,
+    mais amanha. Perguntar e O(1) e independe do tamanho da janela."""
+    termo_ou = " OR ".join(f'indications_and_usage:"{t.strip()}"'
+                           for t in termos if t.strip())
+    busca = quote(f'openfda.{campo}:"{nome}" AND ({termo_ou})', safe="")
+    return f"{BASE}?search={busca}&limit=1"
+
+
+def achados_de_indicacao(nome: str, campo: str, termos: list[str], *,
+                         obter_json: Callable) -> list[dict]:
+    """Achados de INDICACAO vindos da consulta dirigida, no formato de
+    `achados`. Lista vazia significa que nenhuma bula do principio ativo indica
+    o farmaco para a condicao -- e nao que nao se olhou."""
+    if not campo or not [t for t in termos if t.strip()]:
+        return []
+    resposta = obter_json(url_de_indicacao(nome, campo, termos)) or {}
+    bulas = resposta.get("results") or []
+    # A bula devolvida tambem traz secoes de risco; aqui so a indicacao
+    # interessa -- o risco vem da janela, com o rastro dela.
+    return [a for a in achados(bulas, termos) if a["forca"] == "indicacao"]
+
+
 def _padrao(termo: str) -> re.Pattern:
     return re.compile(r"\b" + re.escape(termo.strip()) + r"\b", re.IGNORECASE)
 

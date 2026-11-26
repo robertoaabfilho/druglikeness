@@ -1,0 +1,69 @@
+{
+ "meta": {
+  "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+  "last_updated": "2026-11-25",
+  "license": "https://open.fda.gov/license/",
+  "results": {
+   "limit": 50,
+   "skip": 0,
+   "total": 411
+  },
+  "terms": "https://open.fda.gov/terms/"
+ },
+ "results": [
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {
+   "adverse_reactions": [
+    "6 ADVERSE REACTIONS The following adverse reactions are described elsewhere in the labeling: • Suicidal Behavior and Ideation [see Warnings and Precautions ( 5.1 )] • Increased Risk of Adverse Reactions with Abrupt or Rapid Discontinuation [see Warnings and Precautions ( 5.2 )] • Respiratory Depression [see Warnings and Precautions ( 5.3 )] • Tumorigenic Potential [see Warnings and Precautions ( 5.4 )] • Drug Reaction with Eosinophilia and Systemic Symptoms (DRESS)/Multiorgan Hypersensitivity [see Warnings and Precautions ( 5.5 )] • Laboratory Tests [see Warnings and Precautions ( 5.6 )] The most common adverse reaction (greater than or equal to 5% and twice placebo) is dizziness. ( 6.1 ) To report SUSPECTED ADVERSE REACTIONS, contact Annora Pharma Private Limited at 1-866-495-1995 or FDA at 1-800-FDA-1088 or www.fda.gov/medwatch 6.1 Clinical Trials Experience Because clinical trials are conducted under widely varying conditions, adverse reaction rates observed in the clinical trials of a drug cannot be directly compared to rates in the clinical trials of another drug and may not reflect the rates observed in practice. A total of 359 patients with neuropathic pain associated with postherpetic neuralgia have received gabapentin at doses up to 1,800 mg daily during placebo-controlled clinical studies. In clinical trials in patients with postherpetic neuralgia, 9.7% of the 359 patients treated with gabapentin and 6.9% of 364 patients treated with placebo discontinued prematurely due to adverse reactions. In the gabapentin treatment group, the most common reason for discontinuation due to adverse reactions was dizziness. Of gabapentin -treated patients who experienced adverse reactions in clinical studies, the majority of those adverse reactions were either \"mild\" or \"moderate”. Table 4 lists all adverse reactions, regardless of causality, occurring in at least 1% of patients with neuropathic pain associated with postherpetic neuralgia in the gabapentin group for which the incidence was greater than in the placebo group. Table 4: Treatment-Emergent Adverse Reaction Incidence in Controlled Trials in Neuropathic Pain Associated with Postherpetic Neuralgia (Events in at Least 1% of all Gabapentin -Treated Patients and More Frequent Than in the Placebo Group) Body System – Preferred Term Gabapentin N = 359 % Placebo N = 364 % Ear and Labyrinth Disorders Vertigo 1.4 0.5 Gastrointestinal Disorders Diarrhea Dry mouth Constipation Dyspepsia 3.3 2.8 1.4 1.4 2.7 1.4 0.3 0.8 General Disorders Peripheral edema Pain 3.9 1.1 0.3 0.5 Infections and Infestations Nasopharyngitis Urinary tract infection 2.5 1.7 2.2 0.5 Investigations Weight increased 1.9 0.5 Musculoskeletal and Connective Tissue Disorders Pain in extremity Back pain 1.9 1.7 0.5 1.1 Nervous System Disorders Dizziness Somnolence Headache Lethargy 10.9 4.5 4.2 1.1 2.2 2.7 4.1 0.3 In addition to the adverse reactions reported in Table 4 above, the following adverse reactions with an uncertain relationship to gabapentin were reported during the clinical development for the treatment of postherpetic neuralgia. Events in more than 1% of patients but equally or more frequently in the gabapentin-treated patients than in the placebo group included blood pressure increase, confusional state, gastroenteritis viral, herpes zoster, hypertension, joint swelling, memory impairment, nausea, pneumonia, pyrexia, rash, seasonal allergy, and upper respiratory infection. 6.2 Postmarketing and Other Experience with other Formulations of Gabapentin In addition to the adverse experiences reported during clinical testing of gabapentin, the following adverse experiences have been reported in patients receiving other formulations of marketed gabapentin. These adverse experiences have not been listed above and data are insufficient to support an estimate of their incidence or to establish causation. The listing is alphabetized: angioedema, blood glucose fluctuation, breast enlargement, bullous pemphigoid, elevated creatine kinase, elevated liver function tests, erythema multiforme, fever, hyponatremia, jaundice, movement disorder, Stevens-Johnson syndrome. There are postmarketing reports of withdrawal symptoms after discontinuation of gabapentin. Reported adverse reactions include, but are not limited to, seizures, depression, suicidal ideation and behavior, agitation, confusion, disorientation, psychotic symptoms, anxiety, insomnia, nausea, pain, sweating, tremor, headache, dizziness, and malaise [see Warnings and Precautions ( 5.2 )]. There are postmarketing reports of life-threatening or fatal respiratory depression in patients taking gabapentin with opioids or other central nervous system (CNS) depressants, or in the setting of underlying respiratory impairment."
+   ]
+  },
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {}
+ ]
+}

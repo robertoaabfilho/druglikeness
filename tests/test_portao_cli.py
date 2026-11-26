@@ -8,11 +8,12 @@ que e o modo degradado prometido.
 """
 
 import json
+from pathlib import Path
 
 import pytest
 
 from mods import aplicar_portao
-from mods.portao import admet, esquema
+from mods.portao import admet, bula, esquema
 
 AMITRIPTILINA = "CN(C)CCC=C1c2ccccc2CCc2ccccc21"   # PAINS: styrene_A(13)
 ASPIRINA = "CC(=O)Oc1ccccc1C(=O)O"                 # BRENK: phenol_ester
@@ -344,3 +345,180 @@ def test_smiles_ilegivel_fica_na_saida_reprovado_com_motivo(
     assert manifesto["contagens"]["smiles_ilegiveis_mantidos"] == 1
     assert manifesto["contagens"]["execucao_parcial"] is False
     assert "nao apagados" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# Criterio 1 do desenho: a bula no conjunto-controle de 12 farmacos
+# --------------------------------------------------------------------------
+
+TERMOS = "neuropathy,neuropathic,neuritis,paresthesia"
+CONTROLE = "exemplos/controle.dor_neuropatica.tsv"
+TRATAM = ["pregabalin", "duloxetine", "gabapentin", "amitriptyline",
+          "carbamazepine", "capsaicin"]
+CAUSAM = ["ciprofloxacin", "linezolid", "chloramphenicol", "ethambutol",
+          "ethionamide", "metronidazole"]
+
+
+@pytest.fixture
+def cache_de_bulas(monkeypatch, respostas):
+    """Cache falso servido pelas respostas gravadas do openFDA. A fixture
+    `respostas` FALHA o teste para qualquer URL nao gravada, entao nenhum
+    caminho novo passa escondido -- e o bloqueio de socket garante que nada
+    cai para a rede."""
+    class CacheFalso:
+        obter_json = staticmethod(respostas)
+        diretorio = Path("openfda-2026-11-25")
+
+    monkeypatch.setattr(
+        aplicar_portao, "_abrir_cache",
+        lambda args, destino: (CacheFalso(), {"openfda": "2026-11-25"},
+                               "/raiz/cache", "openfda-2026-11-25"))
+
+
+@pytest.fixture
+def sem_admet(monkeypatch):
+    """O controle da bula nao precisa de ADMET, e dez modelos Chemprop por
+    teste custariam mais que todo o resto da suite."""
+    monkeypatch.setattr(admet, "disponivel", lambda: False)
+
+
+def _rodar_controle(saida, *extra):
+    return _rodar("--ligantes", CONTROLE, "--saida", str(saida),
+                  "--termos-alerta", TERMOS, *extra)
+
+
+def test_bula_no_controle_tem_zero_falso_positivo_e_pega_quatro_de_seis(
+        tmp_path, cache_de_bulas, sem_admet):
+    """O numero que justifica `alerta_bula` ser o UNICO criterio que reprova
+    por padrao. A regra antiga dava 4/6 de FALSO positivo e perdia o
+    ciprofloxacino; esta da 0/6 de falso positivo e o pega."""
+    saida = tmp_path / "res"
+    assert _rodar_controle(saida) == 0
+    linhas = _por_ligante(_ler(saida, "portao.tsv"))
+
+    reprovados_que_tratam = [n for n in TRATAM
+                             if linhas[n]["alerta_bula_veredito"] == "reprova"]
+    assert reprovados_que_tratam == [], (
+        "falso positivo: estes TRATAM dor neuropatica")
+
+    reprovados_que_causam = [n for n in CAUSAM
+                             if linhas[n]["alerta_bula_veredito"] == "reprova"]
+    assert reprovados_que_causam == ["ciprofloxacin", "linezolid",
+                                     "ethambutol", "metronidazole"]
+
+    # Os dois nao pegos sao honestos, nao "sem alerta": cloranfenicol tem UMA
+    # bula (so secao fraca) e etionamida nenhuma.
+    assert linhas["chloramphenicol"]["alerta_bula_veredito"] == "passa"
+    assert "fraca" in linhas["chloramphenicol"]["alerta_bula_valor"]
+    assert linhas["ethionamide"]["alerta_bula_veredito"] == "indeterminado"
+    assert "sem bula" in linhas["ethionamide"]["alerta_bula_valor"]
+
+
+def test_ciprofloxacino_e_pego_pela_tarja_preta(tmp_path, cache_de_bulas, sem_admet):
+    """O caso que originou o projeto: `limit=1` devolvia uma bula arbitraria
+    entre 166 e a que traz a tarja preta nao e a primeira."""
+    saida = tmp_path / "res"
+    _rodar_controle(saida)
+    linha = _por_ligante(_ler(saida, "portao.tsv"))["ciprofloxacin"]
+    assert "boxed_warning" in linha["alerta_bula_valor"]
+    assert linha["aprovado"] == "nao"
+    assert "alerta_bula" in linha["motivos"]
+
+
+def test_indicacao_dirigida_salva_a_capsaicina(tmp_path, cache_de_bulas, sem_admet,
+                                               monkeypatch):
+    """A capsaicina tem 211 bulas e a UNICA que a indica para dor neuropatica
+    (Qutenza) esta fora das 50 que a busca por nome devolve. Sem a consulta
+    dirigida, ela e reprovada -- e ela TRATA a condicao. E a mesma falha que
+    tirou o `limit=1` do modulo, so em outra escala."""
+    saida = tmp_path / "res"
+    _rodar_controle(saida)
+    linha = _por_ligante(_ler(saida, "portao.tsv"))["capsaicin"]
+    assert linha["alerta_bula_veredito"] == "passa"
+    assert "indicado" in linha["alerta_bula_valor"]
+
+    # Sem a consulta dirigida, o falso positivo volta: e o teste que impede
+    # alguem de "simplificar" o modulo removendo-a.
+    monkeypatch.setattr(bula, "achados_de_indicacao",
+                        lambda *a, **k: [])
+    sem_dirigida = tmp_path / "sem"
+    _rodar_controle(sem_dirigida)
+    linha = _por_ligante(_ler(sem_dirigida, "portao.tsv"))["capsaicin"]
+    assert linha["alerta_bula_veredito"] == "reprova"
+
+
+def test_alertas_bula_guarda_o_rastro_conferivel(tmp_path, cache_de_bulas, sem_admet):
+    """Sem o trecho e a secao, "tem alerta" nao se confere. O rastro e o
+    produto desta tabela."""
+    saida = tmp_path / "res"
+    _rodar_controle(saida)
+    linhas = [l for l in _ler(saida, "alertas_bula.tsv")
+              if l["ligante"] == "ciprofloxacin"]
+    assert linhas, "nenhum achado gravado para o ciprofloxacino"
+    forte = [l for l in linhas if l["secao"] == "boxed_warning"]
+    assert forte and forte[0]["forca"] == "forte"
+    assert "neuropathy" in forte[0]["trecho"].lower()
+    assert int(forte[0]["n_bulas_consultadas"]) == 50
+    assert forte[0]["campo_do_nome"] == "generic_name"
+    assert forte[0]["procedencia"] == "openFDA 2026-11-25"
+    # A secao fraca tambem fica registrada, mesmo nao contando como alerta.
+    assert any(l["forca"] == "fraca" for l in _ler(saida, "alertas_bula.tsv"))
+
+
+def test_teto_de_bula_sai_indeterminado_com_o_motivo(
+        tmp_path, cache_de_bulas, sem_admet):
+    """108.935 consultas a um servico publico com limite de taxa nao sao
+    aceitaveis. O que passa do teto nunca vira "sem alerta"."""
+    saida = tmp_path / "res"
+    assert _rodar_controle(saida, "--limite-bula", "1") == 0
+    linhas = _ler(saida, "portao.tsv")
+    assert linhas[0]["alerta_bula_veredito"] != "indeterminado"
+    acima = [l for l in linhas[1:] if l["alerta_bula_veredito"] == "indeterminado"]
+    assert len(acima) == len(linhas) - 1
+    assert "--limite-bula 1" in acima[0]["alerta_bula_valor"]
+    manifesto = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert manifesto["contagens"]["bulas_consultadas"] == 1
+
+
+def test_termos_alerta_com_sem_rede_e_erro(tmp_path, ligantes):
+    assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "res"),
+                  "--termos-alerta", "neuropathy", "--sem-rede") == 2
+    assert not (tmp_path / "res" / "portao.tsv").exists()
+
+
+def test_falha_de_consulta_num_item_torna_a_execucao_parcial(
+        tmp_path, monkeypatch, respostas, sem_admet, capsys):
+    """Rede caida em UM ligante nao derruba a execucao nem vira "sem alerta":
+    aquele item fica `indeterminado` e a execucao inteira fica PARCIAL."""
+    def as_vezes(url, corpo=None):
+        if "linezolid" in url:
+            raise RuntimeError("502 do openFDA")
+        return respostas(url, corpo)
+
+    class CacheFalso:
+        obter_json = staticmethod(as_vezes)
+        diretorio = Path("p")
+
+    monkeypatch.setattr(aplicar_portao, "_abrir_cache",
+                        lambda args, destino: (CacheFalso(), {"openfda": "x"},
+                                               "/r", "p"))
+    saida = tmp_path / "res"
+    assert _rodar_controle(saida) == 3
+    linha = _por_ligante(_ler(saida, "portao.tsv"))["linezolid"]
+    assert linha["alerta_bula_veredito"] == "indeterminado"
+    assert "falhou" in linha["alerta_bula_valor"]
+    assert linha["aprovado"] == "sim"       # indeterminado nunca reprova
+    manifesto = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert manifesto["contagens"]["falhas_de_bula"]
+    assert "PARCIAL" in capsys.readouterr().err
+
+
+def test_manifesto_registra_a_versao_do_openfda_e_os_termos(
+        tmp_path, cache_de_bulas, sem_admet):
+    saida = tmp_path / "res"
+    _rodar_controle(saida)
+    manifesto = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert manifesto["versoes"]["openfda"] == "2026-11-25"
+    assert manifesto["parametros"]["termos_alerta"] == TERMOS.split(",")
+    assert manifesto["parametros"]["limite_bula"] == 500
+    assert manifesto["parametros"]["cache_pasta"] == "openfda-2026-11-25"

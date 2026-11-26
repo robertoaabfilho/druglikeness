@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from mods.evidencias import atomico, procedencia
 from mods.evidencias.entrada import ler_ligantes
 from mods.evidencias.manifesto import texto_do_manifesto
-from mods.portao import admet, decisao, esquema, propriedades
+from mods.portao import admet, bula, decisao, esquema, propriedades
 
 SAIDA_OK = 0
 SAIDA_SEM_ENTRADA = 1
@@ -58,6 +58,7 @@ SAIDA_PARCIAL = 3
 NOME_PROPRIEDADES = "propriedades.tsv"
 NOME_PORTAO = "portao.tsv"
 NOME_MANIFESTO = "manifesto.json"
+NOME_ALERTAS_BULA = "alertas_bula.tsv"
 
 # Criterios julgados por esta tarefa. Bula e expressao entram nas proximas; ate
 # la saem `indeterminado` com o motivo escrito, e nao `passa`.
@@ -166,6 +167,22 @@ def _argumentos(argv):
                     help="num_workers do ADMET-AI (padrao 0). Medido: 1.600 "
                          "moleculas saem em 8,6 s com 0 e em 384 s com 8, porque "
                          "sao dez modelos pagando o nascimento de N processos")
+    ap.add_argument("--termos-alerta", action="append", default=[], metavar="T[,T]",
+                    help="termos da condicao a buscar na bula (repetivel, aceita "
+                         "virgula). SEM eles a checagem de bula NAO roda e o "
+                         "criterio `alerta_bula` sai `indeterminado`")
+    ap.add_argument("--limite-bula", type=_inteiro_positivo, default=500,
+                    metavar="N",
+                    help="teto de ligantes consultados no openFDA (padrao 500). "
+                         "A base tem 108.935 ligantes e o openFDA e um servico "
+                         "publico com limite de taxa; o que passar do teto sai "
+                         "`indeterminado` com esse motivo escrito, nunca "
+                         "'sem alerta'")
+    ap.add_argument("--sem-rede", action="store_true",
+                    help="nao consulta a bula; o criterio sai `indeterminado`")
+    ap.add_argument("--cache", metavar="DIR",
+                    help="raiz do cache de rede (padrao: cache_rede/ dentro de "
+                         "--saida). Subpasta por versao dos servicos")
     ap.add_argument("--reprovar", action="append", default=[], metavar="C[,C]",
                     help="promove criterio(s) a reprovacao (repetivel). "
                          "Os que existem: " + ", ".join(decisao.CRITERIOS))
@@ -183,6 +200,37 @@ def _politica(args):
             f"criterio em --reprovar e --marcar ao mesmo tempo: "
             f"{', '.join(repetidos)}; escolha um")
     return decisao.montar_politica(promovidos, rebaixados)
+
+
+def _abrir_cache(args, destino: Path):
+    """Cache de rede da execucao: (Cache, versoes dos servicos, raiz, pasta).
+
+    `com_openfda=True` acrescenta a data de carga do openFDA a chave da pasta:
+    um cache gravado sem ela nao pode servir respostas de bula."""
+    from mods.evidencias import cache as c
+    raiz = Path(args.cache) if args.cache else destino / "cache_rede"
+    cache, versoes = c.abrir_ao_vivo(raiz, com_openfda=True)
+    return cache, versoes, str(Path(raiz).resolve()), cache.diretorio.name
+
+
+def _consultar_bula(nome: str, termos: list[str], *, obter_json):
+    """(veredito, valor, achados) do criterio `alerta_bula` para um ligante.
+
+    A indicacao vem de consulta DIRIGIDA, nao da janela de 50 bulas: medido, a
+    capsaicina tem 211 bulas e a unica que a indica para dor neuropatica esta
+    fora das 50 devolvidas pela busca por nome. Sem a consulta dirigida ela e
+    reprovada -- e ela TRATA a condicao, o que levaria o falso positivo do
+    grupo de controle de 0/6 a 1/6."""
+    resultado = bula.buscar_bulas(nome, obter_json=obter_json)
+    achados = bula.achados(resultado["bulas"], termos)
+    indicacao = bula.achados_de_indicacao(
+        nome, resultado["campo_do_nome"], termos, obter_json=obter_json)
+    # Deduplicado por (termo, secao): a consulta dirigida pode repetir um
+    # achado que a janela ja trouxe.
+    por_chave = {(a["termo"], a["secao"]): a for a in achados + indicacao}
+    lista = [por_chave[c] for c in sorted(por_chave)]
+    veredito, valor = bula.veredito(resultado, lista)
+    return veredito, valor, lista, resultado
 
 
 def _preparar_saida(args):
@@ -206,7 +254,8 @@ def _preparar_saida(args):
 
 
 def _vereditos_do_ligante(linha_propriedades: dict, problema: str | None,
-                          linha_admet: dict | None, percentil: float) -> dict:
+                          linha_admet: dict | None, percentil: float,
+                          bula_veredito=None) -> dict:
     """{criterio: (veredito, valor)} para os criterios de LIGANTE.
 
     `expressao` nao entra: e criterio de ALVO, e `portao.tsv` tem uma linha por
@@ -217,12 +266,12 @@ def _vereditos_do_ligante(linha_propriedades: dict, problema: str | None,
         # leitura e quebrar aqui, o ligante fica na saida reprovado, com o
         # motivo -- nunca desaparece em silencio.
         return {"smiles": ("reprova", problema),
-                "alerta_bula": ("indeterminado", MOTIVO_SEM_BULA),
+                "alerta_bula": bula_veredito or ("indeterminado", MOTIVO_SEM_BULA),
                 "alerta_estrutural": ("indeterminado", "sem molecula"),
                 "toxicidade": ("indeterminado", "sem molecula")}
     return {
         "smiles": ("passa", ""),
-        "alerta_bula": ("indeterminado", MOTIVO_SEM_BULA),
+        "alerta_bula": bula_veredito or ("indeterminado", MOTIVO_SEM_BULA),
         "alerta_estrutural": _veredito_estrutural(linha_propriedades),
         "toxicidade": admet.veredito_de_toxicidade(linha_admet, percentil),
     }
@@ -294,7 +343,26 @@ def main(argv: list[str] | None = None) -> int:
               "`indeterminado` -- que NUNCA reprova. Instale com: "
               "pip install admet-ai", file=sys.stderr)
 
+    termos = [t for v in args.termos_alerta for t in _lista(v)]
+    if termos and args.sem_rede:
+        print("[erro] --termos-alerta precisa de rede (a bula vem do openFDA); "
+              "incompativel com --sem-rede", file=sys.stderr)
+        return SAIDA_ERRO
+    # Cache e versoes ANTES de abrir qualquer saida: sem versao conhecida nao
+    # ha como garantir que o cache vale, e falhar aqui nao deixa arquivo algum.
+    cache = None
+    versoes_rede: dict = {}
+    raiz_cache = pasta_cache = None
+    if termos:
+        try:
+            cache, versoes_rede, raiz_cache, pasta_cache = _abrir_cache(args, destino)
+        except Exception as e:   # VersaoIndeterminada, OSError, ValueError
+            print(f"[erro] cache de rede: {e}", file=sys.stderr)
+            return SAIDA_ERRO
+
     contador = decisao.Contador(decisao.CRITERIOS_LIGANTE)
+    consultados = 0
+    falhas_de_bula: list[str] = []
     try:
         mapa_admet = _mapa_de_colunas_admet(colunas_admet)
     except ValueError as e:
@@ -320,9 +388,23 @@ def main(argv: list[str] | None = None) -> int:
         pendentes.append((tmp_propriedades, destino / NOME_PROPRIEDADES))
         tmp_portao = atomico.temporario(destino / NOME_PORTAO)
         pendentes.append((tmp_portao, destino / NOME_PORTAO))
+        if termos:
+            tmp_bula = atomico.temporario(destino / NOME_ALERTAS_BULA)
+            pendentes.append((tmp_bula, destino / NOME_ALERTAS_BULA))
+        else:
+            # Tabela vazia seria pior que ausente: "sem alerta" e "nao
+            # perguntei" nao sao a mesma afirmacao.
+            tmp_bula = None
 
-        with esquema.EscritorTSV(tmp_propriedades, colunas_propriedades) as esc_prop, \
-                esquema.EscritorTSV(tmp_portao, colunas_portao) as esc_portao:
+        from contextlib import ExitStack
+        with ExitStack() as pilha:
+            esc_prop = pilha.enter_context(
+                esquema.EscritorTSV(tmp_propriedades, colunas_propriedades))
+            esc_portao = pilha.enter_context(
+                esquema.EscritorTSV(tmp_portao, colunas_portao))
+            esc_bula = pilha.enter_context(esquema.EscritorTSV(
+                tmp_bula, esquema.COLUNAS_ALERTAS_BULA)) if tmp_bula else None
+            procedencia_bula = f"openFDA {versoes_rede.get('openfda', '')}".strip()
             # Em lotes porque a base real tem 108.935 ligantes e
             # `propriedades.tsv` tem 120 colunas: so o lote corrente fica em
             # memoria. A ordem da entrada e preservada -- a repeticao exige
@@ -346,8 +428,42 @@ def main(argv: list[str] | None = None) -> int:
                     linha["procedencia"] = procedencia_base
                     esc_prop.escrever(linha)
 
+                    bula_veredito = None
+                    if termos:
+                        if consultados >= args.limite_bula:
+                            bula_veredito = ("indeterminado",
+                                             f"acima do teto de bula "
+                                             f"(--limite-bula {args.limite_bula})")
+                        else:
+                            consultados += 1
+                            try:
+                                veredito_b, valor_b, achados_b, resultado_b = (
+                                    _consultar_bula(linha["ligante"], termos,
+                                                    obter_json=cache.obter_json))
+                            except Exception as e:
+                                # Falha de UM item nao derruba a execucao; ela
+                                # fica PARCIAL e o manifesto diz qual item
+                                # faltou. Rede caida nunca vira "sem alerta".
+                                falhas_de_bula.append(
+                                    f"{linha['ligante']}: {type(e).__name__}: {e}")
+                                bula_veredito = ("indeterminado",
+                                                 f"consulta a bula falhou: {e}")
+                            else:
+                                bula_veredito = (veredito_b, valor_b)
+                                for achado in achados_b:
+                                    esc_bula.escrever({
+                                        "ligante": linha["ligante"],
+                                        "ligante_inchikey_parental": linha[
+                                            "ligante_inchikey_parental"],
+                                        "n_bulas_consultadas": len(
+                                            resultado_b["bulas"]),
+                                        "campo_do_nome": resultado_b[
+                                            "campo_do_nome"],
+                                        "procedencia": procedencia_bula,
+                                        **achado})
                     vereditos = _vereditos_do_ligante(
-                        linha, problema, linha_admet, args.percentil_toxicidade)
+                        linha, problema, linha_admet, args.percentil_toxicidade,
+                        bula_veredito)
                     identidade = {
                         "ligante": linha["ligante"],
                         "ligante_inchikey_parental": linha[
@@ -360,7 +476,7 @@ def main(argv: list[str] | None = None) -> int:
         etapa = "manifesto"
         descartadas = sum(p.gravidade == "erro" for p in problemas)
         ilegiveis = sum(1 for l in ligantes if not l.get("inchikey_parental"))
-        parcial = bool(descartadas)
+        parcial = bool(descartadas) or bool(falhas_de_bula)
         resumo = contador.resumo(politica)
         tmp_manifesto = atomico.temporario(destino / NOME_MANIFESTO)
         pendentes.append((tmp_manifesto, destino / NOME_MANIFESTO))
@@ -370,8 +486,12 @@ def main(argv: list[str] | None = None) -> int:
                         "percentil_toxicidade": args.percentil_toxicidade,
                         "workers": args.workers,
                         "limite": args.limite,
-                        "termos_alerta": []},
-            versoes={"admet_ai": versao_admet,
+                        "termos_alerta": termos,
+                        "limite_bula": args.limite_bula,
+                        "sem_rede": args.sem_rede,
+                        "cache_raiz": raiz_cache,
+                        "cache_pasta": pasta_cache},
+            versoes={**versoes_rede, "admet_ai": versao_admet,
                      "ligantes_md5": procedencia.md5_ou_none(args.ligantes),
                      **procedencia.versoes_do_ambiente(),
                      **procedencia.repositorio_do_pipeline(),
@@ -382,6 +502,8 @@ def main(argv: list[str] | None = None) -> int:
                        "problemas_ligantes": len(problemas),
                        "linhas_descartadas": descartadas,
                        "smiles_ilegiveis_mantidos": ilegiveis,
+                       "bulas_consultadas": consultados,
+                       "falhas_de_bula": falhas_de_bula,
                        "execucao_parcial": parcial,
                        "colunas_de_admet": len(mapa_admet),
                        "colunas_de_admet_renomeadas": renomeadas,
@@ -405,6 +527,8 @@ def main(argv: list[str] | None = None) -> int:
         for arquivo, _ in pendentes:
             arquivo.unlink(missing_ok=True)
 
+    for falha in falhas_de_bula:
+        print(f"[aviso] bula, {falha}", file=sys.stderr)
     if ilegiveis:
         # Codigo 0, nao 3: o portao DECIDIU sobre esses ligantes (reprovados
         # pelo criterio `smiles`, com o motivo na linha). Execucao parcial e
@@ -416,9 +540,10 @@ def main(argv: list[str] | None = None) -> int:
     _resumo(contador, politica, destino)
     if parcial:
         print(f"[ATENCAO] execucao PARCIAL (codigo {SAIDA_PARCIAL}): "
-              f"{descartadas} linha(s) de entrada descartada(s) por erro "
-              "(detalhes acima). As saidas existem, mas estao incompletas; o "
-              "manifesto registra isso em execucao_parcial", file=sys.stderr)
+              f"{descartadas} linha(s) de entrada descartada(s) por erro e "
+              f"{len(falhas_de_bula)} falha(s) de consulta a bula (detalhes "
+              "acima). As saidas existem, mas estao incompletas; o manifesto "
+              "registra isso em execucao_parcial", file=sys.stderr)
     return SAIDA_PARCIAL if parcial else SAIDA_OK
 
 
