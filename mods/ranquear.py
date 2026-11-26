@@ -46,7 +46,8 @@ from typing import Callable, NamedTuple
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from mods.evidencias import atomico, procedencia
-from mods.evidencias.manifesto import (ler_manifesto, texto_do_manifesto,
+from mods.evidencias.manifesto import (hashes_de_entrada_ausentes,
+                                       ler_manifesto, texto_do_manifesto,
                                        verificar_manifesto)
 from mods.evidencias.resumo import MINIMO_TREINO
 from mods.portao.esquema import EscritorTSV, ler_tsv
@@ -71,14 +72,28 @@ NOME_MANIFESTO_REPETICAO = "manifesto_repeticao.json"
 # Chaves que, se mudarem, fazem a repeticao dar outro arquivo. As da etapa 1
 # nao servem: esta fase nao consulta servico nenhum, e depende do PP4CKD, que
 # a etapa 2 nao conhece.
-VERSOES_DA_REPETICAO = ("rdkit", "pp4ckd_md5", "evidencias_md5", "portao_md5",
-                        "alvos_md5", "ligantes_md5")
+VERSOES_DA_REPETICAO = ("rdkit", "torch", "pp4ckd_md5", "rotulos_md5",
+                        "evidencias_md5", "portao_md5", "alvos_md5",
+                        "ligantes_md5")
+# `rotulos_md5` entra porque o `target_labels.tsv` decide organismo, `n_ativos`
+# e `pref_name` -- a mascara do canal negativo inteira. Sem ele, repetir com
+# outro espaco de alvos era ACEITO e publicava outro escore como se fosse o
+# mesmo. A etapa 1 ja listava `rotulos_md5` entre as chaves dela.
 # `dispositivo` NAO entra: ele so e conhecido depois de abrir o modelo, e a
 # verificacao tem de recusar antes de escrever qualquer coisa. Divergencia de
 # dispositivo AVISA, como na etapa 2, onde repetir uma execucao de GPU avisa em
 # vez de prometer igualdade bit a bit.
 PARAMETROS_DA_REPETICAO = ("canal_negativo", "minimo_treino", "lote",
                            "limite", "portao")
+# MD5 que o manifesto TEM de trazer para a repeticao poder conferir a entrada.
+ENTRADAS_HASHEADAS = ("evidencias_md5",)
+# As condicionais sao lidas dos PARAMETROS do manifesto anterior (e o que
+# `hashes_de_entrada_ausentes` compara), por isso a chave e o nome do
+# parametro registrado, nao o da flag.
+CONDICIONAIS = (("portao", "portao_md5"), ("alvos", "alvos_md5"),
+                ("canal_negativo", "pp4ckd_md5"),
+                ("canal_negativo", "rotulos_md5"),
+                ("canal_negativo", "ligantes_md5"))
 
 
 class Modelo(NamedTuple):
@@ -205,6 +220,11 @@ def _validar(args) -> str | None:
                 "informe --ligantes (o evidencias.tsv nao traz essa coluna)")
     if quer_canal and not args.rotulos:
         return "--checkpoint sem --rotulos: nao se sabe quais alvos existem"
+    if quer_canal and not args.manifesto_etapa1:
+        return ("--checkpoint sem --manifesto-etapa1: sem ele nao ha como "
+                "conferir que `p_afirmativo` (da etapa 1) e `p_negativo` "
+                "(desta fase) vem do MESMO modelo, e a ordem passaria a "
+                "depender de quais arquivos estavam em disco")
     erro = _erro_de_checkpoint(args.checkpoint, args.manifesto_etapa1)
     if erro:
         return erro
@@ -221,30 +241,48 @@ def _validar(args) -> str | None:
     if destino.exists() and not destino.is_dir():
         return (f"--saida tem de ser um diretorio; {args.saida} e um arquivo "
                 "que existe")
+    # Por NOME de saida, e nao por diretorio: o manifesto da etapa 1 chama-se
+    # `manifesto.json`, que e exatamente um dos arquivos que esta fase publica,
+    # e ele e a chave de repeticao DELA.
+    publicados = {(destino / n).resolve()
+                  for n in (NOME_RANKING, NOME_NAO_RANQUEADOS,
+                            NOME_MANIFESTO_REPETICAO if args.manifesto
+                            else NOME_MANIFESTO)}
     for rotulo, caminho in (("--evidencias", args.evidencias),
-                            ("--portao", args.portao)):
-        if caminho and Path(caminho).resolve().parent == destino.resolve():
-            return (f"--saida e o diretorio de {rotulo}; a publicacao "
-                    "sobrescreveria a entrada")
+                            ("--portao", args.portao),
+                            ("--alvos", args.alvos),
+                            ("--ligantes", args.ligantes),
+                            ("--manifesto-etapa1", args.manifesto_etapa1),
+                            ("--manifesto", args.manifesto)):
+        if caminho and Path(caminho).resolve() in publicados:
+            return (f"{rotulo} aponta para um arquivo que esta execucao "
+                    f"publicaria ({Path(caminho).name}); a entrada seria "
+                    "sobrescrita")
     return None
 
 
 def _por_composto(caminho, limite=None):
-    """{inchikey: (nome, [linhas])}, na ordem em que os compostos aparecem."""
+    """({inchikey: (nome, [linhas])}, linhas descartadas).
+
+    A contagem de descartadas e devolvida, nao impressa: descartar linha em
+    silencio com codigo 0 e o defeito que o codigo 3 existe para evitar --
+    automacao nao le `stderr`."""
     compostos: dict[str, tuple[str, list[dict]]] = {}
+    descartadas = 0
     for linha in ler_tsv(caminho):
         chave_composto = (linha.get("ligante_inchikey_parental") or "").strip()
         nome = (linha.get("ligante") or "").strip()
         if not chave_composto:
-            # Sem a forma parental nao ha chave de juncao: a etapa 1 ja
-            # relatou o caso, e aqui a linha nao tem a quem pertencer.
+            # Sem a forma parental nao ha chave de juncao: a linha nao tem a
+            # quem pertencer.
+            descartadas += 1
             continue
         if chave_composto not in compostos:
             if limite is not None and len(compostos) >= limite:
                 continue
             compostos[chave_composto] = (nome, [])
         compostos[chave_composto][1].append(linha)
-    return compostos
+    return compostos, descartadas
 
 
 def _portao(caminho):
@@ -261,11 +299,42 @@ def _portao(caminho):
     return por_composto
 
 
+def _versao_do_torch(args) -> str | None:
+    """A versao do torch, ou None quando esta execucao nao usa o modelo.
+
+    Ela muda o forward, logo muda a saida, e `versoes_do_ambiente()` registra
+    so python e rdkit. Importada aqui dentro para que quem roda com
+    `--sem-canal-negativo` nao pague o import."""
+    if args.sem_canal_negativo or not args.checkpoint:
+        return None
+    try:
+        import torch
+        return torch.__version__
+    except ImportError:
+        return None
+
+
+def _erro_de_largura(saidas_do_checkpoint: int, n_rotulos: int) -> str | None:
+    """Mensagem quando a largura do checkpoint nao e o numero de rotulos.
+
+    A coluna *i* de um nao e o alvo *i* do outro: pontuar assim atribuiria a
+    probabilidade de um alvo ao nome de outro, e o canal negativo mascararia
+    as colunas erradas. A etapa 1 ja aplica este guarda
+    (`predito.py`); o tarball do Zenodo esta truncado na origem, entao o par
+    divergente e o caso ESPERADO, nao a excecao."""
+    if saidas_do_checkpoint == n_rotulos:
+        return None
+    return (f"o --checkpoint tem {saidas_do_checkpoint} saidas e os --rotulos "
+            f"tem {n_rotulos} alvos: a coluna i de um nao e o alvo i do outro. "
+            "Troque os dois juntos")
+
+
 def _parametros(args, canal_negativo, dispositivo) -> dict:
     """Os parametros que mudam o CONTEUDO da saida. Caminhos de saida nao
     entram: repetir para outra pasta e repetir."""
     return {"canal_negativo": canal_negativo,
             "dispositivo": dispositivo,
+            "alvos": bool(args.alvos),
             "minimo_treino": args.minimo_treino,
             "lote": args.lote,
             "limite": args.limite,
@@ -308,6 +377,11 @@ def _abrir_modelo(args) -> Modelo | None:
     dispositivo = "cuda" if args.gpu else "cpu"
     rede, cfg, dispositivo, nome = carregar_modelo(
         None, "ECFP4", dispositivo, checkpoint=args.checkpoint)
+    saidas = next((m.out_features for m in reversed(list(rede.modules()))
+                   if hasattr(m, "out_features")), len(rotulos))
+    erro = _erro_de_largura(saidas, len(rotulos))
+    if erro:
+        raise ValueError(erro)
 
     def prever(fingerprints):
         import numpy as np
@@ -338,25 +412,45 @@ def _ligantes_de_entrada(caminho) -> dict[str, tuple[str, str]]:
     return por_composto
 
 
-def _indices_afirmativos(compostos, rotulos) -> list[int]:
-    """Indices, no modelo, dos alvos AFIRMATIVOS desta execucao.
+def _alvos_afirmativos(args) -> tuple[set[str], set[str]]:
+    """(IDs, nomes) dos alvos AFIRMATIVOS desta execucao.
 
-    Afirmativo e o alvo que o usuario pediu ou que o enriquecimento trouxe --
-    a procedencia decide, e e por isso que esta lista sai das evidencias e nao
-    de um filtro de organismo."""
+    Lidos da LISTA DECLARADA -- `--alvos` quando ha, e o `evidencias.tsv`
+    INTEIRO, sem o corte de `--limite`.
+
+    Antes isto saia do conjunto de compostos ja truncado, e o efeito era a
+    inversao que o requisito 2 proibe: o alvo que o usuario PEDIU virava
+    antialvo assim que nenhum composto incluido tivesse linha nele, e a
+    atividade no alvo pretendido passava a penalizar o composto. O
+    `evidencias.tsv` tambem ja vem filtrado pelo `--corte` da etapa 1, entao
+    deduzir a declaracao do subproduto nunca foi seguro.
+    """
     afirmativas = set(ORIGENS_DO_USUARIO) | set(ORIGENS_DE_ENRIQUECIMENTO)
-    ids = set()
-    nomes = set()
-    for _, linhas in compostos.values():
-        for linha in linhas:
-            if (linha.get("origem_alvo") or "").strip() not in afirmativas:
-                continue
-            id_alvo = (linha.get("alvo_chembl_id") or "").strip().upper()
-            if id_alvo:
-                ids.add(id_alvo)
-            nome = (linha.get("alvo") or "").strip().casefold()
-            if nome:
-                nomes.add(nome)
+    ids: set[str] = set()
+    nomes: set[str] = set()
+
+    def juntar(linha, coluna_origem):
+        if (linha.get(coluna_origem) or "").strip() not in afirmativas:
+            return
+        id_alvo = (linha.get("alvo_chembl_id") or "").strip().upper()
+        if id_alvo:
+            ids.add(id_alvo)
+        nome = (linha.get("alvo") or "").strip().casefold()
+        if nome:
+            nomes.add(nome)
+
+    if args.alvos:
+        for linha in ler_tsv(args.alvos):
+            # A lista enriquecida chama a coluna `origem`; a de evidencias,
+            # `origem_alvo`. Aceitar as duas e o que `entrada.py` ja faz.
+            juntar(linha, "origem" if "origem" in linha else "origem_alvo")
+    for linha in ler_tsv(args.evidencias):
+        juntar(linha, "origem_alvo")
+    return ids, nomes
+
+
+def _indices_afirmativos(ids: set[str], nomes: set[str], rotulos) -> list[int]:
+    """Indices, no modelo, dos alvos afirmativos."""
     indices = []
     for i, r in enumerate(rotulos):
         if (r.get("chembl_id") or "").strip().upper() in ids:
@@ -367,17 +461,17 @@ def _indices_afirmativos(compostos, rotulos) -> list[int]:
 
 
 def _canal_por_composto(modelo, compostos, smiles_por_composto,
-                        minimo_treino: int, lote: int):
+                        afirmativos: list[int], minimo_treino: int, lote: int):
     """{inchikey: (p_negativo ou None, nome do alvo)}.
 
     So o agregado por composto e guardado: a matriz inteira seriam
     108.935 x 7.676 (~3,3 GB em float32), e ela nao e necessaria."""
     from mods.prever_alvos import fingerprint_de
 
-    mascara = negativo.mascara(
-        modelo.rotulos, _indices_afirmativos(compostos, modelo.rotulos),
-        minimo_treino=minimo_treino)
+    mascara = negativo.mascara(modelo.rotulos, afirmativos,
+                               minimo_treino=minimo_treino)
     resultado: dict[str, tuple[float | None, str]] = {}
+    sem_fingerprint = 0
     pendentes: list[tuple[str, object]] = []
 
     def despachar():
@@ -394,14 +488,16 @@ def _canal_por_composto(modelo, compostos, smiles_por_composto,
         fp = fingerprint_de(smiles_por_composto.get(inchikey, ""), modelo.cfg)
         if fp is None:
             # Sem fingerprint nao ha forward. `indeterminado`, nunca zero:
-            # zero afirmaria "nenhuma atividade indesejada".
+            # zero afirmaria "nenhuma atividade indesejada". E conta como falha
+            # de item: o canal foi PEDIDO e nao aconteceu para este composto.
             resultado[inchikey] = (None, "")
+            sem_fingerprint += 1
             continue
         pendentes.append((inchikey, fp))
         if len(pendentes) >= lote:
             despachar()
     despachar()
-    return resultado
+    return resultado, sem_fingerprint
 
 
 def _veredito(portao, inchikey) -> tuple[str, str]:
@@ -413,10 +509,21 @@ def _veredito(portao, inchikey) -> tuple[str, str]:
 
 
 def _texto(valor) -> str:
-    """Numero numa celula, sem notacao cientifica e sem zeros a esquerda."""
+    """Numero numa celula, sem zeros a direita inuteis.
+
+    Seis casas FIXAS achatavam para `0` tudo abaixo de 5e-7, e varios
+    compostos ordenados entre si mostravam o mesmo `0` -- a coluna que explica
+    a ordem deixava de explica-la. Seis digitos SIGNIFICATIVOS preservam a
+    magnitude; a notacao exponencial aparece so quando ela e necessaria para
+    nao mentir sobre o valor."""
     if valor is None or valor == "":
         return ""
-    return f"{float(valor):.6f}".rstrip("0").rstrip(".")
+    numero = float(valor)
+    if numero == 0.0:
+        return "0"
+    texto = f"{numero:.6g}"
+    return texto.rstrip("0").rstrip(".") if "." in texto and "e" not in texto \
+        else texto
 
 
 def main(argv=None) -> int:
@@ -427,7 +534,8 @@ def main(argv=None) -> int:
         return SAIDA_ERRO
 
     try:
-        compostos = _por_composto(args.evidencias, args.limite)
+        compostos, linhas_descartadas = _por_composto(
+            args.evidencias, args.limite)
         portao = _portao(args.portao)
     except (OSError, ValueError) as e:
         print(f"[ERRO] {e}", file=sys.stderr)
@@ -444,7 +552,9 @@ def main(argv=None) -> int:
         "portao_md5": procedencia.md5_ou_none(args.portao),
         "alvos_md5": procedencia.md5_ou_none(args.alvos),
         "ligantes_md5": procedencia.md5_ou_none(args.ligantes),
-        "pp4ckd_md5": procedencia.md5_ou_none(args.checkpoint)}
+        "rotulos_md5": procedencia.md5_ou_none(args.rotulos),
+        "pp4ckd_md5": procedencia.md5_ou_none(args.checkpoint),
+        "torch": _versao_do_torch(args)}
 
     anterior = None
     if args.manifesto:
@@ -453,6 +563,14 @@ def main(argv=None) -> int:
         except (OSError, ValueError) as e:
             print(f"[ERRO] --manifesto nao pode ser lido: {e}",
                   file=sys.stderr)
+            return SAIDA_ERRO
+        # `verificar_manifesto` so compara chaves PRESENTES no anterior, entao
+        # um manifesto truncado ou editado a mao "repetiria" sem conferir nada.
+        ausentes = hashes_de_entrada_ausentes(
+            anterior, entradas=ENTRADAS_HASHEADAS, condicionais=CONDICIONAIS)
+        if ausentes:
+            _recusar([f"o manifesto nao registra {c}; ele nao pode servir de "
+                      "referencia para a repeticao" for c in ausentes])
             return SAIDA_ERRO
         # Primeira passada: tudo o que NAO depende do modelo. Assim um MD5 que
         # mudou recusa antes de pagar o carregamento dos pesos -- a licao da
@@ -485,10 +603,15 @@ def main(argv=None) -> int:
                       f"roda em {agora!r}: a igualdade bit a bit nao e "
                       "prometida entre dispositivos", file=sys.stderr)
         ligantes_de_entrada = _ligantes_de_entrada(args.ligantes)
-        canal = ({} if modelo is None else _canal_por_composto(
-            modelo, compostos,
-            {k: smiles for k, (_, smiles) in ligantes_de_entrada.items()},
-            args.minimo_treino, args.lote))
+        canal = {}
+        sem_fingerprint = 0
+        if modelo is not None:
+            ids, nomes = _alvos_afirmativos(args)
+            canal, sem_fingerprint = _canal_por_composto(
+                modelo, compostos,
+                {k: smiles for k, (_, smiles) in ligantes_de_entrada.items()},
+                _indices_afirmativos(ids, nomes, modelo.rotulos),
+                args.minimo_treino, args.lote)
     except (OSError, ValueError, RuntimeError) as e:
         print(f"[ERRO] {e}", file=sys.stderr)
         return SAIDA_ERRO
@@ -536,7 +659,14 @@ def main(argv=None) -> int:
     ranqueados.sort(key=lambda item: item[0])
 
     destino = Path(args.saida)
-    destino.mkdir(parents=True, exist_ok=True)
+    try:
+        destino.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        # Codigo 2, nao 1: 1 significa "nenhuma entrada utilizavel", e uma
+        # automacao leria a causa errada.
+        print(f"[ERRO] --saida nao pode ser criada: {e}", file=sys.stderr)
+        return SAIDA_ERRO
+    parcial = bool(linhas_descartadas or sem_fingerprint)
     nome_do_manifesto = (NOME_MANIFESTO_REPETICAO if args.manifesto
                          else NOME_MANIFESTO)
     caminhos = {nome: destino / nome
@@ -574,11 +704,14 @@ def main(argv=None) -> int:
         Path(temporarios[nome_do_manifesto]).write_text(texto_do_manifesto(
             parametros=_parametros(
                 args, modelo is not None,
-                modelo.dispositivo if modelo else None),
+                modelo.dispositivo if modelo else None) | {
+                    "execucao_parcial": parcial},
             versoes=versoes,
             contagens={"compostos": len(compostos),
                        "ranqueados": len(ranqueados),
-                       "nao_ranqueados": len(fora)}), encoding="utf-8")
+                       "nao_ranqueados": len(fora),
+                       "linhas_sem_forma_parental": linhas_descartadas,
+                       "sem_fingerprint": sem_fingerprint}), encoding="utf-8")
         for nome, tmp in temporarios.items():
             atomico.publicar(tmp, caminhos[nome])
     except BaseException:
@@ -588,8 +721,14 @@ def main(argv=None) -> int:
 
     print(f"\n{len(compostos)} composto(s): {len(ranqueados)} ranqueado(s), "
           f"{len(fora)} fora.")
+    if parcial:
+        # Codigo 3 e nao 0: automacao nao le `stderr`, e uma execucao que
+        # perdeu linhas era indistinguivel de uma completa.
+        print(f"[AVISO] execucao PARCIAL: {linhas_descartadas} linha(s) sem "
+              f"forma parental, {sem_fingerprint} composto(s) sem fingerprint "
+              "(canal negativo indeterminado neles)", file=sys.stderr)
     print(f"Saidas em {destino}")
-    return SAIDA_OK
+    return SAIDA_PARCIAL if parcial else SAIDA_OK
 
 
 def procedencia_do_ranking() -> str:

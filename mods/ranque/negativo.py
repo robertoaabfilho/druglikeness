@@ -5,7 +5,7 @@ negativo.py
 O canal negativo DEDUZIDO: atividade em alvo que ninguem pediu.
 
     negativo = alvo NAO afirmativo
-             & organismo != "Homo sapiens"
+             & organismo preenchido E != "homo sapiens"
              & n_moleculas_treino >= MINIMO_TREINO
              & pref_name != pref_name de qualquer alvo afirmativo
 
@@ -15,7 +15,7 @@ ECFP4, `ecfp4_fold_4.pt`, varrendo os 7.676 alvos do modelo):
 | canal negativo | AUC (trata > causa) |
 |---|---|
 | nenhum -- so os 9 alvos pedidos | 0,750 |
-| **nao pedido + NAO HUMANO** (1.169 alvos) | **0,806** |
+| **nao pedido + NAO HUMANO** (1.169 brutos; 1.129 no canal final) | **0,806** |
 | nao pedido + humano (2.376 alvos) | 0,694 -- PIORA |
 | contagem de promiscuidade | 0,583 -- PIORA, e zera a amitriptilina |
 | painel curado de seguranca | 0,750 -- nada |
@@ -43,7 +43,7 @@ import numpy as np
 
 from mods.evidencias.resumo import MINIMO_TREINO
 
-HUMANO = "Homo sapiens"
+HUMANO = "homo sapiens"      # comparado em casefold: ver `mascara`
 
 
 def mascara(rotulos: list[dict], idx_afirmativos: list[int], *,
@@ -60,7 +60,18 @@ def mascara(rotulos: list[dict], idx_afirmativos: list[int], *,
     nomes_afirmativos.discard("")
     return np.array(
         [(i not in afirmativos)
-         and (r.get("organismo") or "").strip() != HUMANO
+         # Organismo vazio NAO entra: ausencia de dado nao e evidencia de "nao
+         # humano". O caso real e `CHEMBL612545 "Unchecked"`, o balde do ChEMBL
+         # para ensaios nao curados -- organismo vazio e 217.067 moleculas
+         # ativas, o alvo mais treinado do modelo, que liderava o canal de
+         # quase todo composto. Medido: excluir os 31 alvos sem organismo
+         # mantem a AUC em 0,806 e o maximo passa a ser patogeno de verdade
+         # (S. aureus, E. coli, M. tuberculosis).
+         and bool((r.get("organismo") or "").strip())
+         # casefold, como `predito.py` e `medido.py` ja fazem: um
+         # `target_labels.tsv` com "homo sapiens" jogaria alvos HUMANOS para
+         # dentro do canal, que e o desenho medido como prejudicial.
+         and (r.get("organismo") or "").strip().casefold() != HUMANO
          and int(r.get("n_ativos") or 0) >= minimo_treino
          and (r.get("nome") or "").strip().casefold() not in nomes_afirmativos
          for i, r in enumerate(rotulos)], dtype=bool)

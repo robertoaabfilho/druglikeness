@@ -37,7 +37,7 @@ def _linhas_de_evidencia(previsao):
              "ligante_inchikey_parental": previsao["nome"],
              "alvo_chembl_id": alvo, "alvo": alvo,
              "organismo": "Homo sapiens", "origem_alvo": "usuario",
-             "tipo_evidencia": "previsto", "valor": previsao[alvo],
+             "tipo_evidencia": "predito", "valor": previsao[alvo],
              "pchembl": ""}
             for alvo in PEDIDOS]
 

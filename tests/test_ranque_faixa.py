@@ -6,6 +6,7 @@ Desenho: docs/superpowers/specs/2026-11-26-fase3-ranqueamento-design.md
 
 import pytest
 
+from mods.evidencias.esquema import TIPO_MEDIDO, TIPO_PREDITO
 from mods.ranque.faixa import FAIXAS, chave, classificar
 
 
@@ -21,11 +22,11 @@ def _linha(tipo, origem, **extra):
 
 
 def _med(origem="usuario", pchembl="8.0", **extra):
-    return _linha("medido", origem, pchembl=pchembl, unidade="nM", **extra)
+    return _linha(TIPO_MEDIDO, origem, pchembl=pchembl, unidade="nM", **extra)
 
 
 def _prev(origem="usuario", valor="0.5", **extra):
-    return _linha("previsto", origem, valor=valor, **extra)
+    return _linha(TIPO_PREDITO, origem, valor=valor, **extra)
 
 
 def _uma_de_cada():
@@ -141,3 +142,59 @@ def test_empate_de_valor_desempata_por_inchikey_crescente():
 
 def test_faixas_sao_as_cinco_do_desenho():
     assert FAIXAS == ("1a", "1b", "2a", "2b", "3")
+
+
+# --------------------------------------------------------------------------
+# O vocabulario tem de ser o da etapa 1
+# --------------------------------------------------------------------------
+
+
+
+def test_usa_o_vocabulario_da_etapa_1_e_nao_um_sinonimo():
+    """A etapa 1 escreve `predito`. Escrever `previsto` aqui matava o caminho
+    inteiro: nenhuma linha prevista era reconhecida, as faixas previstas eram
+    inalcancaveis, e o composto com previsao saia como "sem evidencia"."""
+    linha = _linha(TIPO_PREDITO, "usuario", valor="0.90")
+    r = classificar([linha], p_negativo=None)
+    assert r["faixa"] == "2a" and r["valor"] == pytest.approx(0.90)
+
+
+def test_um_sinonimo_nao_e_aceito_em_silencio():
+    # "previsto" nao e o token da etapa 1: ele nao pode virar faixa prevista
+    r = classificar([_linha("previsto", "usuario", valor="0.90")],
+                    p_negativo=None)
+    assert r["faixa"] == "3"
+
+
+def test_os_tokens_vem_do_esquema_da_etapa_1():
+    from mods.ranque import faixa as modulo
+    assert modulo.MEDIDO == TIPO_MEDIDO
+    assert modulo.PREDITO == TIPO_PREDITO
+
+
+def test_pchembl_nao_finito_nao_ordena():
+    """`nan` e `inf` sao texto que converte, e uma chave `nan` rompe a
+    transitividade do `sorted` -- o arquivo publicado sai numa ordem que nao e
+    a ordem das faixas. O gemeo desta funcao na etapa 1 (`medido.py`) ja tinha
+    o guarda de finitude; a copia o havia perdido."""
+    for ruim in ("nan", "inf", "-inf", "NaN", "Infinity"):
+        r = classificar([_med(pchembl=ruim)], p_negativo=None)
+        assert r["faixa"] == "3", ruim
+        assert r["medida_sem_pchembl"] == "sim", ruim
+
+
+def test_p_predito_nao_finito_nao_ordena():
+    r = classificar([_prev(valor="nan")], p_negativo=None)
+    assert r["faixa"] == "3"
+
+
+def test_a_ordem_nao_e_rompida_por_um_valor_nao_finito():
+    valores = ("9.5", "nan", "inf", "7.0", "5.0")
+    chaves = {v: chave(classificar([_med(pchembl=v)], p_negativo=None), "K")
+              for v in valores}
+    ordem = sorted(valores, key=lambda v: chaves[v])
+    # os comparaveis em ordem decrescente de pchembl, os nao finitos no fim
+    assert ordem[:3] == ["9.5", "7.0", "5.0"]
+    assert set(ordem[3:]) == {"nan", "inf"}
+    # e a ordenacao e determinista: sem chave `nan`, `sorted` e transitivo
+    assert sorted(chaves.values()) == sorted(sorted(chaves.values()))

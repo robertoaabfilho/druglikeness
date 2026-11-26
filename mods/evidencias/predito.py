@@ -29,6 +29,7 @@ Regras
 
 from typing import Iterator
 
+from mods.evidencias import esquema
 from mods.evidencias.esquema import formatar_atividade
 from mods.prever_alvos import carregar_modelo, fingerprint_de
 
@@ -160,7 +161,7 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
                     "organismo": r["organismo"],
                     "tipo_alvo": r["tipo"],
                     "origem_alvo": origens[i],
-                    "tipo_evidencia": "predito",
+                    "tipo_evidencia": esquema.TIPO_PREDITO,
                     "fonte": "PP4CKD",
                     "atividade_relatada": formatar_atividade(
                         "p", "=", round(p, 2), "(ECFP4)"),

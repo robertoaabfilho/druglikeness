@@ -186,9 +186,9 @@ Linhas começando com `#` são comentários. Argumentos passados por linha de co
 | 5 | `mods/ranking_embeddings.py` | ranking alternativo via ChemBERTa | `rodar_embeddings` | numpy, **torch, transformers** |
 | 6 | `mods/checar_alertas_adversos.py` | sinaliza compostos que causam (em vez de tratar) o sintoma-alvo — **substituído pela etapa 2** (seção 12) | `rodar_alertas_adversos` | requests |
 
-As etapas 1 e 2 (seções 11 e 12) **não** são orquestradas pelo `main.py`: elas
-têm CLI própria e manifesto próprio, e são o fluxo para o qual o pipeline está
-sendo reestruturado.
+As etapas 1 e 2 e a fase 3 (seções 11, 12 e 13) **não** são orquestradas pelo
+`main.py`: cada uma tem CLI própria e manifesto próprio, e juntas são o fluxo
+para o qual o pipeline está sendo reestruturado.
 
 ---
 
@@ -1190,7 +1190,7 @@ canal negativo = alvo NÃO afirmativo
 | canal negativo | AUC (trata > causa) |
 |---|---|
 | nenhum (linha de base) | 0,750 |
-| **não pedido + NÃO HUMANO** (1.160 alvos) | **0,806** |
+| **não pedido + NÃO HUMANO** (1.129 alvos: não humanos, com organismo declarado, ≥ 50 de treino e sem ortólogos — ver abaixo) | **0,806** |
 | não pedido + humano (2.376 alvos) | 0,694 ⟵ **piora** |
 | contagem de promiscuidade | 0,583 ⟵ **piora, e zera a amitriptilina** |
 | painel curado (hERG, CYPs, MAOs) | 0,750 ⟵ exatamente nada |
@@ -1241,15 +1241,27 @@ convidaria a ordenar aquela tabela como se fosse ranking.
   saber quem ficou de fora e **não inventa** a contagem.
 - **Sem `p_negativo`** (sem pesos, SMILES ilegível, ou `--sem-canal-negativo`) a
   coluna diz `indeterminado`, nunca `0` — zero afirmaria "nenhuma atividade
-  indesejada".
+  indesejada". **Assimetria conhecida:** na *ordem*, `indeterminado` se comporta
+  como o melhor caso, porque `valor = p` sem o fator `(1 − p_negativo)`. Quando a
+  execução inteira está sem canal isso é o desenho; quando só alguns compostos
+  estão, eles sobem. Não penalizamos (o desenho proíbe, com motivo medido), e com
+  `--portao` o caso mais comum — SMILES que o RDKit não lê — já é reprovado na
+  etapa 2 e não ranqueia. Quem roda sem portão deve ler `p_negativo` junto com a
+  posição.
+- **Execução parcial sai com código 3**, não 0: linha sem forma parental
+  descartada, ou composto sem fingerprint quando o canal foi pedido. O manifesto
+  registra `execucao_parcial`, `linhas_sem_forma_parental` e `sem_fingerprint`.
 
 ### O mesmo checkpoint nos dois lados da multiplicação
 
 `p_afirmativo` vem do `evidencias.tsv` da etapa 1; `p_negativo` vem do forward
 desta fase. De checkpoints diferentes, `p × (1 − p_negativo)` combinaria dois
 modelos num número só e a ordem passaria a depender de quais arquivos estavam em
-disco. Com `--manifesto-etapa1`, a execução **recusa rodar** (código 2) se o MD5
-do `--checkpoint` divergir do registrado, nomeando os dois.
+disco. Por isso `--manifesto-etapa1` é **obrigatório** quando o canal roda, e a
+execução **recusa rodar** (código 2) se o MD5 do `--checkpoint` divergir do
+registrado, nomeando os dois. A largura do checkpoint também é conferida contra
+o número de rótulos: o tarball do Zenodo está truncado na origem, então o par
+divergente é o caso esperado, e ele sai com mensagem em vez de `IndexError`.
 
 ### Comando completo
 
@@ -1272,8 +1284,9 @@ execuções de GPU, 0 de 312 na CPU). Códigos de saída são os das etapas 1 e 
 
 Esta fase não consulta serviço nenhum, então não há cache. `--manifesto` repete
 uma execução e **recusa rodar** se um MD5 de entrada (evidências, portão, alvos,
-ligantes, pesos), a versão do RDKit ou um parâmetro que muda a saída diferirem
-do registrado. O manifesto novo sai como `manifesto_repeticao.json` e nunca
+ligantes, **rótulos**, pesos), a versão do RDKit ou do **torch**, ou um parâmetro
+que muda a saída diferirem do registrado. Um manifesto que **não registra** os
+MD5 de entrada é recusado em vez de servir de referência vazia. O manifesto novo sai como `manifesto_repeticao.json` e nunca
 sobrescreve o original.
 
 A verificação é em **duas passadas**: primeiro tudo o que não depende do modelo,

@@ -62,3 +62,32 @@ def test_agregar_ignora_o_que_esta_fora_da_mascara():
 def test_mascara_vazia_devolve_none_nao_zero():
     # zero e "nenhuma atividade indesejada", que e afirmacao, nao ausencia
     assert agregar(np.array([0.9]), np.array([False])) is None
+
+
+def test_organismo_humano_e_reconhecido_em_qualquer_caixa():
+    """`organismo` era comparado sensivel a caixa na mesma expressao que faz
+    `casefold()` no nome. Um `target_labels.tsv` com "homo sapiens" jogaria
+    alvos HUMANOS para dentro do canal -- o desenho medido como prejudicial
+    (AUC 0,694, e pune a amitriptilina). O repositorio ja casefolda organismo
+    em `predito.py` e `medido.py`."""
+    rotulos = [dict(r) for r in ROTULOS]
+    rotulos[IDX_HUMANO]["organismo"] = "homo sapiens"
+    assert not mascara(rotulos, [])[IDX_HUMANO]
+    rotulos[IDX_HUMANO]["organismo"] = "  HOMO SAPIENS "
+    assert not mascara(rotulos, [])[IDX_HUMANO]
+
+
+def test_alvo_sem_organismo_nao_entra_no_canal():
+    """Organismo vazio nao e evidencia de "nao humano" -- e ausencia de dado,
+    e a regra do repositorio e que ausencia nunca vira evidencia.
+
+    O caso que motivou: `CHEMBL612545 "Unchecked"` (target_type UNCHECKED,
+    organismo vazio, 217.067 moleculas ativas) e o balde do ChEMBL para
+    ensaios cujo alvo nunca foi curado. Por ser o alvo mais treinado do modelo
+    ele liderava o canal negativo de quase todo composto -- a penalidade vinha
+    de um nao-alvo. Medido: excluir os 31 alvos sem organismo mantem a AUC em
+    0,806 e o maximo do canal passa a ser patogeno de verdade."""
+    rotulos = [dict(r) for r in ROTULOS]
+    rotulos.append({"chembl_id": "CHEMBL612545", "nome": "Unchecked",
+                    "organismo": "", "tipo": "UNCHECKED", "n_ativos": 217067})
+    assert not mascara(rotulos, [])[-1]

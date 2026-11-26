@@ -26,9 +26,13 @@ Tres decisoes que vivem aqui, com o motivo de cada uma
   declarar, logo o alvo do usuario vale mais que o do enriquecimento. Dizer
   isso com um peso exigiria uma constante que n = 12 nao calibra; dizer com
   sub-faixa nao exige nenhuma.
-* **`max` e nao soma** para agregar varios alvos: e o que foi medido, e soma
-  premiaria o composto promiscuo -- que a medicao do canal humano mostrou ser
-  enganoso (AUC 0,389 sozinho e invertido).
+* **`max` e nao soma** para agregar varios alvos. Escolha DECLARADA, nao
+  medida: no controle de 12, soma da a MESMA AUC de 0,750 que `max` -- o
+  conjunto nao discrimina as duas (fixado em `tests/test_ranque_auc.py`). O
+  motivo que vale sem medicao: somar probabilidades de alvos diferentes soma
+  grandezas que nao se somam, e um composto que acerta cinco alvos fracos
+  ultrapassaria um que acerta o alvo certo com forca. O que a medicao REJEITA
+  e a CONTAGEM de promiscuidade: AUC 0,583, e a amitriptilina zerada.
 
 Linha medida sem `pchembl`
 --------------------------
@@ -39,24 +43,38 @@ o composto cai para a faixa prevista se nao houver outra medida comparavel, e
 `medida_sem_pchembl` registra o caso.
 """
 
+import math
+
 from mods.evidencias.entrada import ORIGENS_DE_ENRIQUECIMENTO
+from mods.evidencias.esquema import TIPO_MEDIDO, TIPO_PREDITO
 
 FAIXAS = ("1a", "1b", "2a", "2b", "3")
 ORIGENS_DO_USUARIO = ("usuario",)
 
-MEDIDO = "medido"
-PREVISTO = "previsto"
+# Os tokens vem do esquema da etapa 1, nao de literais repetidos aqui: foi
+# exatamente a divergencia ("previsto" contra "predito") que matou o caminho
+# previsto inteiro, sem que a suite visse, porque as fixtures repetiam o token
+# errado.
+MEDIDO = TIPO_MEDIDO
+PREDITO = TIPO_PREDITO
 
 
 def _numero(texto):
-    """float de uma celula de TSV, ou None quando ela nao converte.
+    """float FINITO de uma celula de TSV, ou None.
 
-    Celula vazia e celula com texto dao o mesmo resultado de proposito: as
-    duas significam "nao da para comparar", e e isso que decide a faixa."""
+    Celula vazia, celula com texto e celula com `nan`/`inf` dao o mesmo
+    resultado de proposito: as tres significam "nao da para comparar", e e isso
+    que decide a faixa.
+
+    O guarda de finitude nao e zelo: `float("nan")` converte, e uma chave `nan`
+    rompe a transitividade do `sorted` -- o arquivo publicado sairia numa ordem
+    que nao e a ordem das faixas. O gemeo desta funcao na etapa 1
+    (`medido.py:_numero`) ja tinha esse guarda; esta copia o havia perdido."""
     try:
-        return float((texto or "").strip())
+        valor = float((texto or "").strip())
     except (TypeError, ValueError):
         return None
+    return valor if math.isfinite(valor) else None
 
 
 def _melhor(linhas, campo):
@@ -94,8 +112,8 @@ def classificar(linhas: list[dict], *, p_negativo: float | None) -> dict:
     por_faixa = {}
     for faixa, tipo, origens in (("1a", MEDIDO, ORIGENS_DO_USUARIO),
                                  ("1b", MEDIDO, ORIGENS_DE_ENRIQUECIMENTO),
-                                 ("2a", PREVISTO, ORIGENS_DO_USUARIO),
-                                 ("2b", PREVISTO, ORIGENS_DE_ENRIQUECIMENTO)):
+                                 ("2a", PREDITO, ORIGENS_DO_USUARIO),
+                                 ("2b", PREDITO, ORIGENS_DE_ENRIQUECIMENTO)):
         por_faixa[faixa] = [
             l for l in linhas
             if (l.get("tipo_evidencia") or "").strip() == tipo

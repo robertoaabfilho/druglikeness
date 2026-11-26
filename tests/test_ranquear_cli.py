@@ -59,9 +59,9 @@ def _saida(tmp_path):
 def test_ordena_por_faixa_e_publica_as_tres_saidas(tmp_path):
     evid = _evidencias(tmp_path, [
         _ev("previsto_enriq", "K" * 27, origem_alvo="reactome",
-            tipo_evidencia="previsto", valor="0.99", pchembl=""),
+            tipo_evidencia="predito", valor="0.99", pchembl=""),
         _ev("medido_usuario", "A" * 27, pchembl="8.0"),
-        _ev("previsto_usuario", "B" * 27, tipo_evidencia="previsto",
+        _ev("previsto_usuario", "B" * 27, tipo_evidencia="predito",
             valor="0.50", pchembl=""),
         _ev("medido_enriq", "C" * 27, origem_alvo="open_targets", pchembl="5.0"),
     ])
@@ -240,6 +240,28 @@ def _ligantes(tmp_path, linhas) -> str:
                 ["nome", "smiles", "inchikey_parental"], linhas)
 
 
+def _ckpt(tmp_path) -> str:
+    """Um arquivo de pesos de mentira, estavel por tmp_path.
+
+    Existe porque o canal negativo exige `--manifesto-etapa1`, e o guarda de
+    MD5 precisa de um arquivo real para hashear. Os pesos nunca sao lidos: os
+    testes substituem `_abrir_modelo`."""
+    caminho = tmp_path / "falso.pt"
+    if not caminho.exists():
+        caminho.write_bytes(b"pesos de mentira")
+    return str(caminho)
+
+
+def _man_etapa1(tmp_path) -> str:
+    from mods.evidencias.procedencia import md5
+    caminho = tmp_path / "man_etapa1.json"
+    if not caminho.exists():
+        caminho.write_text(
+            json.dumps({"versoes": {"checkpoint_md5": md5(_ckpt(tmp_path))}}),
+            encoding="utf-8")
+    return str(caminho)
+
+
 def _modelo_falso(p_do_canal=0.9, dispositivo="cpu"):
     """Modelo com `prever` fixo: o canal e testado, nao a rede.
 
@@ -314,17 +336,18 @@ def test_canal_smiles_ilegivel_da_indeterminado_e_ranqueia_pelo_resto(
         tmp_path, monkeypatch):
     monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
     evid = _evidencias(tmp_path, [
-        _ev("ilegivel", "I" * 27, tipo_evidencia="previsto", valor="0.5",
+        _ev("ilegivel", "I" * 27, tipo_evidencia="predito", valor="0.5",
             pchembl=""),
-        _ev("legivel", "L" * 27, tipo_evidencia="previsto", valor="0.5",
+        _ev("legivel", "L" * 27, tipo_evidencia="predito", valor="0.5",
             pchembl="")])
     lig = _ligantes(tmp_path, [
         {"nome": "ilegivel", "smiles": "C1CC", "inchikey_parental": "I" * 27},
         {"nome": "legivel", "smiles": "CCO", "inchikey_parental": "L" * 27}])
     destino = _saida(tmp_path)
     assert main(["--evidencias", evid, "--saida", str(destino),
-                 "--checkpoint", "falso.pt", "--rotulos",
-                 "tests/dados/rotulos_minimo.tsv", "--ligantes", lig]) == 0
+                 "--checkpoint", _ckpt(tmp_path), "--manifesto-etapa1",
+                 _man_etapa1(tmp_path), "--rotulos",
+                 "tests/dados/rotulos_minimo.tsv", "--ligantes", lig]) == 3
     por_nome = {l["ligante"]: l for l in _ler(destino / NOME_RANKING)}
     assert por_nome["ilegivel"]["p_negativo"] == "indeterminado"
     assert por_nome["ilegivel"]["posicao"]
@@ -335,14 +358,15 @@ def test_canal_multiplica_so_a_faixa_prevista(tmp_path, monkeypatch):
     monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso(0.9))
     evid = _evidencias(tmp_path, [
         _ev("medido", "M" * 27, pchembl="8.0"),
-        _ev("previsto", "P" * 27, tipo_evidencia="previsto", valor="0.90",
+        _ev("previsto", "P" * 27, tipo_evidencia="predito", valor="0.90",
             pchembl="")])
     lig = _ligantes(tmp_path, [
         {"nome": "medido", "smiles": "CCO", "inchikey_parental": "M" * 27},
         {"nome": "previsto", "smiles": "CCN", "inchikey_parental": "P" * 27}])
     destino = _saida(tmp_path)
     main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
-          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          _ckpt(tmp_path), "--manifesto-etapa1", _man_etapa1(tmp_path),
+          "--rotulos", "tests/dados/rotulos_minimo.tsv",
           "--ligantes", lig])
     por_nome = {l["ligante"]: l for l in _ler(destino / NOME_RANKING)}
     assert float(por_nome["medido"]["valor"]) == pytest.approx(8.0)
@@ -356,7 +380,8 @@ def test_canal_nomeia_o_alvo_que_produziu_o_maximo(tmp_path, monkeypatch):
                                 "inchikey_parental": "X" * 27}])
     destino = _saida(tmp_path)
     main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
-          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          _ckpt(tmp_path), "--manifesto-etapa1", _man_etapa1(tmp_path),
+          "--rotulos", "tests/dados/rotulos_minimo.tsv",
           "--ligantes", lig])
     alvo = _ler(destino / NOME_RANKING)[0]["alvo_negativo"]
     assert "CHEMBL360" in alvo and "Mycobacterium tuberculosis" in alvo
@@ -370,7 +395,8 @@ def test_canal_registra_o_dispositivo_que_rodou_de_fato(tmp_path, monkeypatch):
                                 "inchikey_parental": "X" * 27}])
     destino = _saida(tmp_path)
     main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
-          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          _ckpt(tmp_path), "--manifesto-etapa1", _man_etapa1(tmp_path),
+          "--rotulos", "tests/dados/rotulos_minimo.tsv",
           "--ligantes", lig])
     m = json.loads((destino / NOME_MANIFESTO).read_text(encoding="utf-8"))
     assert m["parametros"]["dispositivo"] == "cpu"
@@ -384,7 +410,8 @@ def test_canal_minimo_treino_muda_quem_entra(tmp_path, monkeypatch):
                                 "inchikey_parental": "X" * 27}])
     destino = _saida(tmp_path)
     main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
-          "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          _ckpt(tmp_path), "--manifesto-etapa1", _man_etapa1(tmp_path),
+          "--rotulos", "tests/dados/rotulos_minimo.tsv",
           "--ligantes", lig, "--minimo-treino", "20000"])
     # nenhum alvo passa do minimo: mascara vazia, e isso e indeterminado
     assert _ler(destino / NOME_RANKING)[0]["p_negativo"] == "indeterminado"
@@ -464,7 +491,8 @@ def test_repeticao_recusa_se_o_canal_negativo_mudou(tmp_path, capsys,
     base = tmp_path / "base"
     base.mkdir()
     assert main(["--evidencias", evid, "--saida", str(base), "--checkpoint",
-                 "falso.pt", "--rotulos", "tests/dados/rotulos_minimo.tsv",
+                 _ckpt(tmp_path), "--manifesto-etapa1", _man_etapa1(tmp_path),
+                 "--rotulos", "tests/dados/rotulos_minimo.tsv",
                  "--ligantes", lig]) == 0
     repetida = tmp_path / "r"
     repetida.mkdir()
@@ -474,8 +502,11 @@ def test_repeticao_recusa_se_o_canal_negativo_mudou(tmp_path, capsys,
                  "--ligantes", lig, "--sem-canal-negativo",
                  "--manifesto", str(base / NOME_MANIFESTO)]) == 2
     saida = capsys.readouterr().err
-    assert "canal_negativo" in saida
-    assert "ligantes_md5" not in saida
+    # Desligar o canal muda tambem as chaves de VERSAO (pesos, rotulos, torch),
+    # e a primeira passada tropeca nelas antes de chegar a `canal_negativo`.
+    # Registrado como esta: `canal_negativo` e redundante na pratica, e o teste
+    # diz a verdade sobre QUEM recusa, em vez de afirmar o que nao acontece.
+    assert "pp4ckd_md5" in saida and "rotulos_md5" in saida
     assert not list(repetida.iterdir())
 
 
@@ -551,3 +582,189 @@ def test_ligante_sem_evidencia_e_reprovado_traz_os_dois_motivos(tmp_path):
     motivo = fora["cipro"]["motivo"]
     assert "reprovado no portao" in motivo
     assert "sem evidencia na etapa 1" in motivo
+
+
+# --------------------------------------------------------------------------
+# Guardas que a revisao de contexto fresco encontrou
+# --------------------------------------------------------------------------
+
+def _manifesto_etapa1(tmp_path, checkpoint) -> str:
+    from mods.evidencias.procedencia import md5
+    caminho = tmp_path / "manifesto_etapa1.json"
+    caminho.write_text(json.dumps(
+        {"versoes": {"checkpoint_md5": md5(str(checkpoint))}}),
+        encoding="utf-8")
+    return str(caminho)
+
+
+def test_rotulos_entram_na_chave_da_repeticao(tmp_path):
+    """Os rotulos decidem organismo, n_ativos e pref_name -- a mascara
+    inteira. Sem `rotulos_md5` a repeticao aceitava outro espaco de alvos e
+    publicava outro escore como se fosse o mesmo."""
+    _, base = _execucao_base(tmp_path)
+    m = json.loads((base / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert "rotulos_md5" in m["versoes"]
+    assert "rotulos_md5" in ranquear.VERSOES_DA_REPETICAO
+
+
+def test_repeticao_recusa_se_os_rotulos_mudaram(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    rot1 = tmp_path / "rot1.tsv"
+    rot1.write_text(Path("tests/dados/rotulos_minimo.tsv").read_text(
+        encoding="utf-8"), encoding="utf-8")
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "a", "smiles": "CCO",
+                                "inchikey_parental": "A" * 27}])
+    ckpt = tmp_path / "c.pt"
+    ckpt.write_bytes(b"pesos")
+    man1 = _manifesto_etapa1(tmp_path, ckpt)
+    base = tmp_path / "base"
+    base.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(base), "--checkpoint",
+                 str(ckpt), "--rotulos", str(rot1), "--ligantes", lig,
+                 "--manifesto-etapa1", man1]) == 0
+    rot1.write_text(rot1.read_text(encoding="utf-8").replace("11049", "12"),
+                    encoding="utf-8")
+    repetida = tmp_path / "r"
+    repetida.mkdir()
+    assert main(["--evidencias", evid, "--saida", str(repetida), "--checkpoint",
+                 str(ckpt), "--rotulos", str(rot1), "--ligantes", lig,
+                 "--manifesto-etapa1", man1,
+                 "--manifesto", str(base / NOME_MANIFESTO)]) == 2
+    assert "rotulos_md5" in capsys.readouterr().err
+
+
+def test_canal_exige_o_manifesto_da_etapa_1(tmp_path, capsys):
+    """Sem ele nao ha guarda nenhuma, e `p` e `p_negativo` podem vir de
+    modelos diferentes com codigo 0 e nenhuma mensagem."""
+    evid = _evidencias(tmp_path, [_ev("x", "X" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "x", "smiles": "CCO",
+                                "inchikey_parental": "X" * 27}])
+    assert main(["--evidencias", evid, "--saida", str(_saida(tmp_path)),
+                 "--checkpoint", _ckpt(tmp_path), "--rotulos",
+                 "tests/dados/rotulos_minimo.tsv", "--ligantes", lig]) == 2
+    assert "--manifesto-etapa1" in capsys.readouterr().err
+
+
+def test_repeticao_recusa_manifesto_sem_os_md5_de_entrada(tmp_path, capsys):
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    vazio = tmp_path / "manifesto_vazio.json"
+    vazio.write_text(json.dumps({"versoes": {}, "parametros": {}}),
+                     encoding="utf-8")
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--sem-canal-negativo", "--manifesto", str(vazio)]) == 2
+    assert "evidencias_md5" in capsys.readouterr().err
+    assert not list(destino.iterdir())
+
+
+def test_saida_nao_sobrescreve_o_manifesto_da_etapa_1(tmp_path, capsys):
+    """O manifesto da etapa 1 e a chave de repeticao dela: publicar o da fase
+    3 em cima dele apaga um artefato citavel."""
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    destino = tmp_path / "etapa1"
+    destino.mkdir()
+    man = destino / NOME_MANIFESTO
+    man.write_text(json.dumps({"versoes": {}}), encoding="utf-8")
+    antes = man.read_bytes()
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--manifesto-etapa1", str(man), "--sem-canal-negativo"]) == 2
+    assert man.read_bytes() == antes
+    assert "manifesto" in capsys.readouterr().err.lower()
+
+
+def test_saida_nao_gravavel_e_erro_e_nao_entrada_invalida(tmp_path, capsys):
+    import os
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27)])
+    pai = tmp_path / "somente_leitura"
+    pai.mkdir()
+    os.chmod(pai, 0o500)
+    try:
+        codigo = main(["--evidencias", evid, "--saida", str(pai / "fora"),
+                       "--sem-canal-negativo"])
+    finally:
+        os.chmod(pai, 0o700)
+    assert codigo == 2          # 1 significaria "nenhuma entrada utilizavel"
+    assert "saida" in capsys.readouterr().err.lower()
+
+
+def test_linha_sem_forma_parental_torna_a_execucao_parcial(tmp_path):
+    """Descartar linha em silencio com codigo 0 e o defeito que o codigo 3 da
+    etapa 1 existe para evitar: automacao nao le stderr."""
+    evid = _evidencias(tmp_path, [_ev("a", "A" * 27), _ev("sem_chave", "")])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--sem-canal-negativo"]) == 3
+    m = json.loads((destino / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert m["contagens"]["linhas_sem_forma_parental"] == 1
+    assert m["parametros"]["execucao_parcial"] is True
+
+
+def test_smiles_ilegivel_torna_a_execucao_parcial(tmp_path, monkeypatch):
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [_ev("ilegivel", "I" * 27)])
+    lig = _ligantes(tmp_path, [{"nome": "ilegivel", "smiles": "C1CC",
+                                "inchikey_parental": "I" * 27}])
+    ckpt = tmp_path / "c.pt"
+    ckpt.write_bytes(b"pesos")
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+                 str(ckpt), "--rotulos", "tests/dados/rotulos_minimo.tsv",
+                 "--ligantes", lig,
+                 "--manifesto-etapa1", _manifesto_etapa1(tmp_path, ckpt)]) == 3
+    m = json.loads((destino / NOME_MANIFESTO).read_text(encoding="utf-8"))
+    assert m["contagens"]["sem_fingerprint"] == 1
+
+
+def test_alvo_pedido_nao_vira_antialvo_quando_limite_corta_o_composto(
+        tmp_path, monkeypatch):
+    """O conjunto afirmativo vinha das linhas INCLUIDAS, nao da lista
+    declarada: com --limite, o alvo que o usuario pediu virava antialvo e a
+    atividade nele passava a penalizar. E a inversao que o requisito 2 proibe.
+    """
+    monkeypatch.setattr(ranquear, "_abrir_modelo", lambda args: _modelo_falso())
+    evid = _evidencias(tmp_path, [
+        _ev("a", "A" * 27, alvo_chembl_id="CHEMBL360",
+            alvo="Mycobacterium tuberculosis", organismo="M. tuberculosis"),
+        _ev("b", "B" * 27)])
+    lig = _ligantes(tmp_path, [
+        {"nome": "a", "smiles": "CCO", "inchikey_parental": "A" * 27},
+        {"nome": "b", "smiles": "CCN", "inchikey_parental": "B" * 27}])
+    ckpt = tmp_path / "c.pt"
+    ckpt.write_bytes(b"pesos")
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--checkpoint",
+          str(ckpt), "--rotulos", "tests/dados/rotulos_minimo.tsv",
+          "--ligantes", lig, "--limite", "1",
+          "--manifesto-etapa1", _manifesto_etapa1(tmp_path, ckpt)])
+    # CHEMBL360 foi pedido pelo composto "a", que --limite deixou de fora: ele
+    # continua AFIRMATIVO, logo o 0,9 que o modelo da nele NAO penaliza "b".
+    # Antes da correcao, p_negativo saia 0,9 e o escore de "b" era cortado a
+    # um decimo por atividade no alvo que o usuario pediu.
+    linha = _ler(destino / NOME_RANKING)[0]
+    assert float(linha["p_negativo"]) == 0.0
+    assert "CHEMBL360" not in linha["alvo_negativo"]
+
+
+def test_largura_do_checkpoint_conferida_contra_os_rotulos(tmp_path, capsys):
+    """O tarball do Zenodo esta truncado na origem e o README diz que trocar o
+    par e o caso esperado: um descasamento tem de sair com mensagem, nao com
+    IndexError no meio da agregacao."""
+    assert ranquear._erro_de_largura(7676, 5).startswith("o --checkpoint")
+    assert ranquear._erro_de_largura(5, 5) is None
+
+
+def test_valor_pequeno_nao_e_impresso_como_zero(tmp_path):
+    """Com 6 decimais fixos, p < 5e-7 saia `0`: varios compostos ordenados
+    entre si mostravam o mesmo `0`, e a coluna que explica a ordem deixava de
+    explica-la. A fixture do controle ja tem celulas dessa magnitude."""
+    evid = _evidencias(tmp_path, [
+        _ev("minusculo", "M" * 27, tipo_evidencia="predito",
+            valor="0.00000008", pchembl=""),
+        _ev("menor_ainda", "N" * 27, tipo_evidencia="predito",
+            valor="0.00000002", pchembl="")])
+    destino = _saida(tmp_path)
+    main(["--evidencias", evid, "--saida", str(destino), "--sem-canal-negativo"])
+    valores = [l["valor"] for l in _ler(destino / NOME_RANKING)]
+    assert valores[0] != "0" and valores[1] != "0"
+    assert float(valores[0]) > float(valores[1])

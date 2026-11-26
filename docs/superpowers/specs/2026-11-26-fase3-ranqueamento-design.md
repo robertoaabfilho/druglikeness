@@ -189,16 +189,28 @@ e afirmacao, nao ausencia.
 ## O canal negativo
 
     negativo = alvo NAO afirmativo
-             & organismo != "Homo sapiens"
+             & organismo PREENCHIDO e != "homo sapiens" (casefold)
              & n_moleculas_treino >= MINIMO_TREINO (50)
              & pref_name != pref_name de qualquer alvo afirmativo
+
+**Emenda de 2026-11-26, medida na execucao real:** o organismo tem de estar
+PREENCHIDO. Vazio nao e evidencia de "nao humano" -- e ausencia de dado, e a
+regra deste repositorio e que ausencia nunca vira evidencia. O caso concreto e
+`CHEMBL612545 "Unchecked"`, o balde do ChEMBL para ensaios cujo alvo nunca foi
+curado: organismo vazio, `target_type = UNCHECKED` e 217.067 moleculas ativas,
+o alvo mais treinado do modelo. Ele liderava o canal negativo de quase todo
+composto -- a penalidade vinha de um NAO-ALVO. Excluir os 31 alvos sem
+organismo mantem a AUC em 0,806 e torna o canal legivel: o maximo dos
+causadores passa a ser patogeno de verdade (*S. aureus*, *E. coli*,
+*M. tuberculosis*, *T. vaginalis*) e o dos tratadores, ortologo em roedor (o
+receptor H1 de rato da amitriptilina, que e verdade farmacologica).
 
 Agregado: `max` sobre esse conjunto. Calculado **no mesmo forward** que
 pontua os alvos afirmativos -- o PP4CKD devolve os 7.676 de uma vez, entao a
 varredura nao custa previsao a mais. Nada alem do agregado por composto e
 guardado.
 
-Medido no controle de 12 (adendo): 1.169 alvos no canal, AUC 0,806 contra
+Medido no controle de 12: 1.129 alvos no canal final, AUC 0,806 contra
 0,750 da linha de base. A exclusao de ortologo custa 9 alvos, nao muda a AUC e
 cobre o CHEMBL304 (NET de rato) do requisito 2.
 
