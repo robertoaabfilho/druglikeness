@@ -28,8 +28,10 @@ Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de c
     validar_alvos_medidos.py
     coletar_evidencias.py    <- CLI da etapa 1 (seção 11)
     aplicar_portao.py        <- CLI da etapa 2 (seção 12)
+    ranquear.py              <- CLI da fase 3 (seção 13)
     evidencias/              <- módulos da etapa 1
     portao/                  <- módulos da etapa 2
+    ranque/                  <- módulos da fase 3
 ./exemplos/                 <- fixtures de validação (ver exemplos/LEIA-ME.md)
     controle.dor_neuropatica.tsv
     alvos.dor_neuropatica.txt
@@ -77,9 +79,9 @@ neuropática, enquanto os que a tratam ficam entre 0,54 e 0,81. O fluxo novo
 separa o que estava misturado:
 
 ```
-etapa 1  COLETAR     o que se sabe        -> nunca decide    (seção 11)
-etapa 2  O PORTÃO    o que fica marcado   -> quase nunca reprova (seção 12)
-fase 3   RANQUEAR    a ordem usando os alvos -> ainda não existe
+etapa 1  COLETAR     o que se sabe           -> nunca decide        (seção 11)
+etapa 2  O PORTÃO    o que fica marcado      -> quase nunca reprova (seção 12)
+fase 3   RANQUEAR    a ordem usando os alvos -> faixas de evidência (seção 13)
 ```
 
 Cada etapa tem CLI e manifesto próprios e não passa pelo `main.py`.
@@ -178,7 +180,7 @@ Linhas começando com `#` são comentários. Argumentos passados por linha de co
 | # | Script | O que faz | Controlado por | Dependências verificadas |
 |---|---|---|---|---|
 | 1 | `mods/farmaco_completo.py` | `input.txt` → `results/farmaco.csv` | `rodar_farmaco` | rdkit, requests |
-| 2 | `mods/ranking_multibase.py` | sintoma(s) → `results/ranking.csv` (+ revisão interativa) | `rodar_ranking` | rdkit, requests (+ psycopg2 opcional) |
+| 2 | `mods/ranking_multibase.py` | sintoma(s) → `results/ranking.csv` (+ revisão interativa) — **substituído pela fase 3** (seção 13) | `rodar_ranking` | rdkit, requests (+ psycopg2 opcional) |
 | 3 | `mods/comparar_metodos_ranking.py` | validação vs. TOPSIS clássico/QED/Tanimoto | `rodar_comparacao_metodos` | rdkit, numpy, scipy |
 | 4 | `mods/validar_enriquecimento.py` | validação leave-one-out + decoys | `rodar_validacao_enriquecimento` | numpy, scipy, requests |
 | 5 | `mods/ranking_embeddings.py` | ranking alternativo via ChemBERTa | `rodar_embeddings` | numpy, **torch, transformers** |
@@ -287,6 +289,16 @@ projetos são repositórios separados — nada do código de lá é importado):
 ---
 
 ## 2. `mods/ranking_multibase.py`
+
+> **SUBSTITUÍDO pela fase 3** (seção 13). O motivo é medido: este script é
+> **cego a alvo** — `organismo`, `Homo`, `9606` e `specie` têm zero ocorrências
+> nele — e ordena por semelhança físico-química com as drogas de referência. No
+> controle de 12 fármacos, os dois **QED mais altos** são ciprofloxacino (0,893)
+> e linezolida (0,892), **ambos do grupo que CAUSA** dor neuropática, enquanto
+> os que tratam ficam entre 0,539 e 0,814. A informação que separa os dois
+> grupos — em que alvo o composto age — não entra nesta conta, e nenhum ajuste
+> de peso a traz. Continua no repositório porque o `main.py` antigo o chama;
+> para trabalho novo, use `mods/ranquear.py`.
 
 Ranqueia os compostos de um `farmaco.csv` por semelhança ao perfil químico de drogas já usadas para tratar um sintoma/condição.
 
@@ -1094,6 +1106,201 @@ repetição byte a byte.
 
 ---
 
+## 13. Fase 3 — ranquear usando os alvos (`mods/ranquear.py`)
+
+A etapa 1 coleta, a etapa 2 marca, e **nada ordenava**. Esta fase ordena — e o
+que ela não ordena é tão importante quanto.
+
+### O que ela corrige
+
+O ranqueamento antigo (seção 2) ordena por semelhança físico-química com as
+drogas de referência do sintoma, e é **cego a alvo**: `organismo`, `Homo`,
+`9606` e `specie` têm zero ocorrências em `ranking_multibase.py`,
+`comparar_metodos_ranking.py` e `ranking_embeddings.py`.
+
+O preço está medido: no controle de 12 fármacos, os dois **QED mais altos** são
+ciprofloxacino (0,893) e linezolida (0,892), **ambos do grupo que causa** dor
+neuropática, enquanto os que a tratam ficam entre 0,539 e 0,814.
+
+Na execução real desta fase sobre o mesmo controle, as quatro primeiras
+posições são **todas do grupo que trata**:
+
+```
+#posicao  ligante        faixa  valor  alvo
+1         amitriptyline  1a     9.05   CHEMBL228 Sodium-dependent serotonin transporter
+2         capsaicin      1a     8.6    CHEMBL4794 TRPV1
+3         pregabalin     1a     7.72   CHEMBL1919 Voltage-dependent calcium channel alpha-2/delta-1
+4         gabapentin     1a     7.57   CHEMBL1919 Voltage-dependent calcium channel alpha-2/delta-1
+```
+
+Dito sem enfeite: essas quatro são as que têm evidência **medida** nos alvos
+pedidos; nenhum dos seis causadores tem. Não é o canal negativo que os tira
+dessa lista — é a ausência de evidência de alvo, que é exatamente a informação
+que o ranqueamento antigo não olhava.
+
+### As cinco faixas
+
+A ordem vem de uma chave lexicográfica: **classe de evidência, procedência do
+alvo, valor**. Sem uma única constante arbitrada.
+
+| faixa | quem cai nela | o que ordena dentro |
+|---|---|---|
+| **1a** | evidência **medida** em alvo **seu** (`origem_alvo = usuario`) | `max pchembl` |
+| **1b** | evidência **medida** em alvo do enriquecimento | `max pchembl` |
+| **2a** | só **prevista**, alvo **seu** | `max p × (1 − p_negativo)` |
+| **2b** | só **prevista**, alvo do enriquecimento | idem |
+| **3** | nenhuma evidência em alvo afirmativo | **não ranqueia** |
+
+**Por que a procedência é sub-faixa e não peso.** Pedir é declarar: o alvo que
+você listou vale mais que o que o enriquecimento sugeriu. Dizer isso com um
+peso exigiria uma constante que n = 12 não calibra; dizer com sub-faixa não
+exige nenhuma.
+
+**Por que a classe de evidência é a chave externa.** A consequência é que uma
+medida fraca num alvo do enriquecimento (1b) vem antes de uma previsão de 0,99
+no alvo que você pediu (2a). Isso é desejado: evidência **medida** num alvo que
+o pesquisador não listou é uma descoberta, e rebaixá-la sob a previsão do alvo
+já conhecido esconderia o único resultado que o enriquecimento tem para dar.
+
+**Por que o canal negativo não multiplica a faixa 1.** `pchembl` é medido e
+`p_negativo` é previsto — multiplicá-los poria as duas classes no mesmo número,
+que é o que a etapa 1 proíbe. E o ganho medido (0,806) foi obtido inteiramente
+sobre valores previstos: é um número da faixa 2. Na faixa 1 o `p_negativo` sai
+como **coluna**, visível e não ordenante.
+
+**Por que `max` e não soma.** Soma daria a **mesma** AUC de 0,750 neste
+conjunto — o controle não discrimina as duas, então `max` é escolha
+**declarada**, com o motivo que vale sem medição: somar probabilidades de alvos
+diferentes soma grandezas que não se somam, e um composto que acerta cinco
+alvos fracos ultrapassaria um que acerta o alvo certo com força. O que a
+medição **rejeita** é a *contagem* de promiscuidade (AUC 0,583, e a
+amitriptilina zerada).
+
+### O canal negativo é deduzido, não declarado
+
+Você declara só o que **é** alvo. O antialvo o pipeline deduz:
+
+```
+canal negativo = alvo NÃO afirmativo
+               ∧ organismo ≠ Homo sapiens
+               ∧ n_moleculas_treino ≥ 50
+               ∧ não é ortólogo de um alvo afirmativo
+```
+
+| canal negativo | AUC (trata > causa) |
+|---|---|
+| nenhum (linha de base) | 0,750 |
+| **não pedido + NÃO HUMANO** (1.160 alvos) | **0,806** |
+| não pedido + humano (2.376 alvos) | 0,694 ⟵ **piora** |
+| contagem de promiscuidade | 0,583 ⟵ **piora, e zera a amitriptilina** |
+| painel curado (hERG, CYPs, MAOs) | 0,750 ⟵ exatamente nada |
+
+0,806 é **exatamente** o que o alvo do patógeno *declarado* dava: deduzir empata
+com declarar. O lado humano fica fora porque, sozinho e invertido, dá AUC
+**0,389** — atividade humana não pedida está associada a **tratar**, e o motivo
+tem nome: amitriptilina, 0,910. As drogas que tratam dor neuropática são as
+sujas de SNC; puni-las repetiria o erro do PAINS na etapa 2.
+
+Isto **não** é a regra "não humano = negativo": o filtro de **procedência** vem
+primeiro. Numa busca contra o mimetismo molecular do *C. jejuni*, as enzimas
+bacterianas que você listou são pedidas, logo saem do canal antes do filtro de
+organismo. A exclusão de ortólogo custa 9 alvos, não muda a AUC, e cobre o
+`CHEMBL304` (NET de rato), que é não humano e **afirmativo** quando o NET humano
+foi pedido.
+
+**A varredura não custa previsão a mais.** O PP4CKD devolve os 7.676 alvos num
+forward só — o mesmo que pontuar os alvos pedidos. Guardar a matriz seria 3,3 GB
+(108.935 × 7.676 em float32); só o agregado por composto é guardado.
+
+### As três saídas (`--saida` é um diretório)
+
+| arquivo | uma linha por | o que traz |
+|---|---|---|
+| `ranking.tsv` | composto ranqueado | posição, faixa, valor, o alvo que decidiu, `p_afirmativo`/`pchembl` em colunas **separadas**, `p_negativo` e o alvo dele, o veredito do portão carregado |
+| `nao_ranqueados.tsv` | composto fora da ordem | o **motivo**: faixa 3, sem evidência na etapa 1, reprovado no portão (ou mais de um) |
+| `manifesto.json` | — | versões, MD5, parâmetros, dispositivo |
+
+As três são publicadas **juntas**, em temporários. Tabela sem manifesto não é
+citável.
+
+`nao_ranqueados.tsv` **não tem coluna `posicao`** de propósito: uma coluna vazia
+convidaria a ordenar aquela tabela como se fosse ranking.
+
+### Quem sai e por quê
+
+- **Reprovado no portão não ranqueia**, mas sai com o critério e o valor que
+  decidiram. Composto apenas **marcado** ranqueia normalmente, carregando as
+  marcas: a etapa 2 marca porque reprovar apaga os positivos de referência, e o
+  ranqueamento não desfaz isso por conta própria.
+- **Sem `--portao`**, a coluna diz `nao consultado`; composto ausente do portão
+  diz `ausente`. Nenhum dos dois vira "aprovado" por omissão.
+- **Ligante que a etapa 1 conhecia e `evidencias.tsv` não menciona** sai com
+  motivo `sem evidencia na etapa 1` — a etapa 1 escreve *linhas de evidência*,
+  então quem não tem evidência alguma não aparece lá, e esse é o caso mais
+  extremo de faixa 3. Precisa de `--ligantes`; sem ele a execução não tem como
+  saber quem ficou de fora e **não inventa** a contagem.
+- **Sem `p_negativo`** (sem pesos, SMILES ilegível, ou `--sem-canal-negativo`) a
+  coluna diz `indeterminado`, nunca `0` — zero afirmaria "nenhuma atividade
+  indesejada".
+
+### O mesmo checkpoint nos dois lados da multiplicação
+
+`p_afirmativo` vem do `evidencias.tsv` da etapa 1; `p_negativo` vem do forward
+desta fase. De checkpoints diferentes, `p × (1 − p_negativo)` combinaria dois
+modelos num número só e a ordem passaria a depender de quais arquivos estavam em
+disco. Com `--manifesto-etapa1`, a execução **recusa rodar** (código 2) se o MD5
+do `--checkpoint` divergir do registrado, nomeando os dois.
+
+### Comando completo
+
+```bash
+python mods/ranquear.py \
+    --evidencias evidencias.tsv \
+    --ligantes ligantes.tsv \
+    --portao portao/portao.tsv \
+    --checkpoint ecfp4_fold_4.pt \
+    --rotulos target_labels.tsv \
+    --manifesto-etapa1 etapa1/manifesto.json \
+    --saida ranking/
+```
+
+`--sem-canal-negativo` reproduz a linha de base de 0,750. O padrão é **CPU**:
+a GPU não reproduz (medido na etapa 2 — 36 de 312 colunas diferem entre duas
+execuções de GPU, 0 de 312 na CPU). Códigos de saída são os das etapas 1 e 2.
+
+### Cache e repetição
+
+Esta fase não consulta serviço nenhum, então não há cache. `--manifesto` repete
+uma execução e **recusa rodar** se um MD5 de entrada (evidências, portão, alvos,
+ligantes, pesos), a versão do RDKit ou um parâmetro que muda a saída diferirem
+do registrado. O manifesto novo sai como `manifesto_repeticao.json` e nunca
+sobrescreve o original.
+
+A verificação é em **duas passadas**: primeiro tudo o que não depende do modelo,
+para que um MD5 divergente recuse **antes** de pagar o carregamento dos pesos.
+`dispositivo` fica fora das chaves de recusa — ele só é conhecido depois de abrir
+o modelo —, e divergência de dispositivo **avisa** em vez de prometer igualdade
+bit a bit.
+
+### Testes
+
+```bash
+python -m pytest tests/test_ranque_faixa.py tests/test_ranque_negativo.py \
+    tests/test_ranque_auc.py tests/test_ranquear_cli.py
+```
+
+Nenhum usa rede, e **nenhum depende do checkpoint real ou do
+`target_labels.tsv`**, que não estão no repositório: os rótulos são sintéticos
+(`tests/dados/rotulos_minimo.tsv`) e as probabilidades do controle são uma
+fixture gravada (`tests/dados/controle_previsoes.tsv`). Consequência registrada
+em `tests/dados/LICENSE`: essa fixture fixa a **aritmética**, não o modelo.
+
+`tests/test_ranque_auc.py` prende os três números que decidiram o desenho —
+0,750 sem canal, 0,806 com ele, e 0,583 da contagem de promiscuidade que foi
+**descartada**, para que o desenho rejeitado não volte.
+
+---
+
 ## Dicas de busca por sintoma/condição
 
 - Use sempre o **nome em inglês**.
@@ -1121,4 +1328,8 @@ repetição byte a byte.
 - **A validação por decoys não testa especificidade entre classes farmacológicas** — mostra que drogas de referência conhecidas superam controles negativos aleatórios, mas não testa diretamente se compostos de uma classe não relacionada estariam sendo indevidamente favorecidos. A checagem de alertas adversos (etapa 6) é um primeiro passo nessa direção, mas específico a efeitos já documentados em bula, não uma solução geral.
 - **Calibração do Deep-PK e comparação formal com outras ferramentas ADMET continuam sem execução.** Na etapa 2 a questão mudou de forma, não desapareceu: o ADMET-AI 2.0.1 substituiu o Deep-PK e é local, versionado e reprodutível, mas o **percentil de toxicidade não está validado neste conjunto** — é por isso que `toxicidade` só marca, nunca reprova, por padrão.
 - **A checagem de bula da etapa 2 não cobre a base inteira numa execução.** O teto é `--limite-bula` (padrão 500) porque o openFDA é serviço público com limite de taxa: 108.935 ligantes × 3 requisições a 240/min dariam ~23 h. O caminho certo é o download em massa (1,7 GB em 14 partições), **registrado e não implementado**. O que passa do teto sai `indeterminado`, nunca "sem alerta".
-- **A fase 3 (ranqueamento que usa os alvos) não existe ainda.** As etapas 1 e 2 entregam evidência e vereditos com procedência; quem ordena usando isso está por escrever. O requisito está em `docs/superpowers/specs/2026-11-25-fase3-alvos-no-ranqueamento-requisitos.md`.
+- **O canal negativo da fase 3 está validado só em n = 12, e os seis causadores do controle são todos antibióticos** — a atividade não humana os separa por construção do conjunto. O ganho de 0,750 para 0,806 detecta o sinal, não calibra peso, e por isso o canal é desligável (`--sem-canal-negativo`) e nenhum peso é aprendido. Falta um conjunto independente.
+- **O lado humano do canal negativo está medido como prejudicial** (AUC 0,694, e 0,389 sozinho e invertido), então atividade fora do alvo **em humano não entra no ranqueamento** — ela é assunto do portão (toxicidade/ADMET). Quem precisar penalizar um antialvo humano conhecido não tem como declará-lo hoje; a decisão e o motivo estão no adendo de `docs/superpowers/specs/2026-11-25-fase3-alvos-no-ranqueamento-requisitos.md`.
+- **A faixa permeável não foi medida.** Hoje a faixa é estrita: medido sempre antes de previsto. Deixar uma previsão muito forte subir de faixa exigiria um limiar que n = 12 não calibra.
+- **A direção farmacológica do alvo (silenciar vs modular) não entra em nada**, e não pode: `pchembl` colapsa EC50, Ki, IC50 e AC50 numa coluna só, e o canal previsto do PP4CKD é P(ativo), sem direção. Uma coluna de entrada declarando isso seria registrada e ignorada pela aritmética.
+- **`main.py` ainda orquestra o fluxo antigo.** `farmaco_completo.py`, `ranking_multibase.py` e `checar_alertas_adversos.py` estão marcados como substituídos mas continuam no repositório, porque ele os chama. A remoção espera a validação da fase 3 contra conjunto independente.
