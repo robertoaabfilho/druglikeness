@@ -131,3 +131,95 @@ A procedencia resolve os dois casos sem dicionario e sem ontologia.
   custa uma previsao completa, e a base tem 108.935 compostos.
 * Validar `MONDO_0005550` -- ou o que o substituir -- em mais que quatro
   doencas, se alguma regra voltar a depender de classificacao de doenca.
+
+## Adendo 2026-11-26 — o canal negativo DEDUZIDO, medido
+
+Pergunta que motivou a medicao: o usuario declara so o que E alvo, e o
+pipeline deduz o antialvo. Da? Medido sobre o controle de 12, ECFP4,
+`ecfp4_fold_4.pt`, varrendo os 7.676 alvos do modelo.
+
+### A varredura nao custa previsao a mais
+
+O forward do PP4CKD devolve os 7.676 de uma vez (`torch.sigmoid(rede(x))`). A
+varredura e o MESMO calculo que pontuar os alvos pedidos, so nao descartando o
+resto do vetor. A pergunta aberta "onde o canal negativo e calculado, ja que a
+varredura custa uma previsao completa" partia de premissa errada. O que custaria
+e GUARDAR a matriz (108.935 x 7.676 ~ 3,3 GB em float32), e nao e preciso: o
+agregado por composto e O(1).
+
+Dos 7.667 alvos nao pedidos, o requisito 1 descarta 4.122 por terem menos de 50
+moleculas de treino. Sobram 3.545.
+
+### Como deduzir decide o resultado
+
+| canal negativo deduzido | AUC (trata > causa) |
+|---|---|
+| nenhum -- so os 9 alvos pedidos (linha de base) | 0,750 |
+| **nao pedido + NAO HUMANO** (1.169 alvos) | **0,806** |
+| nao pedido + humano (2.376 alvos) | 0,694 -- PIORA |
+| contagem de promiscuidade (quantos acima de 0,5) | 0,583 -- PIORA |
+| painel curado de seguranca (hERG, CYP3A4/2D6/2C9, MAO-A/B) | 0,750 -- nada |
+| `max` sobre todos os 3.545 nao pedidos | 0,778, saturado |
+
+Quatro desenhos eliminados por medicao:
+
+1. **O lado nao humano deduzido empata com o declarado.** 0,806 e exatamente o
+   numero que `p_humano x (1 - p_patogeno)` deu com o alvo do patogeno
+   DECLARADO. Deduzir chega no mesmo lugar -- a deducao e viavel.
+2. **O lado humano deduzido esta errado neste conjunto.** Sozinho e invertido
+   da AUC 0,389, abaixo de 0,5: atividade alta em alvo humano nao pedido esta
+   associada a TRATAR. Motivo com nome: amitriptilina, 0,910. As drogas que
+   tratam dor neuropatica sao as sujas de SNC. Punir isso repete o erro do
+   PAINS na etapa 2 -- apaga o positivo de referencia. Efeito fora do alvo em
+   humano e assunto do portao (toxicidade/ADMET), nao do ranqueamento.
+3. **Contar promiscuidade e o pior desenho:** AUC 0,583 e ZERA a amitriptilina
+   (33 alvos nao pedidos acima de 0,5).
+4. **Painel de seguranca nao ordena:** AUC 0,750, identica a linha de base;
+   sozinho, 0,500 (ruido). Quem lidera o painel e a amitriptilina (0,526) --
+   verdade farmacologica conhecida e irrelevante para esta pergunta.
+
+E `max` sobre todos os nao pedidos SATURA: 0,91 a 0,97 para quase todo o
+conjunto. Maximo sobre milhares de probabilidades e quase constante; o 0,778 e
+artefato de misturar os dois lados, nao sinal.
+
+### A regra que sobrevive a medicao
+
+    canal negativo = alvo NAO pedido
+                   & organismo != Homo sapiens
+                   & n_moleculas_treino >= 50          (requisito 1)
+                   & nao e ortologo de um alvo pedido  (requisito 2)
+
+Ortologo = mesmo `pref_name` de um alvo pedido. Custa 9 alvos e nao muda a AUC
+(0,806 com e sem): rede de seguranca de graca que cobre o contraexemplo do
+CHEMBL304 (NET de rato) do requisito 2.
+
+Isto NAO e a regra "nao humano = negativo" que este spec derrubou: o filtro de
+PROCEDENCIA vem primeiro. No caso do *C. jejuni*, as enzimas que o usuario
+listou sao pedidas, logo saem do canal antes do filtro de organismo. A
+procedencia continua decidindo o sinal; o organismo so afia.
+
+### Ressalva de validade, que e seria
+
+n = 12 e os SEIS causadores sao todos antibioticos. A atividade nao humana os
+separa por construcao do conjunto. O 0,806 pode ser propriedade deste controle,
+nao regra geral. Logo: peso DECLARADO e desligavel, nunca constante ajustada
+nesses 12, e nenhuma afirmacao de generalidade antes de um conjunto
+independente.
+
+### Decisao de interface que isto fecha
+
+Nao entra coluna de sinal na entrada de alvos. A ideia de `sinal_alvo`
+(`afirmativo`/`antialvo`) foi considerada e dispensada: o antialvo e deduzido.
+Fica registrado, porem, o que a deducao NAO alcanca -- o antialvo que o usuario
+conhece e que e HUMANO (as sialiltransferases do hospedeiro no caso do
+mimetismo do *C. jejuni*), porque o lado humano do canal esta medido como
+prejudicial. Se esse caso voltar, a coluna e a saida, e a medicao acima e o
+motivo de ela ter sido dispensada por ora.
+
+E um eixo que a entrada NUNCA deve declarar: silenciamento vs modulacao. A
+evidencia do pipeline nao o carrega. Medido no `evidencias_controle.tsv`, a
+coluna `medida` traz EC50 18, Ki 15, IC50 10, AC50 5, Potency 1 -- tudo
+colapsado em `pchembl`, a unica coluna comparavel, e Ki e afinidade de ligacao,
+neutra por definicao. O canal previsto do PP4CKD e P(ativo), sem direcao
+alguma, e e o unico canal que existe para todo par sem ensaio no ChEMBL. Uma
+coluna de direcao seria registrada e ignorada pela aritmetica.
