@@ -224,8 +224,11 @@ def test_manifesto_registra_politica_versoes_e_contagens(
 
 def test_linha_de_entrada_descartada_torna_a_execucao_parcial(
         tmp_path, admet_falso, capsys):
+    # Linha sem SMILES nenhum: sem estrutura nao ha o que julgar nem o que
+    # relatar, entao ela e PERDIDA -- diferente do SMILES ilegivel, que fica na
+    # saida e e reprovado (teste proprio, mais abaixo).
     caminho = tmp_path / "com_erro.tsv"
-    caminho.write_text(f"nome\tsmiles\naspirina\t{ASPIRINA}\nruim\tC1CC\n",
+    caminho.write_text(f"nome\tsmiles\naspirina\t{ASPIRINA}\nsem_nada\t\n",
                        encoding="utf-8")
     saida = tmp_path / "res"
     assert _rodar("--ligantes", str(caminho), "--saida", str(saida)) == 3
@@ -308,3 +311,36 @@ def test_desvio_impossivel_erra_em_vez_de_adivinhar(tmp_path, ligantes, monkeypa
     monkeypatch.setattr(admet, "prever", lambda smiles, **k: {})
     assert _rodar("--ligantes", ligantes, "--saida", str(tmp_path / "res")) == 2
     assert not (tmp_path / "res" / "propriedades.tsv").exists()
+
+
+# --------------------------------------------------------------------------
+# SMILES ilegivel: reprovado com motivo, nunca apagado
+# --------------------------------------------------------------------------
+
+def test_smiles_ilegivel_fica_na_saida_reprovado_com_motivo(
+        tmp_path, admet_falso, capsys):
+    """Anti-objetivo do desenho: apagar em silencio. O ligante nao desaparece
+    da tabela de vereditos so porque nao pode ser avaliado."""
+    caminho = tmp_path / "ligantes.tsv"
+    caminho.write_text(f"nome\tsmiles\naspirina\t{ASPIRINA}\nruim\tC1CC\n",
+                       encoding="utf-8")
+    saida = tmp_path / "res"
+    # Codigo 0, nao 3: o portao DECIDIU sobre o ligante. Parcial e quando algo
+    # se perde, e aqui nada se perdeu.
+    assert _rodar("--ligantes", str(caminho), "--saida", str(saida)) == 0
+
+    linha = _por_ligante(_ler(saida, "portao.tsv"))["ruim"]
+    assert linha["aprovado"] == "nao"
+    assert linha["smiles_veredito"] == "reprova"
+    assert "RDKit nao le" in linha["motivos"]
+    # Os outros criterios nao opinam sobre o que nao tem molecula.
+    assert linha["alerta_estrutural_veredito"] == "indeterminado"
+    assert linha["toxicidade_veredito"] == "indeterminado"
+
+    propriedades = _por_ligante(_ler(saida, "propriedades.tsv"))["ruim"]
+    assert propriedades["smiles"] == "C1CC" and propriedades["qed"] == ""
+
+    manifesto = json.loads((saida / "manifesto.json").read_text(encoding="utf-8"))
+    assert manifesto["contagens"]["smiles_ilegiveis_mantidos"] == 1
+    assert manifesto["contagens"]["execucao_parcial"] is False
+    assert "nao apagados" in capsys.readouterr().err

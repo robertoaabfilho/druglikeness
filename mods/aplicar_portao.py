@@ -262,7 +262,11 @@ def main(argv: list[str] | None = None) -> int:
         return SAIDA_ERRO
 
     try:
-        ligantes, problemas = ler_ligantes(args.ligantes, args.limite)
+        # `manter_ilegiveis`: um ligante que desaparece da tabela de vereditos
+        # nao foi reprovado, foi apagado -- anti-objetivo declarado do desenho.
+        # Ele fica, com as propriedades vazias e o criterio `smiles` reprovando.
+        ligantes, problemas = ler_ligantes(args.ligantes, args.limite,
+                                           manter_ilegiveis=True)
     except (OSError, UnicodeDecodeError) as e:
         print(f"[erro] nao foi possivel ler --ligantes: {e}", file=sys.stderr)
         return SAIDA_ERRO
@@ -355,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
 
         etapa = "manifesto"
         descartadas = sum(p.gravidade == "erro" for p in problemas)
+        ilegiveis = sum(1 for l in ligantes if not l.get("inchikey_parental"))
         parcial = bool(descartadas)
         resumo = contador.resumo(politica)
         tmp_manifesto = atomico.temporario(destino / NOME_MANIFESTO)
@@ -376,6 +381,7 @@ def main(argv: list[str] | None = None) -> int:
             contagens={"ligantes": len(ligantes),
                        "problemas_ligantes": len(problemas),
                        "linhas_descartadas": descartadas,
+                       "smiles_ilegiveis_mantidos": ilegiveis,
                        "execucao_parcial": parcial,
                        "colunas_de_admet": len(mapa_admet),
                        "colunas_de_admet_renomeadas": renomeadas,
@@ -399,6 +405,14 @@ def main(argv: list[str] | None = None) -> int:
         for arquivo, _ in pendentes:
             arquivo.unlink(missing_ok=True)
 
+    if ilegiveis:
+        # Codigo 0, nao 3: o portao DECIDIU sobre esses ligantes (reprovados
+        # pelo criterio `smiles`, com o motivo na linha). Execucao parcial e
+        # quando algo se perde, e aqui nada se perdeu.
+        print(f"[aviso] {ilegiveis} ligante(s) com SMILES que o RDKit nao le: "
+              "estao na saida com as propriedades vazias e reprovados pelo "
+              "criterio `smiles` (veja a coluna `motivos`), nao apagados",
+              file=sys.stderr)
     _resumo(contador, politica, destino)
     if parcial:
         print(f"[ATENCAO] execucao PARCIAL (codigo {SAIDA_PARCIAL}): "

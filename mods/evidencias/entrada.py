@@ -110,9 +110,29 @@ def _exigir(cabecalho: list[str], colunas: list[str], problemas: list[Problema])
     return not faltam
 
 
-def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[Problema]]:
+def ler_ligantes(caminho, limite: int | None = None, *,
+                 manter_ilegiveis: bool = False
+                 ) -> tuple[list[dict], list[Problema]]:
     """`limite`: para a leitura apos N ligantes aceitos; linhas alem disso nao
-    sao lidas nem geram problemas."""
+    sao lidas nem geram problemas.
+
+    `manter_ilegiveis`: mantem na lista o ligante cujo SMILES o RDKit nao le,
+    com `inchikey_parental` vazio, e rebaixa o problema dele a `aviso`.
+
+    Padrao FALSO, que e o que a etapa 1 precisa: sem molecula nao ha
+    fingerprint nem InChIKey parental, logo nao ha evidencia prevista nem como
+    casar evidencia medida -- o ligante seria uma linha que nada pode
+    preencher, e descarta-lo com erro de linha e o certo.
+
+    A etapa 2 passa VERDADEIRO, porque ali a pergunta e outra: o portao julga
+    o ligante, e um ligante que desaparece da tabela de vereditos nao foi
+    reprovado, foi apagado -- que e anti-objetivo declarado do desenho da
+    etapa 2. Ele sai com as colunas de propriedade vazias e o criterio
+    `smiles` reprovando, com o motivo escrito.
+
+    Vale so para SMILES PRESENTE e ilegivel. Linha sem a coluna `smiles`
+    preenchida continua sendo erro em qualquer etapa: sem nome de molecula nem
+    estrutura nao ha o que julgar nem o que relatar."""
     cabecalho, linhas, problemas = _ler_tabela_lazy(caminho)
     if cabecalho and not _exigir(cabecalho, ["nome", "smiles"], problemas):
         linhas.close()
@@ -132,8 +152,25 @@ def ler_ligantes(caminho, limite: int | None = None) -> tuple[list[dict], list[P
         parental = forma_parental(mol)
         chave_parental = inchikey_de(parental)
         if not chave_parental:
+            # Mantido, o problema e `aviso`: o ligante esta na saida e sera
+            # julgado, entao a execucao nao e parcial por causa dele. Descartado,
+            # e `erro`, e quem conta erros torna a execucao parcial -- a
+            # diferenca entre "nao avaliei este" e "perdi este".
             problemas.append(Problema(
-                n, "smiles", f"{nome}: smiles que o RDKit nao le: {smiles}", "erro"))
+                n, "smiles", f"{nome}: smiles que o RDKit nao le: {smiles}"
+                + (" (mantido para julgamento, sem propriedades)"
+                   if manter_ilegiveis else ""),
+                "aviso" if manter_ilegiveis else "erro"))
+            if not manter_ilegiveis:
+                continue
+            # Sem chave parental nao ha como deduplicar: cada linha ilegivel
+            # fica, porque duas delas podem ser moleculas diferentes.
+            registro = dict(linha)
+            registro.update(nome=nome, smiles=smiles, inchikey="",
+                            inchikey_parental="")
+            ligantes.append(registro)
+            if limite is not None and len(ligantes) >= limite:
+                break
             continue
         registro = dict(linha)
         registro.update(nome=nome, smiles=smiles, inchikey=inchikey_de(mol),

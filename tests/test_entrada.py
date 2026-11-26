@@ -185,3 +185,63 @@ def test_alvo_sem_coluna_de_origem_e_do_usuario(tmp_path):
     f.write_text("alvo_chembl_id\nCHEMBL222\n", encoding="utf-8")
     alvos, _ = ler_alvos(f)
     assert alvos[0]["origem_alvo"] == "usuario"
+
+
+# --------------------------------------------------------------------------
+# manter_ilegiveis: a etapa 2 julga o que a etapa 1 descarta
+# --------------------------------------------------------------------------
+
+def _tsv(tmp_path, texto):
+    caminho = tmp_path / "ligantes.tsv"
+    caminho.write_text(texto, encoding="utf-8")
+    return caminho
+
+
+LINHAS_COM_ILEGIVEL = ("nome\tsmiles\n"
+                       "aspirina\tCC(=O)Oc1ccccc1C(=O)O\n"
+                       "ruim\tC1CC\n")
+
+
+def test_por_padrao_smiles_ilegivel_e_descartado_com_erro(tmp_path):
+    """O que a etapa 1 precisa: sem molecula nao ha fingerprint nem InChIKey
+    parental, logo nao ha evidencia que a linha possa preencher."""
+    ligantes, problemas = ler_ligantes(_tsv(tmp_path, LINHAS_COM_ILEGIVEL))
+    assert [l["nome"] for l in ligantes] == ["aspirina"]
+    (problema,) = [p for p in problemas if p.campo == "smiles"]
+    assert problema.gravidade == "erro"
+
+
+def test_manter_ilegiveis_deixa_o_ligante_na_lista_como_aviso(tmp_path):
+    """O que a etapa 2 precisa: um ligante que desaparece da tabela de
+    vereditos nao foi reprovado, foi apagado."""
+    ligantes, problemas = ler_ligantes(
+        _tsv(tmp_path, LINHAS_COM_ILEGIVEL), manter_ilegiveis=True)
+    assert [l["nome"] for l in ligantes] == ["aspirina", "ruim"]
+    ruim = ligantes[1]
+    assert ruim["inchikey_parental"] == "" and ruim["smiles"] == "C1CC"
+    (problema,) = [p for p in problemas if p.campo == "smiles"]
+    # `aviso`, nao `erro`: quem conta erros torna a execucao parcial, e aqui
+    # nada se perdeu -- a diferenca entre "nao avaliei este" e "perdi este".
+    assert problema.gravidade == "aviso"
+    assert "mantido para julgamento" in problema.mensagem
+
+
+def test_ilegiveis_nao_sao_deduplicados_entre_si(tmp_path):
+    """Sem chave parental nao ha como saber se sao a mesma molecula."""
+    ligantes, _ = ler_ligantes(_tsv(tmp_path, "nome\tsmiles\na\tC1CC\nb\tC1CCC\n"),
+                               manter_ilegiveis=True)
+    assert [l["nome"] for l in ligantes] == ["a", "b"]
+
+
+def test_smiles_ausente_continua_sendo_erro_mesmo_mantendo_ilegiveis(tmp_path):
+    """Sem estrutura nenhuma nao ha o que julgar nem o que relatar."""
+    ligantes, problemas = ler_ligantes(
+        _tsv(tmp_path, "nome\tsmiles\nsem_nada\t\n"), manter_ilegiveis=True)
+    assert ligantes == []
+    assert [p.gravidade for p in problemas if p.campo == "smiles"] == ["erro"]
+
+
+def test_limite_conta_o_ilegivel_mantido(tmp_path):
+    ligantes, _ = ler_ligantes(_tsv(tmp_path, LINHAS_COM_ILEGIVEL), 2,
+                               manter_ilegiveis=True)
+    assert len(ligantes) == 2
