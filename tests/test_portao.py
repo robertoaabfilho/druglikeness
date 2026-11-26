@@ -306,3 +306,31 @@ def test_sem_consulta_dirigida_a_janela_continua_valendo():
         {"boxed_warning": ["PERIPHERAL NEUROPATHY"]}]}
     lista = bula.achados(janela["bulas"], ["neuropathy"])
     assert bula.veredito(janela, lista)[0] == "reprova"
+
+
+def test_contraindicacao_conta_como_secao_forte():
+    """Uma contraindicacao que nomeia a condicao e a afirmacao mais forte que
+    uma bula pode fazer: "nao use neste paciente"."""
+    resultado = _bula(contraindications=[
+        "CONTRAINDICATIONS: optic neuritis"][0])
+    achados = bula.achados(resultado["bulas"], ["neuritis"])
+    assert [a["forca"] for a in achados] == ["forte"]
+    assert bula.veredito(resultado, achados)[0] == "reprova"
+
+
+def test_precautions_cobre_a_bula_de_formato_antigo():
+    """Bula nao-PLR usa `precautions` onde a nova usa `warnings_and_cautions`.
+    Sem ela o pipeline nao olhava o campo equivalente nas bulas antigas."""
+    resultado = _bula(precautions="peripheral neuropathy has occurred")
+    achados = bula.achados(resultado["bulas"], ["neuropathy"])
+    assert [a["forca"] for a in achados] == ["forte"]
+
+
+def test_use_in_specific_populations_nao_e_secao_de_risco():
+    """Medido no controle: casa 227 bulas da pregabalina, 113 da duloxetina e 1
+    da capsaicina -- TODAS do grupo que TRATA -- e zero do que causa. E ruido,
+    e o teste existe para que ninguem a adicione sem medir de novo."""
+    assert "use_in_specific_populations" not in bula.SECOES_FORTES
+    assert "use_in_specific_populations" not in bula.SECOES_FRACAS
+    resultado = _bula(use_in_specific_populations="neuropathy in pregnancy")
+    assert bula.achados(resultado["bulas"], ["neuropathy"]) == []

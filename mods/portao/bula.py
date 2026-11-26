@@ -49,7 +49,26 @@ from urllib.parse import quote
 BASE = "https://api.fda.gov/drug/label.json"
 
 # Secoes da bula onde o termo tem significado de RISCO, por forca.
-SECOES_FORTES = ("boxed_warning", "warnings", "warnings_and_cautions")
+#
+# `contraindications` entra porque uma contraindicacao que nomeia a condicao e a
+# afirmacao mais forte que uma bula pode fazer -- "nao use neste paciente" --- e
+# omiti-la deixaria o criterio dependente de o fabricante ter repetido o aviso
+# em outra secao. Medido no controle de 12: ela nao muda veredito nenhum (so o
+# etambutol traz o termo ali, e ele ja e pego pelas outras secoes fortes), mas
+# 12 farmacos nao autorizam supor que a repeticao seja sempre feita.
+#
+# `precautions` entra por LACUNA DE FORMATO, nao de sensibilidade: bula de
+# formato antigo (nao-PLR) usa `precautions` onde a nova usa
+# `warnings_and_cautions`. Sem ela, o pipeline simplesmente nao olhava o campo
+# equivalente nas bulas antigas. Medido: cipro (1 bula) e etambutol (8), ambos
+# ja pegos; zero falso positivo no grupo que trata.
+#
+# FICOU DE FORA, com o numero que a excluiu: `use_in_specific_populations`
+# casa 227 bulas da pregabalina, 113 da duloxetina e 1 da capsaicina -- TODAS
+# do grupo que TRATA -- e zero do grupo que causa. E ruido.
+# `warnings_and_precautions` e `drug_interactions` dao zero nos dois grupos.
+SECOES_FORTES = ("boxed_warning", "warnings", "warnings_and_cautions",
+                 "contraindications", "precautions")
 SECOES_FRACAS = ("adverse_reactions",)
 # Nao e secao de risco: e o contrario. Entra para DESCONTAR.
 SECOES_INDICACAO = ("indications_and_usage",)

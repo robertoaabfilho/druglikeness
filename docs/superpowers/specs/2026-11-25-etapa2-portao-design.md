@@ -384,3 +384,38 @@ indexar localmente por nome troca 327 mil requisições por um download e
 elimina o limite de taxa. Fica como requisito de quem for rodar a base inteira;
 até então o teto é a proteção, e o que passa dele sai `indeterminado` com esse
 motivo escrito.
+
+### Adendo 2: as seções que faltavam
+
+A regra original olhava `boxed_warning`, `warnings` e `warnings_and_cautions`
+como seção forte. Medido depois, uma consulta dirigida por seção no
+conjunto-controle:
+
+| seção | falso positivo (grupo que trata) | ganho (grupo que causa) |
+|---|---|---|
+| `contraindications` | **0/6** | só etambutol (8/8) — já pego |
+| `precautions` | **0/6** | cipro (1) e etambutol (8) — já pegos |
+| `warnings_and_precautions` | 0 | 0 — campo não usado |
+| `drug_interactions` | 0 | 0 |
+| `use_in_specific_populations` | pregabalina 227, duloxetina 113, capsaicina 1 | **0** |
+
+**Entram como seção forte: `contraindications` e `precautions`.** Nenhuma das
+duas muda veredito neste controle — e é justamente por isso que entrar é
+seguro. A razão de entrarem não é sensibilidade:
+
+- uma **contraindicação** que nomeia a condição é a afirmação mais forte que
+  uma bula pode fazer ("não use neste paciente"). Omiti-la deixava o critério
+  dependente de o fabricante ter repetido o aviso em outra seção. Nestes 12 ele
+  repetiu; 12 fármacos não autorizam supor que repita sempre;
+- **`precautions`** fecha uma **lacuna de formato**: bula de formato antigo
+  (não-PLR) usa `precautions` onde a nova usa `warnings_and_cautions`. Sem ela,
+  o pipeline não olhava o campo equivalente nas bulas antigas.
+
+**`use_in_specific_populations` fica de fora, com o número que a excluiu:** três
+acertos, todos no grupo que **trata**, zero no que causa. Um teste prende a
+exclusão para que ninguém a adicione sem medir de novo.
+
+Custo: **zero requisição a mais** — as seções entram no mesmo `OR` da consulta
+dirigida que já existia. Verificado ao vivo depois da mudança: **0/6 de falso
+positivo e 4/6 pegos**, e o rastro passa a citar `contraindications` e
+`precautions` no etambutol, que antes só apareciam como `warnings`.
