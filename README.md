@@ -127,6 +127,21 @@ streamlit run painel.py     # a interface
 Sem o modelo, a etapa 1 **degrada**: ela roda só com a evidência medida e diz
 o que falta, em vez de falhar.
 
+### Levar para outra máquina
+
+```bash
+python mods/empacotar.py --saida ../druglikeness-pacote.zip
+python mods/empacotar.py --saida ... --com-dados   # inclui os ~135 MB de dados
+```
+
+O pacote leva o código, os testes, o modelo e a **procedência** das entradas —
+sem ela o resultado do outro lado não é citável. Não leva as saídas de `tsv/`
+(são o resultado de uma execução *desta* máquina; levá-las faria a outra
+parecer ter rodado o pipeline) nem o cache de rede (indexado por versão de
+serviço). O que ficou fora é **registrado** em `PACOTE.json`, com o comando que
+o traz; e `LEIA-ME-PRIMEIRO.md` diz como instalar. A suíte verde do outro lado
+é o que prova que o pacote chegou inteiro.
+
 ---
 
 ## A árvore
@@ -231,7 +246,36 @@ python main.py                       # as três etapas, da primeira à última
 python main.py --retomar             # pula etapa cuja saída já existe
 python main.py --a-partir-de portao  # começa numa etapa
 python main.py --somente ranking     # roda só uma
+python main.py --sem-instalar        # confere o ambiente e não instala nada
 ```
+
+### A partida confere o ambiente
+
+Antes de qualquer etapa, o orquestrador verifica as dependências e **instala o
+que falta** — pelo `pip` do interpretador corrente (`sys.executable -m pip`,
+nunca o `pip` do PATH, que pode ser de outro ambiente), usando a linha do
+`requirements.txt` e não só o nome do pacote: instalar `numpy` onde o arquivo
+pede `numpy>=2` satisfaria o nome e não a restrição.
+
+Ele **diz antes de instalar**, e depois **confere de novo** — instalou e o
+pacote continua ausente é falha, não sucesso. Se o ambiente continuar
+incompleto, para com código 2: nenhuma etapa roda com biblioteca faltando,
+porque ela quebraria no meio, depois de horas.
+
+Duas coisas que ele **não** faz:
+
+- **não instala as opcionais.** `torch` são alguns GB, e o pipeline *degrada*
+  sem ele: a etapa 1 roda só com evidência medida e a fase 3 deixa o canal
+  negativo `indeterminado`, nunca 0. O que a partida faz é dizer o que a falta
+  **desliga** — baixar GB sem pedir seria decidir por você num ponto em que
+  você tem alternativa;
+- **não mexe no que já está instalado.** Sem `--upgrade`: a tarefa é suprir o
+  que falta, não atualizar o que funciona.
+
+`--sem-instalar` é para ambiente compartilhado, automação ou máquina sem rede:
+confere, diz o que falta, e para. O painel também **não instala** — mostra o
+estado na barra lateral e o comando, porque instalar por clique mexeria no
+ambiente de quem abriu a aba.
 
 **Nada é implícito.** Sem `--retomar`, tudo roda — pular etapa cuja saída
 existe é economia legítima, mas feita por omissão ela entrega resultado velho

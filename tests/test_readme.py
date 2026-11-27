@@ -46,7 +46,12 @@ def test_readme_descreve_o_retomar_como_ele_e_hoje():
     """`--retomar` REFAZ a etapa cuja saida nao confere; ele nao aborta a
     execucao. A revisao do ramo anterior mudou esse comportamento, e um README
     que ainda diga 'recusa' manda o pesquisador recomecar do zero."""
-    trecho = README[README.index("--retomar"):][:1200].lower()
+    # Ancora no lugar onde `--retomar` e EXPLICADO, nao na primeira vez que a
+    # flag aparece: uma janela de N caracteres depois da primeira ocorrencia
+    # quebra sempre que algo e inserido antes dela, e o que importa aqui e o
+    # comportamento descrito, nao a posicao no arquivo.
+    inicio = README.index("confere a entrada")
+    trecho = README[inicio:inicio + 900].lower()
     assert "refaz" in trecho or "roda de novo" in trecho
 
 
