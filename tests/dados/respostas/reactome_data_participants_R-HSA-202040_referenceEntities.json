@@ -1,0 +1,349 @@
+[
+ {
+  "dbId": 52528,
+  "displayName": "UniProt:P01189 POMC",
+  "stId": "uniprot:P01189",
+  "databaseName": "UniProt",
+  "identifier": "P01189",
+  "name": [
+   "POMC"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60003,
+  "displayName": "UniProt:P01213 PDYN",
+  "stId": "uniprot:P01213",
+  "databaseName": "UniProt",
+  "identifier": "P01213",
+  "name": [
+   "PDYN"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60952,
+  "displayName": "UniProt:P35372 OPRM1",
+  "stId": "uniprot:P35372",
+  "databaseName": "UniProt",
+  "identifier": "P35372",
+  "name": [
+   "OPRM1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55382,
+  "displayName": "UniProt:P62879 GNB2",
+  "stId": "uniprot:P62879",
+  "databaseName": "UniProt",
+  "identifier": "P62879",
+  "name": [
+   "GNB2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55388,
+  "displayName": "UniProt:Q9HAV0 GNB4",
+  "stId": "uniprot:Q9HAV0",
+  "databaseName": "UniProt",
+  "identifier": "Q9HAV0",
+  "name": [
+   "GNB4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 401258,
+  "displayName": "UniProt:O14775 GNB5",
+  "stId": "uniprot:O14775",
+  "databaseName": "UniProt",
+  "identifier": "O14775",
+  "name": [
+   "GNB5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55386,
+  "displayName": "UniProt:P16520 GNB3",
+  "stId": "uniprot:P16520",
+  "databaseName": "UniProt",
+  "identifier": "P16520",
+  "name": [
+   "GNB3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55374,
+  "displayName": "UniProt:P62873 GNB1",
+  "stId": "uniprot:P62873",
+  "databaseName": "UniProt",
+  "identifier": "P62873",
+  "name": [
+   "GNB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55416,
+  "displayName": "UniProt:Q9UK08 GNG8",
+  "stId": "uniprot:Q9UK08",
+  "databaseName": "UniProt",
+  "identifier": "Q9UK08",
+  "name": [
+   "GNG8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55430,
+  "displayName": "UniProt:O14610 GNGT2",
+  "stId": "uniprot:O14610",
+  "databaseName": "UniProt",
+  "identifier": "O14610",
+  "name": [
+   "GNGT2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55394,
+  "displayName": "UniProt:P63211 GNGT1",
+  "stId": "uniprot:P63211",
+  "databaseName": "UniProt",
+  "identifier": "P63211",
+  "name": [
+   "GNGT1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55414,
+  "displayName": "UniProt:O60262 GNG7",
+  "stId": "uniprot:O60262",
+  "databaseName": "UniProt",
+  "identifier": "O60262",
+  "name": [
+   "GNG7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55428,
+  "displayName": "UniProt:Q9P2W3 GNG13",
+  "stId": "uniprot:Q9P2W3",
+  "databaseName": "UniProt",
+  "identifier": "Q9P2W3",
+  "name": [
+   "GNG13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55398,
+  "displayName": "UniProt:P63215 GNG3",
+  "stId": "uniprot:P63215",
+  "databaseName": "UniProt",
+  "identifier": "P63215",
+  "name": [
+   "GNG3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55418,
+  "displayName": "UniProt:P50151 GNG10",
+  "stId": "uniprot:P50151",
+  "databaseName": "UniProt",
+  "identifier": "P50151",
+  "name": [
+   "GNG10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55420,
+  "displayName": "UniProt:P61952 GNG11",
+  "stId": "uniprot:P61952",
+  "databaseName": "UniProt",
+  "identifier": "P61952",
+  "name": [
+   "GNG11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55404,
+  "displayName": "UniProt:P50150 GNG4",
+  "stId": "uniprot:P50150",
+  "databaseName": "UniProt",
+  "identifier": "P50150",
+  "name": [
+   "GNG4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55406,
+  "displayName": "UniProt:P63218 GNG5",
+  "stId": "uniprot:P63218",
+  "databaseName": "UniProt",
+  "identifier": "P63218",
+  "name": [
+   "GNG5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55426,
+  "displayName": "UniProt:Q9UBI6 GNG12",
+  "stId": "uniprot:Q9UBI6",
+  "databaseName": "UniProt",
+  "identifier": "Q9UBI6",
+  "name": [
+   "GNG12"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 91080,
+  "displayName": "UniProt:P59768 GNG2",
+  "stId": "uniprot:P59768",
+  "databaseName": "UniProt",
+  "identifier": "P59768",
+  "name": [
+   "GNG2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55354,
+  "displayName": "UniProt:P29992 GNA11",
+  "stId": "uniprot:P29992",
+  "databaseName": "UniProt",
+  "identifier": "P29992",
+  "name": [
+   "GNA11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55362,
+  "displayName": "UniProt:P30679 GNA15",
+  "stId": "uniprot:P30679",
+  "databaseName": "UniProt",
+  "identifier": "P30679",
+  "name": [
+   "GNA15"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55454,
+  "displayName": "UniProt:P50148 GNAQ",
+  "stId": "uniprot:P50148",
+  "databaseName": "UniProt",
+  "identifier": "P50148",
+  "name": [
+   "GNAQ"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55360,
+  "displayName": "UniProt:O95837 GNA14",
+  "stId": "uniprot:O95837",
+  "databaseName": "UniProt",
+  "identifier": "O95837",
+  "name": [
+   "GNA14"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9736416,
+  "displayName": "GDP(3-) [ChEBI:58189]",
+  "stId": "chebi:58189",
+  "databaseName": "ChEBI",
+  "identifier": "58189",
+  "name": [
+   "GDP(3-)",
+   "5'-O-[(phosphonatooxy)phosphinato]guanosine",
+   "guanosine 5'-diphosphate(3-)",
+   "GDP",
+   "guanosine 5'-diphosphate trianion",
+   "guanosine 5'-diphosphate",
+   "GDP trianion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9736415,
+  "displayName": "GTP(4-) [ChEBI:37565]",
+  "stId": "chebi:37565",
+  "databaseName": "ChEBI",
+  "identifier": "37565",
+  "name": [
+   "GTP(4-)",
+   "GTP",
+   "gtp",
+   "guanosine 5'-triphosphate(4-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ }
+]

@@ -1,0 +1,5 @@
+#alvo_chembl_id	alvo	organismo	tipo_alvo	gene	ensembl	origem	efo_id	sintoma	escore_associacao	escore_rna_expression	familia	familia_colapsados	via_origem	alvo_semente	n_moleculas_treino	no_modelo	observacao
+CHEMBL228	Serotonin transporter	Homo sapiens	SINGLE PROTEIN	SLC6A4	ENSG00000108576	usuario				0	transporter			sim	3493	sim	alvo da duloxetina e da amitriptilina
+CHEMBL222	Norepinephrine transporter	Homo sapiens	SINGLE PROTEIN	SLC6A2	ENSG00000103546	usuario				0	transporter			sim	2000	sim	alvo da duloxetina
+CHEMBL1907606	Glutamate NMDA receptor subunit 1	Homo sapiens	SINGLE PROTEIN	GRIN1	ENSG00000176884	usuario				0	ion channel			sim	500	sim	expressao alta em cortex
+CHEMBL360		Mycobacterium tuberculosis	ORGANISM						0				nao	11049	sim	alvo nao humano: nao tem GTEx	

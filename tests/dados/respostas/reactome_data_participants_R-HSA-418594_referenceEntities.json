@@ -1,0 +1,5787 @@
+[
+ {
+  "dbId": 9736415,
+  "displayName": "GTP(4-) [ChEBI:37565]",
+  "stId": "chebi:37565",
+  "databaseName": "ChEBI",
+  "identifier": "37565",
+  "name": [
+   "GTP(4-)",
+   "GTP",
+   "gtp",
+   "guanosine 5'-triphosphate(4-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55366,
+  "displayName": "UniProt:P08754 GNAI3",
+  "stId": "uniprot:P08754",
+  "databaseName": "UniProt",
+  "identifier": "P08754",
+  "name": [
+   "GNAI3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55432,
+  "displayName": "UniProt:P63096 GNAI1",
+  "stId": "uniprot:P63096",
+  "databaseName": "UniProt",
+  "identifier": "P63096",
+  "name": [
+   "GNAI1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55436,
+  "displayName": "UniProt:P04899 GNAI2",
+  "stId": "uniprot:P04899",
+  "databaseName": "UniProt",
+  "identifier": "P04899",
+  "name": [
+   "GNAI2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 380063,
+  "displayName": "UniProt:A8MTJ3 GNAT3",
+  "stId": "uniprot:A8MTJ3",
+  "databaseName": "UniProt",
+  "identifier": "A8MTJ3",
+  "name": [
+   "GNAT3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 402877,
+  "displayName": "UniProt:P12931 SRC",
+  "stId": "uniprot:P12931",
+  "databaseName": "UniProt",
+  "identifier": "P12931",
+  "name": [
+   "SRC"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9736416,
+  "displayName": "GDP(3-) [ChEBI:58189]",
+  "stId": "chebi:58189",
+  "databaseName": "ChEBI",
+  "identifier": "58189",
+  "name": [
+   "GDP(3-)",
+   "5'-O-[(phosphonatooxy)phosphinato]guanosine",
+   "guanosine 5'-diphosphate(3-)",
+   "GDP",
+   "guanosine 5'-diphosphate trianion",
+   "guanosine 5'-diphosphate",
+   "GDP trianion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55382,
+  "displayName": "UniProt:P62879 GNB2",
+  "stId": "uniprot:P62879",
+  "databaseName": "UniProt",
+  "identifier": "P62879",
+  "name": [
+   "GNB2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55388,
+  "displayName": "UniProt:Q9HAV0 GNB4",
+  "stId": "uniprot:Q9HAV0",
+  "databaseName": "UniProt",
+  "identifier": "Q9HAV0",
+  "name": [
+   "GNB4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 401258,
+  "displayName": "UniProt:O14775 GNB5",
+  "stId": "uniprot:O14775",
+  "databaseName": "UniProt",
+  "identifier": "O14775",
+  "name": [
+   "GNB5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55386,
+  "displayName": "UniProt:P16520 GNB3",
+  "stId": "uniprot:P16520",
+  "databaseName": "UniProt",
+  "identifier": "P16520",
+  "name": [
+   "GNB3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55374,
+  "displayName": "UniProt:P62873 GNB1",
+  "stId": "uniprot:P62873",
+  "databaseName": "UniProt",
+  "identifier": "P62873",
+  "name": [
+   "GNB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55416,
+  "displayName": "UniProt:Q9UK08 GNG8",
+  "stId": "uniprot:Q9UK08",
+  "databaseName": "UniProt",
+  "identifier": "Q9UK08",
+  "name": [
+   "GNG8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55430,
+  "displayName": "UniProt:O14610 GNGT2",
+  "stId": "uniprot:O14610",
+  "databaseName": "UniProt",
+  "identifier": "O14610",
+  "name": [
+   "GNGT2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55394,
+  "displayName": "UniProt:P63211 GNGT1",
+  "stId": "uniprot:P63211",
+  "databaseName": "UniProt",
+  "identifier": "P63211",
+  "name": [
+   "GNGT1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55414,
+  "displayName": "UniProt:O60262 GNG7",
+  "stId": "uniprot:O60262",
+  "databaseName": "UniProt",
+  "identifier": "O60262",
+  "name": [
+   "GNG7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55428,
+  "displayName": "UniProt:Q9P2W3 GNG13",
+  "stId": "uniprot:Q9P2W3",
+  "databaseName": "UniProt",
+  "identifier": "Q9P2W3",
+  "name": [
+   "GNG13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55398,
+  "displayName": "UniProt:P63215 GNG3",
+  "stId": "uniprot:P63215",
+  "databaseName": "UniProt",
+  "identifier": "P63215",
+  "name": [
+   "GNG3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55418,
+  "displayName": "UniProt:P50151 GNG10",
+  "stId": "uniprot:P50151",
+  "databaseName": "UniProt",
+  "identifier": "P50151",
+  "name": [
+   "GNG10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55420,
+  "displayName": "UniProt:P61952 GNG11",
+  "stId": "uniprot:P61952",
+  "databaseName": "UniProt",
+  "identifier": "P61952",
+  "name": [
+   "GNG11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55404,
+  "displayName": "UniProt:P50150 GNG4",
+  "stId": "uniprot:P50150",
+  "databaseName": "UniProt",
+  "identifier": "P50150",
+  "name": [
+   "GNG4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55406,
+  "displayName": "UniProt:P63218 GNG5",
+  "stId": "uniprot:P63218",
+  "databaseName": "UniProt",
+  "identifier": "P63218",
+  "name": [
+   "GNG5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55426,
+  "displayName": "UniProt:Q9UBI6 GNG12",
+  "stId": "uniprot:Q9UBI6",
+  "databaseName": "UniProt",
+  "identifier": "Q9UBI6",
+  "name": [
+   "GNG12"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 91080,
+  "displayName": "UniProt:P59768 GNG2",
+  "stId": "uniprot:P59768",
+  "databaseName": "UniProt",
+  "identifier": "P59768",
+  "name": [
+   "GNG2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 221888,
+  "displayName": "UniProt:Q8NHW4 CCL4L1",
+  "stId": "uniprot:Q8NHW4",
+  "databaseName": "UniProt",
+  "identifier": "Q8NHW4",
+  "name": [
+   "CCL4L1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65348,
+  "displayName": "UniProt:P13236 CCL4",
+  "stId": "uniprot:P13236",
+  "databaseName": "UniProt",
+  "identifier": "P13236",
+  "name": [
+   "CCL4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52180,
+  "displayName": "UniProt:P32246 CCR1",
+  "stId": "uniprot:P32246",
+  "databaseName": "UniProt",
+  "identifier": "P32246",
+  "name": [
+   "CCR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52188,
+  "displayName": "UniProt:P51681 CCR5",
+  "stId": "uniprot:P51681",
+  "databaseName": "UniProt",
+  "identifier": "P51681",
+  "name": [
+   "CCR5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54916,
+  "displayName": "UniProt:P25090 FPR2",
+  "stId": "uniprot:P25090",
+  "databaseName": "UniProt",
+  "identifier": "P25090",
+  "name": [
+   "FPR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 69781,
+  "displayName": "UniProt:P05067 APP",
+  "stId": "uniprot:P05067",
+  "databaseName": "UniProt",
+  "identifier": "P05067",
+  "name": [
+   "APP"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 154507,
+  "displayName": "UniProt:P55773-2 CCL23",
+  "stId": "uniprot:P55773-2",
+  "databaseName": "UniProt",
+  "identifier": "P55773",
+  "name": [
+   "CCL23"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 9916413,
+  "displayName": "lipoxin A4(1-) [ChEBI:67026]",
+  "stId": "chebi:67026",
+  "databaseName": "ChEBI",
+  "identifier": "67026",
+  "name": [
+   "lipoxin A4(1-)",
+   "lipoxin A4",
+   "(5S,6R,7E,9E,11Z,13E,15S)-5,6,15-trihydroxyicosa-7,9,11,13-tetraenoate",
+   "lipoxin A4 anion",
+   "(5S,6R,7E,9E,11Z,13E,15S)-5,6,15-trihydroxy-7,9,11,13-eicosatetraenoate",
+   "(5S,6R,15S)-trihydroxy-7,9,13-trans-11-cis-eicosatetraenoate",
+   "(5S,6R,7E,9E,11Z,13E,15S)-5,6,15-trihydroxyeicosa-7,9,11,13-tetraenoate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 2455481,
+  "displayName": "UniProt:P0DJI8 SAA1",
+  "stId": "uniprot:P0DJI8",
+  "databaseName": "UniProt",
+  "identifier": "P0DJI8",
+  "name": [
+   "SAA1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50042,
+  "displayName": "UniProt:P04083 ANXA1",
+  "stId": "uniprot:P04083",
+  "databaseName": "UniProt",
+  "identifier": "P04083",
+  "name": [
+   "ANXA1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 148474,
+  "displayName": "UniProt:Q8IVG9 MT-RNR2",
+  "stId": "uniprot:Q8IVG9",
+  "databaseName": "UniProt",
+  "identifier": "Q8IVG9",
+  "name": [
+   "MT-RNR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 239772,
+  "displayName": "UniProt:Q9HB89 NMUR1",
+  "stId": "uniprot:Q9HB89",
+  "databaseName": "UniProt",
+  "identifier": "Q9HB89",
+  "name": [
+   "NMUR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 239776,
+  "displayName": "UniProt:Q9GZQ4 NMUR2",
+  "stId": "uniprot:Q9GZQ4",
+  "databaseName": "UniProt",
+  "identifier": "Q9GZQ4",
+  "name": [
+   "NMUR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60105,
+  "displayName": "UniProt:P48645 NMU",
+  "stId": "uniprot:P48645",
+  "databaseName": "UniProt",
+  "identifier": "P48645",
+  "name": [
+   "NMU"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9915908,
+  "displayName": "5-oxo-ETE(1-) [ChEBI:65342]",
+  "stId": "chebi:65342",
+  "databaseName": "ChEBI",
+  "identifier": "65342",
+  "name": [
+   "5-oxo-ETE(1-)",
+   "5-oxo-6E,8Z,11Z,14Z-eicosatetraenoate",
+   "(6E,8Z,11Z,14Z)-5-oxoeicosa-6,8,11,14-tetraenoate",
+   "5-oxo-(6E,8Z,11Z,14Z)-eicosatetraenoate",
+   "(6E,8Z,11Z,14Z)-5-oxoicosa-6,8,11,14-tetraenoate",
+   "5-oxo-6E,8Z,11Z,14Z-icosatetraenoate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 241345,
+  "displayName": "UniProt:Q8TDS5 OXER1",
+  "stId": "uniprot:Q8TDS5",
+  "databaseName": "UniProt",
+  "identifier": "Q8TDS5",
+  "name": [
+   "OXER1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61146,
+  "displayName": "UniProt:P51582 P2RY4",
+  "stId": "uniprot:P51582",
+  "databaseName": "UniProt",
+  "identifier": "P51582",
+  "name": [
+   "P2RY4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9737136,
+  "displayName": "UTP(4-) [ChEBI:46398]",
+  "stId": "chebi:46398",
+  "databaseName": "ChEBI",
+  "identifier": "46398",
+  "name": [
+   "UTP(4-)",
+   "UTP",
+   "utp",
+   "uridine 5'-triphosphate(4-)",
+   "URIDINE 5'-TRIPHOSPHATE"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 231010,
+  "displayName": "UniProt:Q9Y2T6 GPR55",
+  "stId": "uniprot:Q9Y2T6",
+  "databaseName": "UniProt",
+  "identifier": "Q9Y2T6",
+  "name": [
+   "GPR55"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 51462,
+  "displayName": "UniProt:P21554 CNR1",
+  "stId": "uniprot:P21554",
+  "databaseName": "UniProt",
+  "identifier": "P21554",
+  "name": [
+   "CNR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 51466,
+  "displayName": "UniProt:P34972 CNR2",
+  "stId": "uniprot:P34972",
+  "databaseName": "UniProt",
+  "identifier": "P34972",
+  "name": [
+   "CNR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 444547,
+  "displayName": "anandamide [ChEBI:2700]",
+  "stId": "chebi:2700",
+  "databaseName": "ChEBI",
+  "identifier": "2700",
+  "name": [
+   "anandamide"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 419307,
+  "displayName": "2-arachidonoylglycerol [ChEBI:52392]",
+  "stId": "chebi:52392",
+  "databaseName": "ChEBI",
+  "identifier": "52392",
+  "name": [
+   "2-arachidonoylglycerol"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 239768,
+  "displayName": "UniProt:Q5H8A3 NMS",
+  "stId": "uniprot:Q5H8A3",
+  "databaseName": "UniProt",
+  "identifier": "Q5H8A3",
+  "name": [
+   "NMS"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53379,
+  "displayName": "UniProt:P35462 DRD3",
+  "stId": "uniprot:P35462",
+  "databaseName": "UniProt",
+  "identifier": "P35462",
+  "name": [
+   "DRD3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53383,
+  "displayName": "UniProt:P21917 DRD4",
+  "stId": "uniprot:P21917",
+  "databaseName": "UniProt",
+  "identifier": "P21917",
+  "name": [
+   "DRD4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9760899,
+  "displayName": "dopaminium(1+) [ChEBI:59905]",
+  "stId": "chebi:59905",
+  "databaseName": "ChEBI",
+  "identifier": "59905",
+  "name": [
+   "dopaminium(1+)",
+   "2-(3,4-dihydroxyphenyl)ethan-1-aminium",
+   "dopaminium cation",
+   "dopamine",
+   "2-(3,4-dihydroxyphenyl)ethanaminium"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 52192,
+  "displayName": "UniProt:P32248 CCR7",
+  "stId": "uniprot:P32248",
+  "databaseName": "UniProt",
+  "identifier": "P32248",
+  "name": [
+   "CCR7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65368,
+  "displayName": "UniProt:Q99731 CCL19",
+  "stId": "uniprot:Q99731",
+  "databaseName": "UniProt",
+  "identifier": "Q99731",
+  "name": [
+   "CCL19"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65372,
+  "displayName": "UniProt:O00585 CCL21",
+  "stId": "uniprot:O00585",
+  "databaseName": "UniProt",
+  "identifier": "O00585",
+  "name": [
+   "CCL21"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9912872,
+  "displayName": "UDP-alpha-D-glucose(2-) [ChEBI:58885]",
+  "stId": "chebi:58885",
+  "databaseName": "ChEBI",
+  "identifier": "58885",
+  "name": [
+   "UDP-alpha-D-glucose(2-)",
+   "uridine 5'-[3-alpha-D-glucopyranosyl diphosphate]",
+   "UDP-alpha-D-glucose"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 61162,
+  "displayName": "UniProt:Q15391 P2RY14",
+  "stId": "uniprot:Q15391",
+  "databaseName": "UniProt",
+  "identifier": "Q15391",
+  "name": [
+   "P2RY14"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61932,
+  "displayName": "UniProt:Q13519 PNOC",
+  "stId": "uniprot:Q13519",
+  "databaseName": "UniProt",
+  "identifier": "Q13519",
+  "name": [
+   "PNOC"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60954,
+  "displayName": "UniProt:P41146 OPRL1",
+  "stId": "uniprot:P41146",
+  "databaseName": "UniProt",
+  "identifier": "P41146",
+  "name": [
+   "OPRL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 51112,
+  "displayName": "UniProt:P21730 C5AR1",
+  "stId": "uniprot:P21730",
+  "databaseName": "UniProt",
+  "identifier": "P21730",
+  "name": [
+   "C5AR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52474,
+  "displayName": "UniProt:P01031 C5",
+  "stId": "uniprot:P01031",
+  "databaseName": "UniProt",
+  "identifier": "P01031",
+  "name": [
+   "C5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 404128,
+  "displayName": "UniProt:P48061 CXCL12",
+  "stId": "uniprot:P48061",
+  "databaseName": "UniProt",
+  "identifier": "P48061",
+  "name": [
+   "CXCL12"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 62904,
+  "displayName": "UniProt:P25106 ACKR3",
+  "stId": "uniprot:P25106",
+  "databaseName": "UniProt",
+  "identifier": "P25106",
+  "name": [
+   "ACKR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 404591,
+  "displayName": "UniProt:P61073 CXCR4",
+  "stId": "uniprot:P61073",
+  "databaseName": "UniProt",
+  "identifier": "P61073",
+  "name": [
+   "CXCR4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8869367,
+  "displayName": "ADP(3-) [ChEBI:456216]",
+  "stId": "chebi:456216",
+  "databaseName": "ChEBI",
+  "identifier": "456216",
+  "name": [
+   "ADP(3-)",
+   "ADP",
+   "5&apos;-O-[(phosphonatooxy)phosphinato]adenosine",
+   "ADP trianion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 91523,
+  "displayName": "UniProt:Q9BPV8 P2RY13",
+  "stId": "uniprot:Q9BPV8",
+  "databaseName": "UniProt",
+  "identifier": "Q9BPV8",
+  "name": [
+   "P2RY13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55308,
+  "displayName": "UniProt:O43603 GALR2",
+  "stId": "uniprot:O43603",
+  "databaseName": "UniProt",
+  "identifier": "O43603",
+  "name": [
+   "GALR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55306,
+  "displayName": "UniProt:P47211 GALR1",
+  "stId": "uniprot:P47211",
+  "databaseName": "UniProt",
+  "identifier": "P47211",
+  "name": [
+   "GALR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55310,
+  "displayName": "UniProt:O60755 GALR3",
+  "stId": "uniprot:O60755",
+  "databaseName": "UniProt",
+  "identifier": "O60755",
+  "name": [
+   "GALR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55298,
+  "displayName": "UniProt:P22466 GAL",
+  "stId": "uniprot:P22466",
+  "databaseName": "UniProt",
+  "identifier": "P22466",
+  "name": [
+   "GAL"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65350,
+  "displayName": "UniProt:P13501 CCL5",
+  "stId": "uniprot:P13501",
+  "databaseName": "UniProt",
+  "identifier": "P13501",
+  "name": [
+   "CCL5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52184,
+  "displayName": "UniProt:P51677 CCR3",
+  "stId": "uniprot:P51677",
+  "databaseName": "UniProt",
+  "identifier": "P51677",
+  "name": [
+   "CCR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52186,
+  "displayName": "UniProt:P51679 CCR4",
+  "stId": "uniprot:P51679",
+  "databaseName": "UniProt",
+  "identifier": "P51679",
+  "name": [
+   "CCR4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5317527,
+  "displayName": "(S)-lactate [ChEBI:16651]",
+  "stId": "chebi:16651",
+  "databaseName": "ChEBI",
+  "identifier": "16651",
+  "name": [
+   "(S)-lactate",
+   "L-lactate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 91520,
+  "displayName": "UniProt:Q9BXC0 HCAR1",
+  "stId": "uniprot:Q9BXC0",
+  "databaseName": "UniProt",
+  "identifier": "Q9BXC0",
+  "name": [
+   "HCAR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50946,
+  "displayName": "UniProt:P46663 BDKRB1",
+  "stId": "uniprot:P46663",
+  "databaseName": "UniProt",
+  "identifier": "P46663",
+  "name": [
+   "BDKRB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50948,
+  "displayName": "UniProt:P30411 BDKRB2",
+  "stId": "uniprot:P30411",
+  "databaseName": "UniProt",
+  "identifier": "P30411",
+  "name": [
+   "BDKRB2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 58181,
+  "displayName": "UniProt:P01042 KNG1",
+  "stId": "uniprot:P01042",
+  "databaseName": "UniProt",
+  "identifier": "P01042",
+  "name": [
+   "KNG1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49166,
+  "displayName": "UniProt:P28222 HTR1B",
+  "stId": "uniprot:P28222",
+  "databaseName": "UniProt",
+  "identifier": "P28222",
+  "name": [
+   "HTR1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49170,
+  "displayName": "UniProt:P28566 HTR1E",
+  "stId": "uniprot:P28566",
+  "databaseName": "UniProt",
+  "identifier": "P28566",
+  "name": [
+   "HTR1E"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49172,
+  "displayName": "UniProt:P30939 HTR1F",
+  "stId": "uniprot:P30939",
+  "databaseName": "UniProt",
+  "identifier": "P30939",
+  "name": [
+   "HTR1F"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49168,
+  "displayName": "UniProt:P28221 HTR1D",
+  "stId": "uniprot:P28221",
+  "databaseName": "UniProt",
+  "identifier": "P28221",
+  "name": [
+   "HTR1D"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49182,
+  "displayName": "UniProt:P47898 HTR5A",
+  "stId": "uniprot:P47898",
+  "databaseName": "UniProt",
+  "identifier": "P47898",
+  "name": [
+   "HTR5A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9760913,
+  "displayName": "serotonin(1+) [ChEBI:350546]",
+  "stId": "chebi:350546",
+  "databaseName": "ChEBI",
+  "identifier": "350546",
+  "name": [
+   "serotonin(1+)",
+   "serotonin",
+   "serotonin cation",
+   "2-(5-hydroxy-1H-indol-3-yl)ethanaminium"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 61158,
+  "displayName": "UniProt:Q9H244 P2RY12",
+  "stId": "uniprot:Q9H244",
+  "databaseName": "UniProt",
+  "identifier": "Q9H244",
+  "name": [
+   "P2RY12"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57285,
+  "displayName": "UniProt:P25024 CXCR1",
+  "stId": "uniprot:P25024",
+  "databaseName": "UniProt",
+  "identifier": "P25024",
+  "name": [
+   "CXCR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 402743,
+  "displayName": "UniProt:P10145 CXCL8",
+  "stId": "uniprot:P10145",
+  "databaseName": "UniProt",
+  "identifier": "P10145",
+  "name": [
+   "CXCL8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65482,
+  "displayName": "UniProt:P80162 CXCL6",
+  "stId": "uniprot:P80162",
+  "databaseName": "UniProt",
+  "identifier": "P80162",
+  "name": [
+   "CXCL6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 99811,
+  "displayName": "UniProt:Q8WXF3 RLN3",
+  "stId": "uniprot:Q8WXF3",
+  "databaseName": "UniProt",
+  "identifier": "Q8WXF3",
+  "name": [
+   "RLN3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 64132,
+  "displayName": "UniProt:Q9NSD7 RXFP3",
+  "stId": "uniprot:Q9NSD7",
+  "databaseName": "UniProt",
+  "identifier": "Q9NSD7",
+  "name": [
+   "RXFP3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9817232,
+  "displayName": "(R)-adrenaline(1+) [ChEBI:71406]",
+  "stId": "chebi:71406",
+  "databaseName": "ChEBI",
+  "identifier": "71406",
+  "name": [
+   "(R)-adrenaline(1+)",
+   "(R)-adrenaline",
+   "L-epinephrine(1+)",
+   "L-epinephrine cation",
+   "(R)-adrenaline cation",
+   "(2R)-2-(3,4-dihydroxyphenyl)-2-hydroxy-N-methylethanaminium"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9817233,
+  "displayName": "(R)-noradrenaline(1+) [ChEBI:72587]",
+  "stId": "chebi:72587",
+  "databaseName": "ChEBI",
+  "identifier": "72587",
+  "name": [
+   "(R)-noradrenaline(1+)",
+   "(R)-noradrenalinium cation",
+   "(R)-noradrenalinium(1+)",
+   "(R)-noradrenaline cation",
+   "(R)-noradrenaline",
+   "(2R)-2-(3,4-dihydroxyphenyl)-2-hydroxyethanaminium"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 143634,
+  "displayName": "UniProt:P18825 ADRA2C",
+  "stId": "uniprot:P18825",
+  "databaseName": "UniProt",
+  "identifier": "P18825",
+  "name": [
+   "ADRA2C"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49268,
+  "displayName": "UniProt:P18089 ADRA2B",
+  "stId": "uniprot:P18089",
+  "databaseName": "UniProt",
+  "identifier": "P18089",
+  "name": [
+   "ADRA2B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49266,
+  "displayName": "UniProt:P08913 ADRA2A",
+  "stId": "uniprot:P08913",
+  "databaseName": "UniProt",
+  "identifier": "P08913",
+  "name": [
+   "ADRA2A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50136,
+  "displayName": "UniProt:P35414 APLNR",
+  "stId": "uniprot:P35414",
+  "databaseName": "UniProt",
+  "identifier": "P35414",
+  "name": [
+   "APLNR"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50122,
+  "displayName": "UniProt:Q9ULZ1 APLN",
+  "stId": "uniprot:Q9ULZ1",
+  "databaseName": "UniProt",
+  "identifier": "Q9ULZ1",
+  "name": [
+   "APLN"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54486,
+  "displayName": "UniProt:O60883 GPR37L1",
+  "stId": "uniprot:O60883",
+  "databaseName": "UniProt",
+  "identifier": "O60883",
+  "name": [
+   "GPR37L1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 64134,
+  "displayName": "UniProt:P07602 PSAP",
+  "stId": "uniprot:P07602",
+  "databaseName": "UniProt",
+  "identifier": "P07602",
+  "name": [
+   "PSAP"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55826,
+  "displayName": "UniProt:O15354 GPR37",
+  "stId": "uniprot:O15354",
+  "databaseName": "UniProt",
+  "identifier": "O15354",
+  "name": [
+   "GPR37"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5316172,
+  "displayName": "2-oxoglutarate(2-) [ChEBI:16810]",
+  "stId": "chebi:16810",
+  "databaseName": "ChEBI",
+  "identifier": "16810",
+  "name": [
+   "2-oxoglutarate(2-)",
+   "2-ketoglutarate",
+   "alpha-ketoglutarate",
+   "2-oxopentanedioic acid, ion(2-)",
+   "2-oxoglutarate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 91519,
+  "displayName": "UniProt:Q96P68 OXGR1",
+  "stId": "uniprot:Q96P68",
+  "databaseName": "UniProt",
+  "identifier": "Q96P68",
+  "name": [
+   "OXGR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59325,
+  "displayName": "UniProt:P48039 MTNR1A",
+  "stId": "uniprot:P48039",
+  "databaseName": "UniProt",
+  "identifier": "P48039",
+  "name": [
+   "MTNR1A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59327,
+  "displayName": "UniProt:P49286 MTNR1B",
+  "stId": "uniprot:P49286",
+  "databaseName": "UniProt",
+  "identifier": "P49286",
+  "name": [
+   "MTNR1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 31977,
+  "displayName": "melatonin [ChEBI:16796]",
+  "stId": "chebi:16796",
+  "databaseName": "ChEBI",
+  "identifier": "16796",
+  "name": [
+   "melatonin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 51608,
+  "displayName": "UniProt:O00574 CXCR6",
+  "stId": "uniprot:O00574",
+  "databaseName": "UniProt",
+  "identifier": "O00574",
+  "name": [
+   "CXCR6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65496,
+  "displayName": "UniProt:Q9H2A7 CXCL16",
+  "stId": "uniprot:Q9H2A7",
+  "databaseName": "UniProt",
+  "identifier": "Q9H2A7",
+  "name": [
+   "CXCL16"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 517532,
+  "displayName": "N-arachidonoylglycine [ChEBI:58961]",
+  "stId": "chebi:58961",
+  "databaseName": "ChEBI",
+  "identifier": "58961",
+  "name": [
+   "N-arachidonoylglycine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55800,
+  "displayName": "UniProt:Q14330 GPR18",
+  "stId": "uniprot:Q14330",
+  "databaseName": "UniProt",
+  "identifier": "Q14330",
+  "name": [
+   "GPR18"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 417905,
+  "displayName": "1-octadec-9-enoylglycero-3-phosphate [ChEBI:52288]",
+  "stId": "chebi:52288",
+  "databaseName": "ChEBI",
+  "identifier": "52288",
+  "name": [
+   "1-octadec-9-enoylglycero-3-phosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 54158,
+  "displayName": "UniProt:Q9UBY5 LPAR3",
+  "stId": "uniprot:Q9UBY5",
+  "databaseName": "UniProt",
+  "identifier": "Q9UBY5",
+  "name": [
+   "LPAR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54156,
+  "displayName": "UniProt:Q9HBW0 LPAR2",
+  "stId": "uniprot:Q9HBW0",
+  "databaseName": "UniProt",
+  "identifier": "Q9HBW0",
+  "name": [
+   "LPAR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 91527,
+  "displayName": "UniProt:Q9H1C0 LPAR5",
+  "stId": "uniprot:Q9H1C0",
+  "databaseName": "UniProt",
+  "identifier": "Q9H1C0",
+  "name": [
+   "LPAR5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54152,
+  "displayName": "UniProt:Q92633 LPAR1",
+  "stId": "uniprot:Q92633",
+  "databaseName": "UniProt",
+  "identifier": "Q92633",
+  "name": [
+   "LPAR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 3296389,
+  "displayName": "brucine [ChEBI:3193]",
+  "stId": "chebi:3193",
+  "databaseName": "ChEBI",
+  "identifier": "3193",
+  "name": [
+   "brucine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 37927,
+  "displayName": "coumarin [ChEBI:28794]",
+  "stId": "chebi:28794",
+  "databaseName": "ChEBI",
+  "identifier": "28794",
+  "name": [
+   "coumarin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296415,
+  "displayName": "Cnicin [ChEBI:3768]",
+  "stId": "chebi:3768",
+  "databaseName": "ChEBI",
+  "identifier": "3768",
+  "name": [
+   "Cnicin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 44224,
+  "displayName": "yohimbine [ChEBI:10093]",
+  "stId": "chebi:10093",
+  "databaseName": "ChEBI",
+  "identifier": "10093",
+  "name": [
+   "yohimbine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 31767,
+  "displayName": "salicin [ChEBI:17814]",
+  "stId": "chebi:17814",
+  "databaseName": "ChEBI",
+  "identifier": "17814",
+  "name": [
+   "salicin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 114909,
+  "displayName": "caffeine [ChEBI:27732]",
+  "stId": "chebi:27732",
+  "databaseName": "ChEBI",
+  "identifier": "27732",
+  "name": [
+   "caffeine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296455,
+  "displayName": "picrotoxinin [ChEBI:8206]",
+  "stId": "chebi:8206",
+  "databaseName": "ChEBI",
+  "identifier": "8206",
+  "name": [
+   "picrotoxinin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296385,
+  "displayName": "erythromycin [ChEBI:48923]",
+  "stId": "chebi:48923",
+  "databaseName": "ChEBI",
+  "identifier": "48923",
+  "name": [
+   "erythromycin",
+   "eritromicina",
+   "erythromycine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 38937,
+  "displayName": "strychnine [ChEBI:28973]",
+  "stId": "chebi:28973",
+  "databaseName": "ChEBI",
+  "identifier": "28973",
+  "name": [
+   "strychnine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296438,
+  "displayName": "arglabin [ChEBI:73228]",
+  "stId": "chebi:73228",
+  "databaseName": "ChEBI",
+  "identifier": "73228",
+  "name": [
+   "arglabin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296421,
+  "displayName": "colchicine [ChEBI:23359]",
+  "stId": "chebi:23359",
+  "databaseName": "ChEBI",
+  "identifier": "23359",
+  "name": [
+   "colchicine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296398,
+  "displayName": "papaverine [ChEBI:28241]",
+  "stId": "chebi:28241",
+  "databaseName": "ChEBI",
+  "identifier": "28241",
+  "name": [
+   "papaverine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296402,
+  "displayName": "arborescin [ChEBI:73226]",
+  "stId": "chebi:73226",
+  "databaseName": "ChEBI",
+  "identifier": "73226",
+  "name": [
+   "arborescin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296393,
+  "displayName": "allyl isothiocyanate [ChEBI:73224]",
+  "stId": "chebi:73224",
+  "databaseName": "ChEBI",
+  "identifier": "73224",
+  "name": [
+   "allyl isothiocyanate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296419,
+  "displayName": "andrographolide [ChEBI:65408]",
+  "stId": "chebi:65408",
+  "databaseName": "ChEBI",
+  "identifier": "65408",
+  "name": [
+   "andrographolide"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296409,
+  "displayName": "cucurbitacin E [ChEBI:3944]",
+  "stId": "chebi:3944",
+  "databaseName": "ChEBI",
+  "identifier": "3944",
+  "name": [
+   "cucurbitacin E",
+   "(23E)-25-acetyloxy-2,16alpha,20-trihydroxy-9beta-methyl-19-nor-10alpha-lanosta-1,5,23-triene-3,11,22-trione",
+   "alpha-Elaterine",
+   "alpha-Elaterin",
+   "2,16alpha,20,25-tetrahydroxy-9-methyl-19-nor-9beta,10alpha-lanosta-1,5,23-triene-3,11,22-trione 25-acetate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296382,
+  "displayName": "helicin [ChEBI:73235]",
+  "stId": "chebi:73235",
+  "databaseName": "ChEBI",
+  "identifier": "73235",
+  "name": [
+   "helicin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296391,
+  "displayName": "crispolide [ChEBI:73231]",
+  "stId": "chebi:73231",
+  "databaseName": "ChEBI",
+  "identifier": "73231",
+  "name": [
+   "crispolide"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296388,
+  "displayName": "limonin [ChEBI:16226]",
+  "stId": "chebi:16226",
+  "databaseName": "ChEBI",
+  "identifier": "16226",
+  "name": [
+   "limonin",
+   "7,16-Dioxo-7,16-dideoxylimondiol",
+   "Citrolimonin",
+   "Limonoic acid, di-delta-lactone",
+   "Obaculactone",
+   "Limonoate D-ring-lactone",
+   "limonoic acid 3,19:16,17-dilactone",
+   "Dictamnolactone",
+   "Evodin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 42389,
+  "displayName": "amygdalin [ChEBI:27613]",
+  "stId": "chebi:27613",
+  "databaseName": "ChEBI",
+  "identifier": "27613",
+  "name": [
+   "amygdalin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296405,
+  "displayName": "Grosshemin [ChEBI:5547]",
+  "stId": "chebi:5547",
+  "databaseName": "ChEBI",
+  "identifier": "5547",
+  "name": [
+   "Grosshemin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296384,
+  "displayName": "aristolochic acid A [ChEBI:2825]",
+  "stId": "chebi:2825",
+  "databaseName": "ChEBI",
+  "identifier": "2825",
+  "name": [
+   "aristolochic acid A"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296383,
+  "displayName": "ethylpyrazine [ChEBI:73232]",
+  "stId": "chebi:73232",
+  "databaseName": "ChEBI",
+  "identifier": "73232",
+  "name": [
+   "ethylpyrazine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296396,
+  "displayName": "hydroquinone O-beta-D-glucopyranoside [ChEBI:18305]",
+  "stId": "chebi:18305",
+  "databaseName": "ChEBI",
+  "identifier": "18305",
+  "name": [
+   "hydroquinone O-beta-D-glucopyranoside",
+   "p-hydroxyphenyl beta-D-glucopyranoside",
+   "p-hydroxyphenyl beta-D-glucoside",
+   "Uvasol",
+   "Ursin",
+   "Hydroquinone-O-beta-D-glucopyranoside",
+   "Arbutin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296437,
+  "displayName": "Cascarillin [ChEBI:3445]",
+  "stId": "chebi:3445",
+  "databaseName": "ChEBI",
+  "identifier": "3445",
+  "name": [
+   "Cascarillin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296408,
+  "displayName": "camphor [ChEBI:36773]",
+  "stId": "chebi:36773",
+  "databaseName": "ChEBI",
+  "identifier": "36773",
+  "name": [
+   "camphor",
+   "Kampfer",
+   "spirit of camphor",
+   "root bark oil",
+   "Formosa camphor",
+   "2-keto-1,7,7-trimethylnorcamphane",
+   "laurel camphor",
+   "2-camphanone",
+   "gum camphor",
+   "Japan camphor",
+   "2-bornanone"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 45240,
+  "displayName": "amarogentin [ChEBI:2622]",
+  "stId": "chebi:2622",
+  "databaseName": "ChEBI",
+  "identifier": "2622",
+  "name": [
+   "amarogentin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296406,
+  "displayName": "(-)-noscapine [ChEBI:73237]",
+  "stId": "chebi:73237",
+  "databaseName": "ChEBI",
+  "identifier": "73237",
+  "name": [
+   "(-)-noscapine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 44284,
+  "displayName": "absinthin [ChEBI:2366]",
+  "stId": "chebi:2366",
+  "databaseName": "ChEBI",
+  "identifier": "2366",
+  "name": [
+   "absinthin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296392,
+  "displayName": "cucurbitacin B [ChEBI:3941]",
+  "stId": "chebi:3941",
+  "databaseName": "ChEBI",
+  "identifier": "3941",
+  "name": [
+   "cucurbitacin B",
+   "1,2-dihydro-alpha-elaterin",
+   "2beta,16alpha,20,25-tetrahydroxy-9-methyl-3,11,22-trioxo-19-nor-9beta,10alpha-lanosta-5,23-dien-25-yl acetate",
+   "2beta,16alpha,20,25-tetrahydroxy-9-methyl-19-nor-9beta,10alpha-lanosta-5,23-diene-3,11,22-trione, 25-acetate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 40981,
+  "displayName": "parthenolide [ChEBI:7939]",
+  "stId": "chebi:7939",
+  "databaseName": "ChEBI",
+  "identifier": "7939",
+  "name": [
+   "parthenolide"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296449,
+  "displayName": "phenethyl isothiocyanate [ChEBI:351346]",
+  "stId": "chebi:351346",
+  "databaseName": "ChEBI",
+  "identifier": "351346",
+  "name": [
+   "phenethyl isothiocyanate",
+   "2-Phenylethyl isothiocyanate",
+   "Phenylethyl isothiocyanate",
+   "PEITC",
+   "Phenethyl mustard oil",
+   "beta-phenylethyl isothiocyanate",
+   "beta-phenethyl isothiocyanate",
+   "(2-Isothiocyanatoethyl)benzene",
+   "Phenylaethylsenfoel"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296458,
+  "displayName": "Quassin [ChEBI:8692]",
+  "stId": "chebi:8692",
+  "databaseName": "ChEBI",
+  "identifier": "8692",
+  "name": [
+   "Quassin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296448,
+  "displayName": "tatridin B [ChEBI:73239]",
+  "stId": "chebi:73239",
+  "databaseName": "ChEBI",
+  "identifier": "73239",
+  "name": [
+   "tatridin B"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 38945,
+  "displayName": "quinine [ChEBI:15854]",
+  "stId": "chebi:15854",
+  "databaseName": "ChEBI",
+  "identifier": "15854",
+  "name": [
+   "quinine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 42582,
+  "displayName": "sinigrin(1-) [ChEBI:9162]",
+  "stId": "chebi:9162",
+  "databaseName": "ChEBI",
+  "identifier": "9162",
+  "name": [
+   "sinigrin(1-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296456,
+  "displayName": "vitamin B1 [ChEBI:26948]",
+  "stId": "chebi:26948",
+  "databaseName": "ChEBI",
+  "identifier": "26948",
+  "name": [
+   "vitamin B1"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296453,
+  "displayName": "alpha-thujone [ChEBI:50042]",
+  "stId": "chebi:50042",
+  "databaseName": "ChEBI",
+  "identifier": "50042",
+  "name": [
+   "alpha-thujone",
+   "rel-(1R,4S,5S)-1-isopropyl-4-methylbicyclo[3.1.0]hexan-3-one"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296418,
+  "displayName": "falcarindiol [ChEBI:69236]",
+  "stId": "chebi:69236",
+  "databaseName": "ChEBI",
+  "identifier": "69236",
+  "name": [
+   "falcarindiol"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296429,
+  "displayName": "aloin [ChEBI:73222]",
+  "stId": "chebi:73222",
+  "databaseName": "ChEBI",
+  "identifier": "73222",
+  "name": [
+   "aloin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 30953,
+  "displayName": "chloramphenicol [ChEBI:17698]",
+  "stId": "chebi:17698",
+  "databaseName": "ChEBI",
+  "identifier": "17698",
+  "name": [
+   "chloramphenicol"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 3296394,
+  "displayName": "(+)-cis-isohumulone [ChEBI:73236]",
+  "stId": "chebi:73236",
+  "databaseName": "ChEBI",
+  "identifier": "73236",
+  "name": [
+   "(+)-cis-isohumulone"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 44402,
+  "displayName": "artemorin [ChEBI:2853]",
+  "stId": "chebi:2853",
+  "databaseName": "ChEBI",
+  "identifier": "2853",
+  "name": [
+   "artemorin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 102958,
+  "displayName": "UniProt:Q9NYV8 TAS2R14",
+  "stId": "uniprot:Q9NYV8",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYV8",
+  "name": [
+   "TAS2R14"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103740,
+  "displayName": "UniProt:P59544 TAS2R50",
+  "stId": "uniprot:P59544",
+  "databaseName": "UniProt",
+  "identifier": "P59544",
+  "name": [
+   "TAS2R50"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103731,
+  "displayName": "UniProt:P59537 TAS2R43",
+  "stId": "uniprot:P59537",
+  "databaseName": "UniProt",
+  "identifier": "P59537",
+  "name": [
+   "TAS2R43"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103747,
+  "displayName": "UniProt:P59551 TAS2R60",
+  "stId": "uniprot:P59551",
+  "databaseName": "UniProt",
+  "identifier": "P59551",
+  "name": [
+   "TAS2R60"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103730,
+  "displayName": "UniProt:P59536 TAS2R41",
+  "stId": "uniprot:P59536",
+  "databaseName": "UniProt",
+  "identifier": "P59536",
+  "name": [
+   "TAS2R41"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102949,
+  "displayName": "UniProt:Q9NYW0 TAS2R10",
+  "stId": "uniprot:Q9NYW0",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW0",
+  "name": [
+   "TAS2R10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102944,
+  "displayName": "UniProt:Q9NYW2 TAS2R8",
+  "stId": "uniprot:Q9NYW2",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW2",
+  "name": [
+   "TAS2R8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102935,
+  "displayName": "UniProt:Q9NYW6 TAS2R3",
+  "stId": "uniprot:Q9NYW6",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW6",
+  "name": [
+   "TAS2R3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103735,
+  "displayName": "UniProt:P59541 TAS2R30",
+  "stId": "uniprot:P59541",
+  "databaseName": "UniProt",
+  "identifier": "P59541",
+  "name": [
+   "TAS2R30"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103732,
+  "displayName": "UniProt:P59538 TAS2R31",
+  "stId": "uniprot:P59538",
+  "databaseName": "UniProt",
+  "identifier": "P59538",
+  "name": [
+   "TAS2R31"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103737,
+  "displayName": "UniProt:P59543 TAS2R20",
+  "stId": "uniprot:P59543",
+  "databaseName": "UniProt",
+  "identifier": "P59543",
+  "name": [
+   "TAS2R20"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103736,
+  "displayName": "UniProt:P59542 TAS2R19",
+  "stId": "uniprot:P59542",
+  "databaseName": "UniProt",
+  "identifier": "P59542",
+  "name": [
+   "TAS2R19"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102955,
+  "displayName": "UniProt:Q9NYV9 TAS2R13",
+  "stId": "uniprot:Q9NYV9",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYV9",
+  "name": [
+   "TAS2R13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103733,
+  "displayName": "UniProt:P59539 TAS2R45",
+  "stId": "uniprot:P59539",
+  "databaseName": "UniProt",
+  "identifier": "P59539",
+  "name": [
+   "TAS2R45"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103727,
+  "displayName": "UniProt:P59533 TAS2R38",
+  "stId": "uniprot:P59533",
+  "databaseName": "UniProt",
+  "identifier": "P59533",
+  "name": [
+   "TAS2R38"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102946,
+  "displayName": "UniProt:Q9NYW1 TAS2R9",
+  "stId": "uniprot:Q9NYW1",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW1",
+  "name": [
+   "TAS2R9"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 250279,
+  "displayName": "UniProt:Q7RTR8 TAS2R42",
+  "stId": "uniprot:Q7RTR8",
+  "databaseName": "UniProt",
+  "identifier": "Q7RTR8",
+  "name": [
+   "TAS2R42"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103734,
+  "displayName": "UniProt:P59540 TAS2R46",
+  "stId": "uniprot:P59540",
+  "databaseName": "UniProt",
+  "identifier": "P59540",
+  "name": [
+   "TAS2R46"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102930,
+  "displayName": "UniProt:Q9NYW7 TAS2R1",
+  "stId": "uniprot:Q9NYW7",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW7",
+  "name": [
+   "TAS2R1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103729,
+  "displayName": "UniProt:P59535 TAS2R40",
+  "stId": "uniprot:P59535",
+  "databaseName": "UniProt",
+  "identifier": "P59535",
+  "name": [
+   "TAS2R40"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 103728,
+  "displayName": "UniProt:P59534 TAS2R39",
+  "stId": "uniprot:P59534",
+  "databaseName": "UniProt",
+  "identifier": "P59534",
+  "name": [
+   "TAS2R39"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102940,
+  "displayName": "UniProt:Q9NYW4 TAS2R5",
+  "stId": "uniprot:Q9NYW4",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW4",
+  "name": [
+   "TAS2R5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102959,
+  "displayName": "UniProt:Q9NYV7 TAS2R16",
+  "stId": "uniprot:Q9NYV7",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYV7",
+  "name": [
+   "TAS2R16"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102943,
+  "displayName": "UniProt:Q9NYW3 TAS2R7",
+  "stId": "uniprot:Q9NYW3",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW3",
+  "name": [
+   "TAS2R7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 102938,
+  "displayName": "UniProt:Q9NYW5 TAS2R4",
+  "stId": "uniprot:Q9NYW5",
+  "databaseName": "UniProt",
+  "identifier": "Q9NYW5",
+  "name": [
+   "TAS2R4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60952,
+  "displayName": "UniProt:P35372 OPRM1",
+  "stId": "uniprot:P35372",
+  "databaseName": "UniProt",
+  "identifier": "P35372",
+  "name": [
+   "OPRM1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60950,
+  "displayName": "UniProt:P41145 OPRK1",
+  "stId": "uniprot:P41145",
+  "databaseName": "UniProt",
+  "identifier": "P41145",
+  "name": [
+   "OPRK1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60948,
+  "displayName": "UniProt:P41143 OPRD1",
+  "stId": "uniprot:P41143",
+  "databaseName": "UniProt",
+  "identifier": "P41143",
+  "name": [
+   "OPRD1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60003,
+  "displayName": "UniProt:P01213 PDYN",
+  "stId": "uniprot:P01213",
+  "databaseName": "UniProt",
+  "identifier": "P01213",
+  "name": [
+   "PDYN"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61500,
+  "displayName": "UniProt:P01210 PENK",
+  "stId": "uniprot:P01210",
+  "databaseName": "UniProt",
+  "identifier": "P01210",
+  "name": [
+   "PENK"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52528,
+  "displayName": "UniProt:P01189 POMC",
+  "stId": "uniprot:P01189",
+  "databaseName": "UniProt",
+  "identifier": "P01189",
+  "name": [
+   "POMC"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 56572,
+  "displayName": "UniProt:P49019 HCAR3",
+  "stId": "uniprot:P49019",
+  "databaseName": "UniProt",
+  "identifier": "P49019",
+  "name": [
+   "HCAR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 3296240,
+  "displayName": "3-hydroxyoctanoic acid [ChEBI:37098]",
+  "stId": "chebi:37098",
+  "databaseName": "ChEBI",
+  "identifier": "37098",
+  "name": [
+   "3-hydroxyoctanoic acid",
+   "beta-hydroxycaprylic acid",
+   "3-OH octanoic acid",
+   "3-OH-caprylic acid",
+   "3HO",
+   "3-hydroxy-octanoic acid",
+   "beta-OH-octanoic acid",
+   "beta-OH-caprylic acid",
+   "beta-hydroxyoctanoic acid",
+   "3-hydroxycaprylic acid"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 8869623,
+  "displayName": "nicotinate [ChEBI:32544]",
+  "stId": "chebi:32544",
+  "databaseName": "ChEBI",
+  "identifier": "32544",
+  "name": [
+   "nicotinate",
+   "pyridine-3-carboxylate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 264629,
+  "displayName": "acetylcholine [ChEBI:15355]",
+  "stId": "chebi:15355",
+  "databaseName": "ChEBI",
+  "identifier": "15355",
+  "name": [
+   "acetylcholine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 49546,
+  "displayName": "UniProt:P08173 CHRM4",
+  "stId": "uniprot:P08173",
+  "databaseName": "UniProt",
+  "identifier": "P08173",
+  "name": [
+   "CHRM4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49542,
+  "displayName": "UniProt:P08172 CHRM2",
+  "stId": "uniprot:P08172",
+  "databaseName": "UniProt",
+  "identifier": "P08172",
+  "name": [
+   "CHRM2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65356,
+  "displayName": "UniProt:Q99616 CCL13",
+  "stId": "uniprot:Q99616",
+  "databaseName": "UniProt",
+  "identifier": "Q99616",
+  "name": [
+   "CCL13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 403991,
+  "displayName": "UniProt:P41597 CCR2",
+  "stId": "uniprot:P41597",
+  "databaseName": "UniProt",
+  "identifier": "P41597",
+  "name": [
+   "CCR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 51092,
+  "displayName": "UniProt:Q16581 C3AR1",
+  "stId": "uniprot:Q16581",
+  "databaseName": "UniProt",
+  "identifier": "Q16581",
+  "name": [
+   "C3AR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52470,
+  "displayName": "UniProt:P01024 C3",
+  "stId": "uniprot:P01024",
+  "databaseName": "UniProt",
+  "identifier": "P01024",
+  "name": [
+   "C3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9760982,
+  "displayName": "sphingosine 1-phosphate(1-) [ChEBI:60119]",
+  "stId": "chebi:60119",
+  "databaseName": "ChEBI",
+  "identifier": "60119",
+  "name": [
+   "sphingosine 1-phosphate(1-)",
+   "(2S,3R,4E)-2-ammonio-3-hydroxyoctadec-4-en-1-yl phosphate",
+   "sphing-4-enine 1-phosphate",
+   "sphingosine 1-phosphate anion",
+   "(2S,3R,4E)-2-azaniumyl-3-hydroxyoctadec-4-en-1-yl phosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 54154,
+  "displayName": "UniProt:Q99500 S1PR3",
+  "stId": "uniprot:Q99500",
+  "databaseName": "UniProt",
+  "identifier": "Q99500",
+  "name": [
+   "S1PR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 146743,
+  "displayName": "UniProt:O95977 S1PR4",
+  "stId": "uniprot:O95977",
+  "databaseName": "UniProt",
+  "identifier": "O95977",
+  "name": [
+   "S1PR4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 227932,
+  "displayName": "UniProt:Q9H228 S1PR5",
+  "stId": "uniprot:Q9H228",
+  "databaseName": "UniProt",
+  "identifier": "Q9H228",
+  "name": [
+   "S1PR5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 89666,
+  "displayName": "UniProt:O95136 S1PR2",
+  "stId": "uniprot:O95136",
+  "databaseName": "UniProt",
+  "identifier": "O95136",
+  "name": [
+   "S1PR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 148135,
+  "displayName": "UniProt:Q9BXA5 SUCNR1",
+  "stId": "uniprot:Q9BXA5",
+  "databaseName": "UniProt",
+  "identifier": "Q9BXA5",
+  "name": [
+   "SUCNR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9629523,
+  "displayName": "succinate(2-) [ChEBI:30031]",
+  "stId": "chebi:30031",
+  "databaseName": "ChEBI",
+  "identifier": "30031",
+  "name": [
+   "succinate(2-)",
+   "(-)OOC-CH2-CH2-COO(-)",
+   "succinate",
+   "butanedioic acid, ion(2-)",
+   "butanedioate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 52194,
+  "displayName": "UniProt:P51685 CCR8",
+  "stId": "uniprot:P51685",
+  "databaseName": "UniProt",
+  "identifier": "P51685",
+  "name": [
+   "CCR8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65362,
+  "displayName": "UniProt:O15467 CCL16",
+  "stId": "uniprot:O15467",
+  "databaseName": "UniProt",
+  "identifier": "O15467",
+  "name": [
+   "CCL16"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 231639,
+  "displayName": "UniProt:Q9NRV9 HEBP1",
+  "stId": "uniprot:Q9NRV9",
+  "databaseName": "UniProt",
+  "identifier": "Q9NRV9",
+  "name": [
+   "HEBP1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54918,
+  "displayName": "UniProt:P25089 FPR3",
+  "stId": "uniprot:P25089",
+  "databaseName": "UniProt",
+  "identifier": "P25089",
+  "name": [
+   "FPR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9915883,
+  "displayName": "12(S)-HETE(1-) [ChEBI:90680]",
+  "stId": "chebi:90680",
+  "databaseName": "ChEBI",
+  "identifier": "90680",
+  "name": [
+   "12(S)-HETE(1-)",
+   "(12S)-hydroxy-(5Z,8Z,10E,14Z)-eicosatetraenoate",
+   "(5Z,8Z,10E,12S,14Z)-12-hydroxyicosa-5,8,10,14-tetraenoate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55818,
+  "displayName": "UniProt:O00270 GPR31",
+  "stId": "uniprot:O00270",
+  "databaseName": "UniProt",
+  "identifier": "O00270",
+  "name": [
+   "GPR31"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65342,
+  "displayName": "UniProt:P22362 CCL1",
+  "stId": "uniprot:P22362",
+  "databaseName": "UniProt",
+  "identifier": "P22362",
+  "name": [
+   "CCL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 3296317,
+  "displayName": "3-hydroxybutyric acid [ChEBI:20067]",
+  "stId": "chebi:20067",
+  "databaseName": "ChEBI",
+  "identifier": "20067",
+  "name": [
+   "3-hydroxybutyric acid",
+   "3-Hydroxybuttersaeure",
+   "3-OH-butyric acid",
+   "beta-Hydroxy-n-butyric acid",
+   "beta-hydroxybutyric acid",
+   "beta-hydroxybutanoic acid",
+   "3 HBA",
+   "(1)-3-Hydroxybutyric acid",
+   "DL-beta-Hydroxybutyric acid",
+   "beta-Hydroxybuttersaeure",
+   "beta-hydroxy-n-butyric acid",
+   "BHBA"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 230091,
+  "displayName": "UniProt:Q8TDS4 HCAR2",
+  "stId": "uniprot:Q8TDS4",
+  "databaseName": "UniProt",
+  "identifier": "Q8TDS4",
+  "name": [
+   "HCAR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57287,
+  "displayName": "UniProt:P25025 CXCR2",
+  "stId": "uniprot:P25025",
+  "databaseName": "UniProt",
+  "identifier": "P25025",
+  "name": [
+   "CXCR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65480,
+  "displayName": "UniProt:P42830 CXCL5",
+  "stId": "uniprot:P42830",
+  "databaseName": "UniProt",
+  "identifier": "P42830",
+  "name": [
+   "CXCL5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59247,
+  "displayName": "UniProt:P19875 CXCL2",
+  "stId": "uniprot:P19875",
+  "databaseName": "UniProt",
+  "identifier": "P19875",
+  "name": [
+   "CXCL2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55964,
+  "displayName": "UniProt:P09341 CXCL1",
+  "stId": "uniprot:P09341",
+  "databaseName": "UniProt",
+  "identifier": "P09341",
+  "name": [
+   "CXCL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59249,
+  "displayName": "UniProt:P19876 CXCL3",
+  "stId": "uniprot:P19876",
+  "databaseName": "UniProt",
+  "identifier": "P19876",
+  "name": [
+   "CXCL3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 69761,
+  "displayName": "UniProt:P02775 PPBP",
+  "stId": "uniprot:P02775",
+  "databaseName": "UniProt",
+  "identifier": "P02775",
+  "name": [
+   "PPBP"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61824,
+  "displayName": "UniProt:P02776 PF4",
+  "stId": "uniprot:P02776",
+  "databaseName": "UniProt",
+  "identifier": "P02776",
+  "name": [
+   "PF4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59245,
+  "displayName": "UniProt:O00222 GRM8",
+  "stId": "uniprot:O00222",
+  "databaseName": "UniProt",
+  "identifier": "O00222",
+  "name": [
+   "GRM8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59233,
+  "displayName": "UniProt:Q14416 GRM2",
+  "stId": "uniprot:Q14416",
+  "databaseName": "UniProt",
+  "identifier": "Q14416",
+  "name": [
+   "GRM2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59237,
+  "displayName": "UniProt:Q14833 GRM4",
+  "stId": "uniprot:Q14833",
+  "databaseName": "UniProt",
+  "identifier": "Q14833",
+  "name": [
+   "GRM4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59241,
+  "displayName": "UniProt:O15303 GRM6",
+  "stId": "uniprot:O15303",
+  "databaseName": "UniProt",
+  "identifier": "O15303",
+  "name": [
+   "GRM6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59235,
+  "displayName": "UniProt:Q14832 GRM3",
+  "stId": "uniprot:Q14832",
+  "databaseName": "UniProt",
+  "identifier": "Q14832",
+  "name": [
+   "GRM3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59243,
+  "displayName": "UniProt:Q14831 GRM7",
+  "stId": "uniprot:Q14831",
+  "databaseName": "UniProt",
+  "identifier": "Q14831",
+  "name": [
+   "GRM7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8943605,
+  "displayName": "L-glutamate(1-) [ChEBI:29985]",
+  "stId": "chebi:29985",
+  "databaseName": "ChEBI",
+  "identifier": "29985",
+  "name": [
+   "L-glutamate(1-)",
+   "L-glutamic acid, ion(1-)",
+   "[NH3+][C@@H](CCC([O-])=O)C([O-])=O",
+   "WHUUTDBJXJRKMK-VKHMYHEASA-M",
+   "C5H8NO4",
+   "146.12136",
+   "(2S)-2-ammoniopentanedioate",
+   "hydrogen L-glutamate",
+   "L-glutamate",
+   "L-glutamic acid monoanion",
+   "InChI=1S/C5H9NO4/c6-3(5(9)10)1-2-4(7)8/h3H,1-2,6H2,(H,7,8)(H,9,10)/p-1/t3-/m0/s1"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 61268,
+  "displayName": "UniProt:P01298 PPY",
+  "stId": "uniprot:P01298",
+  "databaseName": "UniProt",
+  "identifier": "P01298",
+  "name": [
+   "PPY"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 62551,
+  "displayName": "UniProt:P10082 PYY",
+  "stId": "uniprot:P10082",
+  "databaseName": "UniProt",
+  "identifier": "P10082",
+  "name": [
+   "PYY"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60113,
+  "displayName": "UniProt:P01303 NPY",
+  "stId": "uniprot:P01303",
+  "databaseName": "UniProt",
+  "identifier": "P01303",
+  "name": [
+   "NPY"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60668,
+  "displayName": "UniProt:P50391 NPY4R",
+  "stId": "uniprot:P50391",
+  "databaseName": "UniProt",
+  "identifier": "P50391",
+  "name": [
+   "NPY4R"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60670,
+  "displayName": "UniProt:Q15761 NPY5R",
+  "stId": "uniprot:Q15761",
+  "databaseName": "UniProt",
+  "identifier": "Q15761",
+  "name": [
+   "NPY5R"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60664,
+  "displayName": "UniProt:P25929 NPY1R",
+  "stId": "uniprot:P25929",
+  "databaseName": "UniProt",
+  "identifier": "P25929",
+  "name": [
+   "NPY1R"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60666,
+  "displayName": "UniProt:P49146 NPY2R",
+  "stId": "uniprot:P49146",
+  "databaseName": "UniProt",
+  "identifier": "P49146",
+  "name": [
+   "NPY2R"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 374156,
+  "displayName": "estrogen [ChEBI:50114]",
+  "stId": "chebi:50114",
+  "databaseName": "ChEBI",
+  "identifier": "50114",
+  "name": [
+   "estrogen"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 52360,
+  "displayName": "UniProt:Q99527 GPER1",
+  "stId": "uniprot:Q99527",
+  "databaseName": "UniProt",
+  "identifier": "Q99527",
+  "name": [
+   "GPER1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 114768,
+  "displayName": "calcium(2+) [ChEBI:29108]",
+  "stId": "chebi:29108",
+  "databaseName": "ChEBI",
+  "identifier": "29108",
+  "name": [
+   "calcium(2+)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 51416,
+  "displayName": "UniProt:P41180 CASR",
+  "stId": "uniprot:P41180",
+  "databaseName": "UniProt",
+  "identifier": "P41180",
+  "name": [
+   "CASR"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65492,
+  "displayName": "UniProt:O43927 CXCL13",
+  "stId": "uniprot:O43927",
+  "databaseName": "UniProt",
+  "identifier": "O43927",
+  "name": [
+   "CXCL13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 403681,
+  "displayName": "UniProt:P32302 CXCR5",
+  "stId": "uniprot:P32302",
+  "databaseName": "UniProt",
+  "identifier": "P32302",
+  "name": [
+   "CXCR5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 54104,
+  "displayName": "UniProt:P32249 GPR183",
+  "stId": "uniprot:P32249",
+  "databaseName": "UniProt",
+  "identifier": "P32249",
+  "name": [
+   "GPR183"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 193005,
+  "displayName": "7alpha,25-dihydroxycholesterol [ChEBI:37623]",
+  "stId": "chebi:37623",
+  "databaseName": "ChEBI",
+  "identifier": "37623",
+  "name": [
+   "7alpha,25-dihydroxycholesterol"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 404292,
+  "displayName": "UniProt:P51686 CCR9",
+  "stId": "uniprot:P51686",
+  "databaseName": "UniProt",
+  "identifier": "P51686",
+  "name": [
+   "CCR9"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65380,
+  "displayName": "UniProt:O15444 CCL25",
+  "stId": "uniprot:O15444",
+  "databaseName": "UniProt",
+  "identifier": "O15444",
+  "name": [
+   "CCL25"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 114933,
+  "displayName": "adenosine [ChEBI:16335]",
+  "stId": "chebi:16335",
+  "databaseName": "ChEBI",
+  "identifier": "16335",
+  "name": [
+   "adenosine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 5691595,
+  "displayName": "UniProt:P0DMS8 ADORA3",
+  "stId": "uniprot:P0DMS8",
+  "databaseName": "UniProt",
+  "identifier": "P0DMS8",
+  "name": [
+   "ADORA3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49352,
+  "displayName": "UniProt:P30542 ADORA1",
+  "stId": "uniprot:P30542",
+  "databaseName": "UniProt",
+  "identifier": "P30542",
+  "name": [
+   "ADORA1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 59339,
+  "displayName": "UniProt:P20382 PMCH",
+  "stId": "uniprot:P20382",
+  "databaseName": "UniProt",
+  "identifier": "P20382",
+  "name": [
+   "PMCH"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 94974,
+  "displayName": "UniProt:Q969V1 MCHR2",
+  "stId": "uniprot:Q969V1",
+  "databaseName": "UniProt",
+  "identifier": "Q969V1",
+  "name": [
+   "MCHR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55810,
+  "displayName": "UniProt:Q99705 MCHR1",
+  "stId": "uniprot:Q99705",
+  "databaseName": "UniProt",
+  "identifier": "Q99705",
+  "name": [
+   "MCHR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9760910,
+  "displayName": "histaminium [ChEBI:58432]",
+  "stId": "chebi:58432",
+  "databaseName": "ChEBI",
+  "identifier": "58432",
+  "name": [
+   "histaminium",
+   "2-(1H-imidazol-4-yl)ethanaminium",
+   "histamine",
+   "histaminium cation"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 56508,
+  "displayName": "UniProt:Q9H3N8 HRH4",
+  "stId": "uniprot:Q9H3N8",
+  "databaseName": "UniProt",
+  "identifier": "Q9H3N8",
+  "name": [
+   "HRH4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 444571,
+  "displayName": "N-formyl-L-methionyl-L-leucyl-L-phenylalanine [ChEBI:53490]",
+  "stId": "chebi:53490",
+  "databaseName": "ChEBI",
+  "identifier": "53490",
+  "name": [
+   "N-formyl-L-methionyl-L-leucyl-L-phenylalanine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 54920,
+  "displayName": "UniProt:P21462 FPR1",
+  "stId": "uniprot:P21462",
+  "databaseName": "UniProt",
+  "identifier": "P21462",
+  "name": [
+   "FPR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5316409,
+  "displayName": "gamma-aminobutyric acid zwitterion [ChEBI:59888]",
+  "stId": "chebi:59888",
+  "databaseName": "ChEBI",
+  "identifier": "59888",
+  "name": [
+   "gamma-aminobutyric acid zwitterion",
+   "4-aminobutanoate",
+   "4-ammoniobutanoate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55456,
+  "displayName": "UniProt:Q9UBS5 GABBR1",
+  "stId": "uniprot:Q9UBS5",
+  "databaseName": "UniProt",
+  "identifier": "Q9UBS5",
+  "name": [
+   "GABBR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55458,
+  "displayName": "UniProt:O75899 GABBR2",
+  "stId": "uniprot:O75899",
+  "databaseName": "UniProt",
+  "identifier": "O75899",
+  "name": [
+   "GABBR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 252835,
+  "displayName": "UniProt:Q7RTX0 TAS1R3",
+  "stId": "uniprot:Q7RTX0",
+  "databaseName": "UniProt",
+  "identifier": "Q7RTX0",
+  "name": [
+   "TAS1R3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 252825,
+  "displayName": "UniProt:Q7RTX1 TAS1R1",
+  "stId": "uniprot:Q7RTX1",
+  "databaseName": "UniProt",
+  "identifier": "Q7RTX1",
+  "name": [
+   "TAS1R1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9915652,
+  "displayName": "prostaglandin D2(1-) [ChEBI:57406]",
+  "stId": "chebi:57406",
+  "databaseName": "ChEBI",
+  "identifier": "57406",
+  "name": [
+   "prostaglandin D2(1-)",
+   "prostaglandin D2",
+   "(5Z,13E,15S)-9alpha,15-dihydroxy-11-oxoprosta-5,13-dien-1-oate",
+   "prostaglandin D2 anion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55838,
+  "displayName": "UniProt:Q9Y5Y4 PTGDR2",
+  "stId": "uniprot:Q9Y5Y4",
+  "databaseName": "UniProt",
+  "identifier": "Q9Y5Y4",
+  "name": [
+   "PTGDR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 99526,
+  "displayName": "UniProt:Q8TDU9 RXFP4",
+  "stId": "uniprot:Q8TDU9",
+  "databaseName": "UniProt",
+  "identifier": "Q8TDU9",
+  "name": [
+   "RXFP4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57399,
+  "displayName": "UniProt:Q9Y5Q6 INSL5",
+  "stId": "uniprot:Q9Y5Q6",
+  "databaseName": "UniProt",
+  "identifier": "Q9Y5Q6",
+  "name": [
+   "INSL5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65400,
+  "displayName": "UniProt:P78423 CX3CL1",
+  "stId": "uniprot:P78423",
+  "databaseName": "UniProt",
+  "identifier": "P78423",
+  "name": [
+   "CX3CL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 404172,
+  "displayName": "UniProt:P49238 CX3CR1",
+  "stId": "uniprot:P49238",
+  "databaseName": "UniProt",
+  "identifier": "P49238",
+  "name": [
+   "CX3CR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52576,
+  "displayName": "UniProt:O00230 CORT",
+  "stId": "uniprot:O00230",
+  "databaseName": "UniProt",
+  "identifier": "O00230",
+  "name": [
+   "CORT"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 64684,
+  "displayName": "UniProt:P61278 SST",
+  "stId": "uniprot:P61278",
+  "databaseName": "UniProt",
+  "identifier": "P61278",
+  "name": [
+   "SST"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65088,
+  "displayName": "UniProt:P30872 SSTR1",
+  "stId": "uniprot:P30872",
+  "databaseName": "UniProt",
+  "identifier": "P30872",
+  "name": [
+   "SSTR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65090,
+  "displayName": "UniProt:P30874 SSTR2",
+  "stId": "uniprot:P30874",
+  "databaseName": "UniProt",
+  "identifier": "P30874",
+  "name": [
+   "SSTR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65096,
+  "displayName": "UniProt:P35346 SSTR5",
+  "stId": "uniprot:P35346",
+  "databaseName": "UniProt",
+  "identifier": "P35346",
+  "name": [
+   "SSTR5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65092,
+  "displayName": "UniProt:P32745 SSTR3",
+  "stId": "uniprot:P32745",
+  "databaseName": "UniProt",
+  "identifier": "P32745",
+  "name": [
+   "SSTR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65094,
+  "displayName": "UniProt:P31391 SSTR4",
+  "stId": "uniprot:P31391",
+  "databaseName": "UniProt",
+  "identifier": "P31391",
+  "name": [
+   "SSTR4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 29412,
+  "displayName": "D-glucopyranose [ChEBI:4167]",
+  "stId": "chebi:4167",
+  "databaseName": "ChEBI",
+  "identifier": "4167",
+  "name": [
+   "D-glucopyranose"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 444696,
+  "displayName": "saccharin [ChEBI:32111]",
+  "stId": "chebi:32111",
+  "databaseName": "ChEBI",
+  "identifier": "32111",
+  "name": [
+   "saccharin"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 29520,
+  "displayName": "sucrose [ChEBI:17992]",
+  "stId": "chebi:17992",
+  "databaseName": "ChEBI",
+  "identifier": "17992",
+  "name": [
+   "sucrose"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 29748,
+  "displayName": "maltose [ChEBI:17306]",
+  "stId": "chebi:17306",
+  "databaseName": "ChEBI",
+  "identifier": "17306",
+  "name": [
+   "maltose"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9929225,
+  "displayName": "aspartame zwitterion [ChEBI:195544]",
+  "stId": "chebi:195544",
+  "databaseName": "ChEBI",
+  "identifier": "195544",
+  "name": [
+   "aspartame zwitterion",
+   "(3S)-3-azaniumyl-4-{[(2S)-1-methoxy-1-oxo-3-phenylpropan-2-yl]amino}-4-oxobutanoate",
+   "aspartame"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 444725,
+  "displayName": "D-tryptophan [ChEBI:16296]",
+  "stId": "chebi:16296",
+  "databaseName": "ChEBI",
+  "identifier": "16296",
+  "name": [
+   "D-tryptophan"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 114777,
+  "displayName": "D-fructose [ChEBI:15824]",
+  "stId": "chebi:15824",
+  "databaseName": "ChEBI",
+  "identifier": "15824",
+  "name": [
+   "D-fructose"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9729060,
+  "displayName": "Cyclamate [ChEBI:82431]",
+  "stId": "chebi:82431",
+  "databaseName": "ChEBI",
+  "identifier": "82431",
+  "name": [
+   "Cyclamate",
+   "Sodium cyclamate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 252832,
+  "displayName": "UniProt:Q8TE23 TAS1R2",
+  "stId": "uniprot:Q8TE23",
+  "databaseName": "UniProt",
+  "identifier": "Q8TE23",
+  "name": [
+   "TAS1R2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52198,
+  "displayName": "UniProt:P46092 CCR10",
+  "stId": "uniprot:P46092",
+  "databaseName": "UniProt",
+  "identifier": "P46092",
+  "name": [
+   "CCR10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65386,
+  "displayName": "UniProt:Q9NRJ3 CCL28",
+  "stId": "uniprot:Q9NRJ3",
+  "databaseName": "UniProt",
+  "identifier": "Q9NRJ3",
+  "name": [
+   "CCL28"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65384,
+  "displayName": "UniProt:Q9Y4X3 CCL27",
+  "stId": "uniprot:Q9Y4X3",
+  "databaseName": "UniProt",
+  "identifier": "Q9Y4X3",
+  "name": [
+   "CCL27"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61482,
+  "displayName": "UniProt:P43115 PTGER3",
+  "stId": "uniprot:P43115",
+  "databaseName": "UniProt",
+  "identifier": "P43115",
+  "name": [
+   "PTGER3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9915644,
+  "displayName": "prostaglandin E2(1-) [ChEBI:606564]",
+  "stId": "chebi:606564",
+  "databaseName": "ChEBI",
+  "identifier": "606564",
+  "name": [
+   "prostaglandin E2(1-)",
+   "(5Z,13E,15S)-11alpha,15-dihydroxy-9-oxoprosta-5,13-dien-1-oate",
+   "prostaglandin E2 anion",
+   "prostaglandin E2"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 49774,
+  "displayName": "UniProt:P50052 AGTR2",
+  "stId": "uniprot:P50052",
+  "databaseName": "UniProt",
+  "identifier": "P50052",
+  "name": [
+   "AGTR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49988,
+  "displayName": "UniProt:P01019 AGT",
+  "stId": "uniprot:P01019",
+  "databaseName": "UniProt",
+  "identifier": "P01019",
+  "name": [
+   "AGT"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52190,
+  "displayName": "UniProt:P51684 CCR6",
+  "stId": "uniprot:P51684",
+  "databaseName": "UniProt",
+  "identifier": "P51684",
+  "name": [
+   "CCR6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65370,
+  "displayName": "UniProt:P78556 CCL20",
+  "stId": "uniprot:P78556",
+  "databaseName": "UniProt",
+  "identifier": "P78556",
+  "name": [
+   "CCL20"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 404195,
+  "displayName": "UniProt:P49682 CXCR3",
+  "stId": "uniprot:P49682",
+  "databaseName": "UniProt",
+  "identifier": "P49682",
+  "name": [
+   "CXCR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65486,
+  "displayName": "UniProt:Q07325 CXCL9",
+  "stId": "uniprot:Q07325",
+  "databaseName": "UniProt",
+  "identifier": "Q07325",
+  "name": [
+   "CXCL9"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65488,
+  "displayName": "UniProt:P02778 CXCL10",
+  "stId": "uniprot:P02778",
+  "databaseName": "UniProt",
+  "identifier": "P02778",
+  "name": [
+   "CXCL10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 65490,
+  "displayName": "UniProt:O14625 CXCL11",
+  "stId": "uniprot:O14625",
+  "databaseName": "UniProt",
+  "identifier": "O14625",
+  "name": [
+   "CXCL11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5317500,
+  "displayName": "leukotriene D4(1-) [ChEBI:63166]",
+  "stId": "chebi:63166",
+  "databaseName": "ChEBI",
+  "identifier": "63166",
+  "name": [
+   "leukotriene D4(1-)",
+   "leukotriene D4",
+   "leukotriene D4 anion",
+   "leukotriene D4 monoanion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9915861,
+  "displayName": "leukotriene C4(2-) [ChEBI:57973]",
+  "stId": "chebi:57973",
+  "databaseName": "ChEBI",
+  "identifier": "57973",
+  "name": [
+   "leukotriene C4(2-)",
+   "leukotriene C4 dianion",
+   "(5S,6R,7E,9E,11Z,14Z)-6-({(2R)-2-{[(4S)-4-azaniumyl-4-carboxylatobutanoyl]amino}-3-[(carboxylatomethyl)amino]-3-oxopropyl}sulfanyl)-5-hydroxyicosa-7,9,11,14-tetraenoate",
+   "leukotriene C4"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9915904,
+  "displayName": "leukotriene E4(1-) [ChEBI:57462]",
+  "stId": "chebi:57462",
+  "databaseName": "ChEBI",
+  "identifier": "57462",
+  "name": [
+   "leukotriene E4(1-)",
+   "(5S,6R,7E,9E,11Z,14Z)-6-(cysteinium-S-yl)-5-hydroxyicosa-7,9,11,14-tetraenoic acid",
+   "leukotriene E4",
+   "leukotriene E4 anion",
+   "S-{(1R,2E,4E,6Z,9Z)-1-[(1S)-4-carboxy-1-hydroxybutyl]pentadeca-2,4,6,9-tetraen-1-yl}-L-cysteinium"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55798,
+  "displayName": "UniProt:Q13304 GPR17",
+  "stId": "uniprot:Q13304",
+  "databaseName": "UniProt",
+  "identifier": "Q13304",
+  "name": [
+   "GPR17"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 96566,
+  "displayName": "UniProt:Q8N729 NPW",
+  "stId": "uniprot:Q8N729",
+  "databaseName": "UniProt",
+  "identifier": "Q8N729",
+  "name": [
+   "NPW"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 96516,
+  "displayName": "UniProt:Q8NG41 NPB",
+  "stId": "uniprot:Q8NG41",
+  "databaseName": "UniProt",
+  "identifier": "Q8NG41",
+  "name": [
+   "NPB"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55894,
+  "displayName": "UniProt:P48146 NPBWR2",
+  "stId": "uniprot:P48146",
+  "databaseName": "UniProt",
+  "identifier": "P48146",
+  "name": [
+   "NPBWR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55892,
+  "displayName": "UniProt:P48145 NPBWR1",
+  "stId": "uniprot:P48145",
+  "databaseName": "UniProt",
+  "identifier": "P48145",
+  "name": [
+   "NPBWR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 8869364,
+  "displayName": "ATP(4-) [ChEBI:30616]",
+  "stId": "chebi:30616",
+  "databaseName": "ChEBI",
+  "identifier": "30616",
+  "name": [
+   "ATP(4-)",
+   "ATP",
+   "atp",
+   "Adenosine 5'-triphosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 241101,
+  "displayName": "UniProt:Q6U736 OPN5",
+  "stId": "uniprot:Q6U736",
+  "databaseName": "UniProt",
+  "identifier": "Q6U736",
+  "name": [
+   "OPN5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60944,
+  "displayName": "UniProt:Q9H1Y3 OPN3",
+  "stId": "uniprot:Q9H1Y3",
+  "databaseName": "UniProt",
+  "identifier": "Q9H1Y3",
+  "name": [
+   "OPN3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63004,
+  "displayName": "UniProt:P47804 RGR",
+  "stId": "uniprot:P47804",
+  "databaseName": "UniProt",
+  "identifier": "P47804",
+  "name": [
+   "RGR"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60964,
+  "displayName": "UniProt:O14718 RRH",
+  "stId": "uniprot:O14718",
+  "databaseName": "UniProt",
+  "identifier": "O14718",
+  "name": [
+   "RRH"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60956,
+  "displayName": "UniProt:P03999 OPN1SW",
+  "stId": "uniprot:P03999",
+  "databaseName": "UniProt",
+  "identifier": "P03999",
+  "name": [
+   "OPN1SW"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60958,
+  "displayName": "UniProt:P08100 RHO",
+  "stId": "uniprot:P08100",
+  "databaseName": "UniProt",
+  "identifier": "P08100",
+  "name": [
+   "RHO"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60960,
+  "displayName": "UniProt:P04001 OPN1MW",
+  "stId": "uniprot:P04001",
+  "databaseName": "UniProt",
+  "identifier": "P04001",
+  "name": [
+   "OPN1MW"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 60962,
+  "displayName": "UniProt:P04000 OPN1LW",
+  "stId": "uniprot:P04000",
+  "databaseName": "UniProt",
+  "identifier": "P04000",
+  "name": [
+   "OPN1LW"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5316173,
+  "displayName": "photon [ChEBI:30212]",
+  "stId": "chebi:30212",
+  "databaseName": "ChEBI",
+  "identifier": "30212",
+  "name": [
+   "photon",
+   "hnu",
+   "Lichtquant",
+   "Light",
+   "gamma",
+   "hnu",
+   "light quantum",
+   "foton"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55460,
+  "displayName": "UniProt:P11488 GNAT1",
+  "stId": "uniprot:P11488",
+  "databaseName": "UniProt",
+  "identifier": "P11488",
+  "name": [
+   "GNAT1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55462,
+  "displayName": "UniProt:P19087 GNAT2",
+  "stId": "uniprot:P19087",
+  "databaseName": "UniProt",
+  "identifier": "P19087",
+  "name": [
+   "GNAT2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63012,
+  "displayName": "UniProt:P49798 RGS4",
+  "stId": "uniprot:P49798",
+  "databaseName": "UniProt",
+  "identifier": "P49798",
+  "name": [
+   "RGS4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63026,
+  "displayName": "UniProt:O94810 RGS11",
+  "stId": "uniprot:O94810",
+  "databaseName": "UniProt",
+  "identifier": "O94810",
+  "name": [
+   "RGS11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 416268,
+  "displayName": "UniProt:P49758 RGS6",
+  "stId": "uniprot:P49758",
+  "databaseName": "UniProt",
+  "identifier": "P49758",
+  "name": [
+   "RGS6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63010,
+  "displayName": "UniProt:P49796 RGS3",
+  "stId": "uniprot:P49796",
+  "databaseName": "UniProt",
+  "identifier": "P49796",
+  "name": [
+   "RGS3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63028,
+  "displayName": "UniProt:O14924 RGS12",
+  "stId": "uniprot:O14924",
+  "databaseName": "UniProt",
+  "identifier": "O14924",
+  "name": [
+   "RGS12"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63040,
+  "displayName": "UniProt:P49795 RGS19",
+  "stId": "uniprot:P49795",
+  "databaseName": "UniProt",
+  "identifier": "P49795",
+  "name": [
+   "RGS19"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63014,
+  "displayName": "UniProt:O15539 RGS5",
+  "stId": "uniprot:O15539",
+  "databaseName": "UniProt",
+  "identifier": "O15539",
+  "name": [
+   "RGS5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63024,
+  "displayName": "UniProt:O43665 RGS10",
+  "stId": "uniprot:O43665",
+  "databaseName": "UniProt",
+  "identifier": "O43665",
+  "name": [
+   "RGS10"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63032,
+  "displayName": "UniProt:O43566 RGS14",
+  "stId": "uniprot:O43566",
+  "databaseName": "UniProt",
+  "identifier": "O43566",
+  "name": [
+   "RGS14"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63018,
+  "displayName": "UniProt:P49802 RGS7",
+  "stId": "uniprot:P49802",
+  "databaseName": "UniProt",
+  "identifier": "P49802",
+  "name": [
+   "RGS7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63034,
+  "displayName": "UniProt:O15492 RGS16",
+  "stId": "uniprot:O15492",
+  "databaseName": "UniProt",
+  "identifier": "O15492",
+  "name": [
+   "RGS16"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63036,
+  "displayName": "UniProt:Q9UGC6 RGS17",
+  "stId": "uniprot:Q9UGC6",
+  "databaseName": "UniProt",
+  "identifier": "Q9UGC6",
+  "name": [
+   "RGS17"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 245497,
+  "displayName": "UniProt:Q2M5E4 RGS21",
+  "stId": "uniprot:Q2M5E4",
+  "databaseName": "UniProt",
+  "identifier": "Q2M5E4",
+  "name": [
+   "RGS21"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63006,
+  "displayName": "UniProt:Q08116 RGS1",
+  "stId": "uniprot:Q08116",
+  "databaseName": "UniProt",
+  "identifier": "Q08116",
+  "name": [
+   "RGS1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63020,
+  "displayName": "UniProt:P57771 RGS8",
+  "stId": "uniprot:P57771",
+  "databaseName": "UniProt",
+  "identifier": "P57771",
+  "name": [
+   "RGS8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63022,
+  "displayName": "UniProt:O75916 RGS9",
+  "stId": "uniprot:O75916",
+  "databaseName": "UniProt",
+  "identifier": "O75916",
+  "name": [
+   "RGS9"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63030,
+  "displayName": "UniProt:O14921 RGS13",
+  "stId": "uniprot:O14921",
+  "databaseName": "UniProt",
+  "identifier": "O14921",
+  "name": [
+   "RGS13"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63038,
+  "displayName": "UniProt:Q9NS28 RGS18",
+  "stId": "uniprot:Q9NS28",
+  "databaseName": "UniProt",
+  "identifier": "Q9NS28",
+  "name": [
+   "RGS18"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 63042,
+  "displayName": "UniProt:O76081 RGS20",
+  "stId": "uniprot:O76081",
+  "databaseName": "UniProt",
+  "identifier": "O76081",
+  "name": [
+   "RGS20"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5687611,
+  "displayName": "hydrogenphosphate [ChEBI:43474]",
+  "stId": "chebi:43474",
+  "databaseName": "ChEBI",
+  "identifier": "43474",
+  "name": [
+   "hydrogenphosphate",
+   "hydrogen phosphate",
+   "phosphate",
+   "[PO3(OH)](2-)",
+   "INORGANIC PHOSPHATE GROUP",
+   "HYDROGENPHOSPHATE ION",
+   "HPO4(2-)",
+   "[P(OH)O3](2-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 245498,
+  "displayName": "UniProt:Q8NE09 RGS22",
+  "stId": "uniprot:Q8NE09",
+  "databaseName": "UniProt",
+  "identifier": "Q8NE09",
+  "name": [
+   "RGS22"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 385946,
+  "displayName": "UniProt:A5PLK6 RGSL1",
+  "stId": "uniprot:A5PLK6",
+  "databaseName": "UniProt",
+  "identifier": "A5PLK6",
+  "name": [
+   "RGSL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53244,
+  "displayName": "UniProt:P51828 ADCY7",
+  "stId": "uniprot:P51828",
+  "databaseName": "UniProt",
+  "identifier": "P51828",
+  "name": [
+   "ADCY7"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53242,
+  "displayName": "UniProt:O43306 ADCY6",
+  "stId": "uniprot:O43306",
+  "databaseName": "UniProt",
+  "identifier": "O43306",
+  "name": [
+   "ADCY6"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53234,
+  "displayName": "UniProt:Q08462 ADCY2",
+  "stId": "uniprot:Q08462",
+  "databaseName": "UniProt",
+  "identifier": "Q08462",
+  "name": [
+   "ADCY2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53248,
+  "displayName": "UniProt:O60503 ADCY9",
+  "stId": "uniprot:O60503",
+  "databaseName": "UniProt",
+  "identifier": "O60503",
+  "name": [
+   "ADCY9"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53238,
+  "displayName": "UniProt:Q8NFM4 ADCY4",
+  "stId": "uniprot:Q8NFM4",
+  "databaseName": "UniProt",
+  "identifier": "Q8NFM4",
+  "name": [
+   "ADCY4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53246,
+  "displayName": "UniProt:P40145 ADCY8",
+  "stId": "uniprot:P40145",
+  "databaseName": "UniProt",
+  "identifier": "P40145",
+  "name": [
+   "ADCY8"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53236,
+  "displayName": "UniProt:O60266 ADCY3",
+  "stId": "uniprot:O60266",
+  "databaseName": "UniProt",
+  "identifier": "O60266",
+  "name": [
+   "ADCY3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53240,
+  "displayName": "UniProt:O95622 ADCY5",
+  "stId": "uniprot:O95622",
+  "databaseName": "UniProt",
+  "identifier": "O95622",
+  "name": [
+   "ADCY5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 53232,
+  "displayName": "UniProt:Q08828 ADCY1",
+  "stId": "uniprot:Q08828",
+  "databaseName": "UniProt",
+  "identifier": "Q08828",
+  "name": [
+   "ADCY1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 114819,
+  "displayName": "magnesium(2+) [ChEBI:18420]",
+  "stId": "chebi:18420",
+  "databaseName": "ChEBI",
+  "identifier": "18420",
+  "name": [
+   "magnesium(2+)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55364,
+  "displayName": "UniProt:P38405 GNAL",
+  "stId": "uniprot:P38405",
+  "databaseName": "UniProt",
+  "identifier": "P38405",
+  "name": [
+   "GNAL"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9760921,
+  "displayName": "3',5'-cyclic AMP(1-) [ChEBI:58165]",
+  "stId": "chebi:58165",
+  "databaseName": "ChEBI",
+  "identifier": "58165",
+  "name": [
+   "3',5'-cyclic AMP(1-)",
+   "adenosine 3',5'-cyclic monophosphate anion",
+   "adenosine 3',5'-phosphate",
+   "3',5'-cyclic AMP anion",
+   "3',5'-cyclic AMP",
+   "adenosine 3',5'-cyclic monophosphate(1-)",
+   "adenosine 3',5'-cyclic monophosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 1422654,
+  "displayName": "diphosphate(3-) [ChEBI:33019]",
+  "stId": "chebi:33019",
+  "databaseName": "ChEBI",
+  "identifier": "33019",
+  "name": [
+   "diphosphate(3-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9760815,
+  "displayName": "1D-myo-inositol 1,4,5-trisphosphate(6-) [ChEBI:203600]",
+  "stId": "chebi:203600",
+  "databaseName": "ChEBI",
+  "identifier": "203600",
+  "name": [
+   "1D-myo-inositol 1,4,5-trisphosphate(6-)",
+   "1D-myo-inositol 1,4,5-trisphosphate hexaanion",
+   "1D-myo-inositol 1,4,5-triphosphate(6-)",
+   "1D-myo-inositol 1,4,5-triphosphate hexaanion",
+   "1D-myo-inositol 1,4,5-tris(phosphate)",
+   "1D-myo-inositol 1,4,5-trisphosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 405731,
+  "displayName": "UniProt:Q14643 ITPR1",
+  "stId": "uniprot:Q14643",
+  "databaseName": "UniProt",
+  "identifier": "Q14643",
+  "name": [
+   "ITPR1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57433,
+  "displayName": "UniProt:Q14573 ITPR3",
+  "stId": "uniprot:Q14573",
+  "databaseName": "UniProt",
+  "identifier": "Q14573",
+  "name": [
+   "ITPR3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 405722,
+  "displayName": "UniProt:Q14571 ITPR2",
+  "stId": "uniprot:Q14571",
+  "databaseName": "UniProt",
+  "identifier": "Q14571",
+  "name": [
+   "ITPR2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 64114,
+  "displayName": "UniProt:O43865 AHCYL1",
+  "stId": "uniprot:O43865",
+  "databaseName": "UniProt",
+  "identifier": "O43865",
+  "name": [
+   "AHCYL1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9654423,
+  "displayName": "NAD(1-) [ChEBI:57540]",
+  "stId": "chebi:57540",
+  "databaseName": "ChEBI",
+  "identifier": "57540",
+  "name": [
+   "NAD(1-)",
+   "adenosine 5'-{3-[1-(3-carbamoylpyridinio)-1,4-anhydro-D-ribitol-5-yl] diphosphate}",
+   "NAD(+)",
+   "NAD anion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 55354,
+  "displayName": "UniProt:P29992 GNA11",
+  "stId": "uniprot:P29992",
+  "databaseName": "UniProt",
+  "identifier": "P29992",
+  "name": [
+   "GNA11"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55362,
+  "displayName": "UniProt:P30679 GNA15",
+  "stId": "uniprot:P30679",
+  "databaseName": "UniProt",
+  "identifier": "P30679",
+  "name": [
+   "GNA15"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55454,
+  "displayName": "UniProt:P50148 GNAQ",
+  "stId": "uniprot:P50148",
+  "databaseName": "UniProt",
+  "identifier": "P50148",
+  "name": [
+   "GNAQ"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55360,
+  "displayName": "UniProt:O95837 GNA14",
+  "stId": "uniprot:O95837",
+  "databaseName": "UniProt",
+  "identifier": "O95837",
+  "name": [
+   "GNA14"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61698,
+  "displayName": "UniProt:Q15147 PLCB4",
+  "stId": "uniprot:Q15147",
+  "databaseName": "UniProt",
+  "identifier": "Q15147",
+  "name": [
+   "PLCB4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61748,
+  "displayName": "UniProt:Q01970 PLCB3",
+  "stId": "uniprot:Q01970",
+  "databaseName": "UniProt",
+  "identifier": "Q01970",
+  "name": [
+   "PLCB3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61694,
+  "displayName": "UniProt:Q9NQ66 PLCB1",
+  "stId": "uniprot:Q9NQ66",
+  "databaseName": "UniProt",
+  "identifier": "Q9NQ66",
+  "name": [
+   "PLCB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61696,
+  "displayName": "UniProt:Q00722 PLCB2",
+  "stId": "uniprot:Q00722",
+  "databaseName": "UniProt",
+  "identifier": "Q00722",
+  "name": [
+   "PLCB2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 114728,
+  "displayName": "water [ChEBI:15377]",
+  "stId": "chebi:15377",
+  "databaseName": "ChEBI",
+  "identifier": "15377",
+  "name": [
+   "water"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9760917,
+  "displayName": "1-phosphatidyl-1D-myo-inositol 4,5-bisphosphate(5-) [ChEBI:58456]",
+  "stId": "chebi:58456",
+  "databaseName": "ChEBI",
+  "identifier": "58456",
+  "name": [
+   "1-phosphatidyl-1D-myo-inositol 4,5-bisphosphate(5-)",
+   "a 1,2-diacyl-sn-glycero-3-phospho-(1D-myo-inositol-4,5-bisphosphate)",
+   "2,3-bis(alkanoyloxy)propyl (1R,2R,3S,4R,5R,6S)-2,3,6-trihydroxy-4,5-bis(phosphonatooxy)cyclohexyl phosphate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 174723,
+  "displayName": "diglyceride [ChEBI:18035]",
+  "stId": "chebi:18035",
+  "databaseName": "ChEBI",
+  "identifier": "18035",
+  "name": [
+   "diglyceride"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 61212,
+  "displayName": "UniProt:P47712 PLA2G4A",
+  "stId": "uniprot:P47712",
+  "databaseName": "UniProt",
+  "identifier": "P47712",
+  "name": [
+   "PLA2G4A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9765528,
+  "displayName": "1,2-diacyl-sn-glycero-3-phosphocholine [ChEBI:57643]",
+  "stId": "chebi:57643",
+  "databaseName": "ChEBI",
+  "identifier": "57643",
+  "name": [
+   "1,2-diacyl-sn-glycero-3-phosphocholine",
+   "a 1,2-diacyl-sn-glycero-3-phosphocholine",
+   "PC",
+   "1,2-diacyl-sn-glycero-3-phosphocholine betaine",
+   "3-sn-phosphatidylcholine",
+   "1,2-diacyl-sn-glycero-3-phosphocholines",
+   "Phosphatidylcholine",
+   "Diacyl PC",
+   "lecithin",
+   "3-sn-phosphatidylcholines"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 114918,
+  "displayName": "hydron [ChEBI:15378]",
+  "stId": "chebi:15378",
+  "databaseName": "ChEBI",
+  "identifier": "15378",
+  "name": [
+   "hydron"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 6814250,
+  "displayName": "1-O-acyl-sn-glycero-3-phosphocholine [ChEBI:58168]",
+  "stId": "chebi:58168",
+  "databaseName": "ChEBI",
+  "identifier": "58168",
+  "name": [
+   "1-O-acyl-sn-glycero-3-phosphocholine",
+   "a 1-acyl-sn-glycero-3-phosphocholine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9760788,
+  "displayName": "arachidonate [ChEBI:32395]",
+  "stId": "chebi:32395",
+  "databaseName": "ChEBI",
+  "identifier": "32395",
+  "name": [
+   "arachidonate",
+   "(20:4n6)",
+   "(5Z,8Z,11Z,14Z)-icosa-5,8,11,14-tetraenoate",
+   "(5Z,8Z,11Z,14Z)-eicosatetraenoate"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 9915528,
+  "displayName": "1-acyl-2-arachidonoyl-sn-glycero-3-phosphocholine [ChEBI:75063]",
+  "stId": "chebi:75063",
+  "databaseName": "ChEBI",
+  "identifier": "75063",
+  "name": [
+   "1-acyl-2-arachidonoyl-sn-glycero-3-phosphocholine",
+   "1-acyl-2-(5Z,8Z,11Z,14Z)-icosatetraenoyl-sn-glycero-3-phosphocholine",
+   "1-acyl-2-(5Z,8Z,11Z,14Z-eicosatetraenoyl)-sn-glycero-3-phosphocholine",
+   "1-acyl-2-arachidonoyl-sn-phosphatidylcholine",
+   "1-acyl-2-(5Z,8Z,11Z,14Z)-icosatetraenoylphosphatidylcholine",
+   "1-acyl-2-(5Z,8Z,11Z,14Z)-eicosatetraenoylphosphatidylcholine"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 59283,
+  "displayName": "UniProt:P28482 MAPK1",
+  "stId": "uniprot:P28482",
+  "databaseName": "UniProt",
+  "identifier": "P28482",
+  "name": [
+   "MAPK1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9015763,
+  "displayName": "UniProt:P0DP23 CALM1",
+  "stId": "uniprot:P0DP23",
+  "databaseName": "UniProt",
+  "identifier": "P0DP23",
+  "name": [
+   "CALM1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 58197,
+  "displayName": "UniProt:P17252 PRKCA",
+  "stId": "uniprot:P17252",
+  "databaseName": "UniProt",
+  "identifier": "P17252",
+  "name": [
+   "PRKCA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 58201,
+  "displayName": "UniProt:Q05655 PRKCD",
+  "stId": "uniprot:Q05655",
+  "databaseName": "UniProt",
+  "identifier": "Q05655",
+  "name": [
+   "PRKCD"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 58205,
+  "displayName": "UniProt:P05129 PRKCG",
+  "stId": "uniprot:P05129",
+  "databaseName": "UniProt",
+  "identifier": "P05129",
+  "name": [
+   "PRKCG"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 50271,
+  "displayName": "UniProt:P25098 GRK2",
+  "stId": "uniprot:P25098",
+  "databaseName": "UniProt",
+  "identifier": "P25098",
+  "name": [
+   "GRK2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52370,
+  "displayName": "UniProt:P54750 PDE1A",
+  "stId": "uniprot:P54750",
+  "databaseName": "UniProt",
+  "identifier": "P54750",
+  "name": [
+   "PDE1A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52374,
+  "displayName": "UniProt:Q14123 PDE1C",
+  "stId": "uniprot:Q14123",
+  "databaseName": "UniProt",
+  "identifier": "Q14123",
+  "name": [
+   "PDE1C"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52372,
+  "displayName": "UniProt:Q01064 PDE1B",
+  "stId": "uniprot:Q01064",
+  "databaseName": "UniProt",
+  "identifier": "Q01064",
+  "name": [
+   "PDE1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 9735752,
+  "displayName": "adenosine 5'-monophosphate(2-) [ChEBI:456215]",
+  "stId": "chebi:456215",
+  "databaseName": "ChEBI",
+  "identifier": "456215",
+  "name": [
+   "adenosine 5'-monophosphate(2-)",
+   "AMP",
+   "Adenosine-5-monophosphate(2-)",
+   "AMP dianion",
+   "5'-O-phosphonatoadenosine",
+   "Adenosine-5-monophosphate dianion",
+   "AMP(2-)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 57845,
+  "displayName": "UniProt:P17612 PRKACA",
+  "stId": "uniprot:P17612",
+  "databaseName": "UniProt",
+  "identifier": "P17612",
+  "name": [
+   "PRKACA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57847,
+  "displayName": "UniProt:P22694 PRKACB",
+  "stId": "uniprot:P22694",
+  "databaseName": "UniProt",
+  "identifier": "P22694",
+  "name": [
+   "PRKACB"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57849,
+  "displayName": "UniProt:P22612 PRKACG",
+  "stId": "uniprot:P22612",
+  "databaseName": "UniProt",
+  "identifier": "P22612",
+  "name": [
+   "PRKACG"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57841,
+  "displayName": "UniProt:P13861 PRKAR2A",
+  "stId": "uniprot:P13861",
+  "databaseName": "UniProt",
+  "identifier": "P13861",
+  "name": [
+   "PRKAR2A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57843,
+  "displayName": "UniProt:P31323 PRKAR2B",
+  "stId": "uniprot:P31323",
+  "databaseName": "UniProt",
+  "identifier": "P31323",
+  "name": [
+   "PRKAR2B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57837,
+  "displayName": "UniProt:P10644 PRKAR1A",
+  "stId": "uniprot:P10644",
+  "databaseName": "UniProt",
+  "identifier": "P10644",
+  "name": [
+   "PRKAR1A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57839,
+  "displayName": "UniProt:P31321 PRKAR1B",
+  "stId": "uniprot:P31321",
+  "databaseName": "UniProt",
+  "identifier": "P31321",
+  "name": [
+   "PRKAR1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 96018,
+  "displayName": "UniProt:Q8NFP9 NBEA",
+  "stId": "uniprot:Q8NFP9",
+  "databaseName": "UniProt",
+  "identifier": "Q8NFP9",
+  "name": [
+   "NBEA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 403029,
+  "displayName": "UniProt:P16220-1 CREB1",
+  "stId": "uniprot:P16220-1",
+  "databaseName": "UniProt",
+  "identifier": "P16220",
+  "name": [
+   "CREB1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 61794,
+  "displayName": "UniProt:P51817 PRKX",
+  "stId": "uniprot:P51817",
+  "databaseName": "UniProt",
+  "identifier": "P51817",
+  "name": [
+   "PRKX"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57909,
+  "displayName": "UniProt:Q13555 CAMK2G",
+  "stId": "uniprot:Q13555",
+  "databaseName": "UniProt",
+  "identifier": "Q13555",
+  "name": [
+   "CAMK2G"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57907,
+  "displayName": "UniProt:Q13557 CAMK2D",
+  "stId": "uniprot:Q13557",
+  "databaseName": "UniProt",
+  "identifier": "Q13557",
+  "name": [
+   "CAMK2D"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57905,
+  "displayName": "UniProt:Q13554 CAMK2B",
+  "stId": "uniprot:Q13554",
+  "databaseName": "UniProt",
+  "identifier": "Q13554",
+  "name": [
+   "CAMK2B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57903,
+  "displayName": "UniProt:Q9UQM7 CAMK2A",
+  "stId": "uniprot:Q9UQM7",
+  "databaseName": "UniProt",
+  "identifier": "Q9UQM7",
+  "name": [
+   "CAMK2A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57335,
+  "displayName": "UniProt:P52292 KPNA2",
+  "stId": "uniprot:P52292",
+  "databaseName": "UniProt",
+  "identifier": "P52292",
+  "name": [
+   "KPNA2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57901,
+  "displayName": "UniProt:Q16566 CAMK4",
+  "stId": "uniprot:Q16566",
+  "databaseName": "UniProt",
+  "identifier": "Q16566",
+  "name": [
+   "CAMK4"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 234426,
+  "displayName": "UniProt:Q96RR4 CAMKK2",
+  "stId": "uniprot:Q96RR4",
+  "databaseName": "UniProt",
+  "identifier": "Q96RR4",
+  "name": [
+   "CAMKK2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 234422,
+  "displayName": "UniProt:Q8N5S9 CAMKK1",
+  "stId": "uniprot:Q8N5S9",
+  "databaseName": "UniProt",
+  "identifier": "Q8N5S9",
+  "name": [
+   "CAMKK1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 57451,
+  "displayName": "UniProt:Q9UD71 PPP1R1B",
+  "stId": "uniprot:Q9UD71",
+  "databaseName": "UniProt",
+  "identifier": "Q9UD71",
+  "name": [
+   "PPP1R1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61996,
+  "displayName": "UniProt:P62136 PPP1CA",
+  "stId": "uniprot:P62136",
+  "databaseName": "UniProt",
+  "identifier": "P62136",
+  "name": [
+   "PPP1CA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 5316186,
+  "displayName": "iron(2+) [ChEBI:29033]",
+  "stId": "chebi:29033",
+  "databaseName": "ChEBI",
+  "identifier": "29033",
+  "name": [
+   "iron(2+)",
+   "FE (II) ION",
+   "Fe2+",
+   "Fe(2+)",
+   "iron ion(2+)",
+   "Fe(II)",
+   "Ferrous ion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 5316220,
+  "displayName": "manganese(2+) [ChEBI:29035]",
+  "stId": "chebi:29035",
+  "databaseName": "ChEBI",
+  "identifier": "29035",
+  "name": [
+   "manganese(2+)",
+   "Mn(2+)",
+   "MANGANESE (II) ION",
+   "manganese, ion (Mn2+)",
+   "manganese(II)",
+   "manganous ion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 114751,
+  "displayName": "zinc(2+) [ChEBI:29105]",
+  "stId": "chebi:29105",
+  "databaseName": "ChEBI",
+  "identifier": "29105",
+  "name": [
+   "zinc(2+)"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 403037,
+  "displayName": "UniProt:P16298 PPP3CB",
+  "stId": "uniprot:P16298",
+  "databaseName": "UniProt",
+  "identifier": "P16298",
+  "name": [
+   "PPP3CB"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61110,
+  "displayName": "UniProt:Q08209 PPP3CA",
+  "stId": "uniprot:Q08209",
+  "databaseName": "UniProt",
+  "identifier": "Q08209",
+  "name": [
+   "PPP3CA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61114,
+  "displayName": "UniProt:P48454 PPP3CC",
+  "stId": "uniprot:P48454",
+  "databaseName": "UniProt",
+  "identifier": "P48454",
+  "name": [
+   "PPP3CC"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 917869,
+  "displayName": "iron(3+) [ChEBI:29034]",
+  "stId": "chebi:29034",
+  "databaseName": "ChEBI",
+  "identifier": "29034",
+  "name": [
+   "iron(3+)",
+   "ferric iron",
+   "iron, ion (Fe(3+))",
+   "Fe(3+)",
+   "Fe(3+)",
+   "Fe(III)",
+   "Fe3+",
+   "FE (III) ION",
+   "Ferric ion"
+  ],
+  "moleculeType": "Chemical",
+  "schemaClass": "ReferenceMolecule",
+  "className": "ReferenceMolecule"
+ },
+ {
+  "dbId": 145676,
+  "displayName": "UniProt:Q07343-3 PDE4B",
+  "stId": "uniprot:Q07343-3",
+  "databaseName": "UniProt",
+  "identifier": "Q07343",
+  "name": [
+   "PDE4B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceIsoform",
+  "className": "ReferenceIsoform"
+ },
+ {
+  "dbId": 51292,
+  "displayName": "UniProt:P63098 PPP3R1",
+  "stId": "uniprot:P63098",
+  "databaseName": "UniProt",
+  "identifier": "P63098",
+  "name": [
+   "PPP3R1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52388,
+  "displayName": "UniProt:Q08493 PDE4C",
+  "stId": "uniprot:Q08493",
+  "databaseName": "UniProt",
+  "identifier": "Q08493",
+  "name": [
+   "PDE4C"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52390,
+  "displayName": "UniProt:Q08499 PDE4D",
+  "stId": "uniprot:Q08499",
+  "databaseName": "UniProt",
+  "identifier": "Q08499",
+  "name": [
+   "PDE4D"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 52384,
+  "displayName": "UniProt:P27815 PDE4A",
+  "stId": "uniprot:P27815",
+  "databaseName": "UniProt",
+  "identifier": "P27815",
+  "name": [
+   "PDE4A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 69449,
+  "displayName": "UniProt:Q00535 CDK5",
+  "stId": "uniprot:Q00535",
+  "databaseName": "UniProt",
+  "identifier": "Q00535",
+  "name": [
+   "CDK5"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49125,
+  "displayName": "UniProt:P30153 PPP2R1A",
+  "stId": "uniprot:P30153",
+  "databaseName": "UniProt",
+  "identifier": "P30153",
+  "name": [
+   "PPP2R1A"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 49127,
+  "displayName": "UniProt:P30154 PPP2R1B",
+  "stId": "uniprot:P30154",
+  "databaseName": "UniProt",
+  "identifier": "P30154",
+  "name": [
+   "PPP2R1B"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61096,
+  "displayName": "UniProt:P67775 PPP2CA",
+  "stId": "uniprot:P67775",
+  "databaseName": "UniProt",
+  "identifier": "P67775",
+  "name": [
+   "PPP2CA"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 61104,
+  "displayName": "UniProt:P62714 PPP2CB",
+  "stId": "uniprot:P62714",
+  "databaseName": "UniProt",
+  "identifier": "P62714",
+  "name": [
+   "PPP2CB"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 405743,
+  "displayName": "UniProt:Q14738 PPP2R5D",
+  "stId": "uniprot:Q14738",
+  "databaseName": "UniProt",
+  "identifier": "Q14738",
+  "name": [
+   "PPP2R5D"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 97879,
+  "displayName": "UniProt:Q8IVA1 PCP2",
+  "stId": "uniprot:Q8IVA1",
+  "databaseName": "UniProt",
+  "identifier": "Q8IVA1",
+  "name": [
+   "PCP2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 58531,
+  "displayName": "UniProt:P81274 GPSM2",
+  "stId": "uniprot:P81274",
+  "databaseName": "UniProt",
+  "identifier": "P81274",
+  "name": [
+   "GPSM2"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 231051,
+  "displayName": "UniProt:Q9Y4H4 GPSM3",
+  "stId": "uniprot:Q9Y4H4",
+  "databaseName": "UniProt",
+  "identifier": "Q9Y4H4",
+  "name": [
+   "GPSM3"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 231041,
+  "displayName": "UniProt:Q86YR5 GPSM1",
+  "stId": "uniprot:Q86YR5",
+  "databaseName": "UniProt",
+  "identifier": "Q86YR5",
+  "name": [
+   "GPSM1"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 230725,
+  "displayName": "UniProt:Q5JWF2 GNAS",
+  "stId": "uniprot:Q5JWF2",
+  "databaseName": "UniProt",
+  "identifier": "Q5JWF2",
+  "name": [
+   "GNAS"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55368,
+  "displayName": "UniProt:P63092 GNAS",
+  "stId": "uniprot:P63092",
+  "databaseName": "UniProt",
+  "identifier": "P63092",
+  "name": [
+   "GNAS"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ },
+ {
+  "dbId": 55372,
+  "displayName": "UniProt:P19086 GNAZ",
+  "stId": "uniprot:P19086",
+  "databaseName": "UniProt",
+  "identifier": "P19086",
+  "name": [
+   "GNAZ"
+  ],
+  "moleculeType": "Protein",
+  "schemaClass": "ReferenceGeneProduct",
+  "className": "ReferenceGeneProduct"
+ }
+]

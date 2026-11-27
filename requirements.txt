@@ -1,0 +1,17 @@
+# Dependencias do pipeline. `pip install -r requirements.txt` tem de funcionar
+# num clone limpo, entao aqui so entra o que instala sem compilar nada.
+# Versoes nao fixadas, exceto numpy>=2: o pacote upstream pp4ckd exige
+# numpy<2, mas este repositorio nao o importa.
+numpy>=2
+rdkit
+requests
+pandas
+scipy
+streamlit
+pytest
+
+# As dependencias pesadas e as que precisam de compilador estao em
+# requirements-opcionais.txt. O comentario "opcional" aqui nao serviria de
+# nada: o pip instala toda linha que encontrar, comentada como opcional ou
+# nao, e `psycopg2` (sem -binary) exige pg_config e quebrava este arquivo
+# inteiro num clone limpo.

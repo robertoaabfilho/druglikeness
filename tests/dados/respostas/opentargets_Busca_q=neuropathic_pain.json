@@ -1,0 +1,48 @@
+{
+ "data": {
+  "search": {
+   "hits": [
+    {
+     "id": "EFO_0005762",
+     "name": "neuropathic pain"
+    },
+    {
+     "id": "MONDO_0017937",
+     "name": "autosomal dominant intermediate Charcot-Marie-Tooth disease with neuropathic pain"
+    },
+    {
+     "id": "MONDO_0009459",
+     "name": "channelopathy-associated congenital insensitivity to pain, autosomal recessive"
+    },
+    {
+     "id": "HP_0008443",
+     "name": "Neuropathic spinal arthropathy"
+    },
+    {
+     "id": "MONDO_0021667",
+     "name": "neuralgia"
+    },
+    {
+     "id": "MONDO_0011909",
+     "name": "Charcot-Marie-Tooth disease dominant intermediate D"
+    },
+    {
+     "id": "EFO_0700072",
+     "name": "sodium channelopathy-related small fiber neuropathy"
+    },
+    {
+     "id": "MONDO_0014566",
+     "name": "Charcot-Marie-Tooth disease axonal type 2U"
+    },
+    {
+     "id": "MONDO_0009746",
+     "name": "hereditary sensory and autonomic neuropathy type 4"
+    },
+    {
+     "id": "MONDO_0018993",
+     "name": "Charcot-Marie-Tooth disease type 2"
+    }
+   ]
+  }
+ }
+}

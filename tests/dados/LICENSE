@@ -1,0 +1,113 @@
+Licenca dos dados versionados nesta pasta (tests/dados)
+=======================================================
+
+Esta pasta guarda fixtures de teste. Parte delas deriva do ChEMBL, e o
+share-alike do ChEMBL alcanca o arquivo derivado: a licenca MIT da raiz vale
+para o CODIGO, nunca para estes dados.
+
+Derivado do ChEMBL -- Creative Commons Attribution-ShareAlike 3.0 Unported
+(CC BY-SA 3.0), https://creativecommons.org/licenses/by-sa/3.0/
+
+    tests/dados/evidencias_amostra.csv
+    tests/dados/respostas/molecule.json_*.json
+    tests/dados/respostas/target.json_*.json
+    tests/dados/respostas/target_CHEMBL222.json
+    tests/dados/respostas/target_component.json_*.json
+    tests/dados/respostas/protein_classification_695.json
+
+Fonte: ChEMBL (EMBL-EBI), https://www.ebi.ac.uk/chembl/
+Ao usar estes dados, cite o ChEMBL:
+
+Zdrazil B, Felix E, Hunter F, et al. The ChEMBL Database in 2023: a drug
+discovery platform spanning multiple bioactivity data types and time periods.
+Nucleic Acids Research. 2024;52(D1):D1180-D1192. doi:10.1093/nar/gkad1004
+
+Dominio publico (CC0), sem exigencia de share-alike
+
+    tests/dados/respostas/reactome_*.json   -- Reactome (so anotacao; nenhum
+        arquivo de Functional Interaction, que e restrito, entra aqui)
+    tests/dados/respostas/opentargets_*.json -- Open Targets
+
+        As respostas `opentargets_Expressao_*` (expressao basal de SLC6A4,
+        SLC6A2 e GRIN1) sao APARADAS: de ~1.450 linhas por alvo ficaram as 51
+        do GTEx, que e a fonte comparavel entre tecidos e a unica que o modulo
+        usa por padrao. O `count` da resposta nao foi alterado, e uma pagina de
+        2.000 cobre o caso, entao a paginacao percorre o mesmo caminho. Os
+        valores sao os do servico: SLC6A4 35,02 TPM no pulmao e 0,45 nos
+        tecidos nervosos pedidos; GRIN1 255,34 no cortex frontal.
+    tests/dados/respostas/openfda_*.json    -- openFDA (FDA/HHS), dominio
+        publico. Fonte: https://open.fda.gov/, carga de 2026-11-25
+        (`meta.last_updated`).
+
+        ESTAS FIXTURES SAO APARADAS, nao copias integrais. A resposta bruta de
+        um principio ativo passa de 8 MB e doze delas nao cabem num
+        repositorio (7,7 MB depois de aparar os campos, 241 KB depois de
+        aparar as repeticoes). O que foi feito, e o que isso preserva:
+
+        1. de cada bula ficaram so os cinco campos que o pipeline le
+           (`boxed_warning`, `warnings`, `warnings_and_cautions`,
+           `adverse_reactions`, `indications_and_usage`);
+        2. dentro deles, ficou so o texto que casa um dos termos gravados --
+           `neuropathy`, `neuropathic`, `neuritis`, `paresthesia` -- e ficou
+           INTEGRO, nunca recortado, para que o trecho que o teste confere
+           seja byte a byte o que a producao produziria;
+        3. das 50 bulas devolvidas por principio ativo, o texto ficou so na
+           PRIMEIRA que traz cada par (termo, secao). O modulo deduplica por
+           esse par e para no primeiro casamento, entao o veredito e o trecho
+           nao mudam; 50 copias do mesmo texto de generico mudariam so o
+           tamanho do arquivo. As 50 entradas continuam la, vazias quando nao
+           contribuem, porque a CONTAGEM decide
+           `n_bulas_consultadas`.
+
+        Consequencia a saber: a fixture responde fielmente para os TERMOS
+        ACIMA. Um teste com outro termo precisa regravar a fixture, senao ela
+        dira "nenhum achado" onde a bula real tem um. O gravador esta descrito
+        no commit que introduziu a tarefa da bula.
+
+Fixtures escritas a mao (ligantes_minimo.tsv, alvos_minimo.tsv,
+ligantes_sem_coluna.tsv, sintomas.txt) seguem a licenca MIT do repositorio.
+
+Derivado do PP4CKD (saida do modelo, nao dado de treino)
+
+    tests/dados/controle_previsoes.tsv
+
+        Probabilidades do `ecfp4_fold_4.pt` do PP4CKD sobre os 12 farmacos de
+        `exemplos/controle.dor_neuropatica.tsv`: uma coluna por alvo pedido, o
+        maximo do canal negativo e a contagem de promiscuidade. Os SMILES de
+        entrada vem do controle, que e escrito a mao (MIT); os numeros sao
+        saida do modelo publicado no Zenodo pelos autores do PP4CKD.
+
+        O QUE ESTA FIXTURE FIXA E A ARITMETICA, NAO O MODELO. Se o checkpoint
+        mudar, os numeros gravados continuam valendo como entrada do teste --
+        e o teste continua provando que a conta da fase 3 reproduz 0,750 sem
+        canal negativo e 0,806 com ele. A alternativa seria exigir o
+        checkpoint real na suite, e nenhum teste deste repositorio depende de
+        arquivo fora dele. O gravador e descrito no commit que introduziu a
+        tarefa das AUC.
+
+    tests/dados/previsoes_regime_producao.tsv
+
+        Uma fatia REAL da saida da etapa 1: 297 linhas de evidencia prevista
+        sobre 70 compostos, nas 26 colunas de `COLUNAS_EVIDENCIA`. As
+        probabilidades sao do `ecfp4_fold_4.pt` do PP4CKD; os compostos sao de
+        `dados/validacao_neuro_prospector.tsv`, cuja licenca propria esta em
+        `dados/LICENSE` (rotulos da Dr. Duke's Database, USDA/ARS, dominio
+        publico; SMILES de NPASS, COCONUT, LOTUS e PubChem -- O NPASS E
+        ACADEMICO/NAO COMERCIAL). As colunas `alvo_chembl_id`, `alvo`,
+        `organismo` e `tipo_alvo` sao identificador e anotacao do ChEMBL, nao
+        dado de bioatividade dele; `n_moleculas_treino` e uma CONTAGEM
+        agregada de registros de bioatividade do ChEMBL (o `active_molecules`
+        por alvo), nao um valor medido. O share-alike do ChEMBL declarado no
+        topo deste arquivo alcanca esta fixture.
+
+        O QUE ESTA FIXTURE FIXA E O REGIME, NAO O MODELO. Ela vem de um run
+        feito com `--corte 0,0` -- que escreve a matriz densa de 222 x 272 =
+        60.384 pares -- FILTRADO em `valor >= 0,1`, que e o corte padrao de
+        `mods/evidencias/predito.py`. O corte e um filtro pos-predicao
+        (`if p < corte: continue`), entao a fatia e byte a byte o que a etapa 1
+        teria escrito no regime padrao.
+
+        NENHUMA LINHA FOI APARADA. 297 linhas x 26 colunas sao 70 KB, e aparar
+        reintroduziria exatamente a liberdade de escolher a forma que esta
+        fixture existe para remover: foi um run de corte 0 que produziu a
+        afirmacao falsa de que as faixas `1b`/`2b` sao inalcancaveis.

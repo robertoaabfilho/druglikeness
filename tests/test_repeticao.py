@@ -1,0 +1,465 @@
+# -*- coding: utf-8 -*-
+import json
+from pathlib import Path
+
+import pytest
+
+import mods.coletar_evidencias as cli
+from mods.coletar_evidencias import SAIDA_PARCIAL, main
+from mods.evidencias.cache import (
+    Cache, FaltaNoCache, VersaoIndeterminada, abrir_ao_vivo,
+    abrir_para_repeticao, consultar_versoes)
+from mods.evidencias.chembl import ListaTruncada, _sem_truncar
+from mods.evidencias.manifesto import ler_manifesto, verificar_manifesto
+
+URL = "https://www.ebi.ac.uk/chembl/api/data/target/CHEMBL1.json"
+
+
+def _buscador(resposta, chamadas):
+    def buscar(url, corpo=None):
+        chamadas.append((url, corpo))
+        if isinstance(resposta, Exception):
+            raise resposta
+        return resposta
+    return buscar
+
+
+def test_repeticao_recusa_versao_divergente():
+    anterior = {"versoes": {"open_targets": "24.09", "checkpoint_md5": "abc"}}
+    atual = {"versoes": {"open_targets": "25.03", "checkpoint_md5": "abc"}}
+    assert "open_targets" in " ".join(verificar_manifesto(anterior, atual))
+    assert verificar_manifesto(anterior, anterior) == []
+    atual2 = {"versoes": {"open_targets": "24.09", "checkpoint_md5": "zzz"}}
+    assert "checkpoint_md5" in " ".join(verificar_manifesto(anterior, atual2))
+
+
+def test_repeticao_recusa_parametro_que_muda_a_saida():
+    anterior = {"parametros": {"corte": 0.1, "limite": None}}
+    assert verificar_manifesto(anterior, {"parametros": {"corte": 0.1, "limite": None}}) == []
+    assert "limite" in " ".join(verificar_manifesto(anterior, {"parametros": {"corte": 0.1, "limite": 5}}))
+
+
+def test_queda_de_rede_nao_deixa_saida_parcial(tmp_path, rotulos_falsos, monkeypatch):
+    # Falhar antes de escrever, nunca a meio arquivo.
+    def cai(url, corpo=None):
+        raise OSError("rede fora do ar")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", cai)
+    rot = tmp_path / "labels.tsv"
+    rot.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
+                   "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
+                   "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    saida = tmp_path / "evidencias.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(saida), "--rotulos", str(rot),
+                   "--alvos-enriquecidos", str(tmp_path / "enr.tsv")])
+    assert codigo != 0
+    assert not saida.exists()
+    assert not (tmp_path / "manifesto.json").exists()
+
+
+def test_cache_serve_a_segunda_chamada_sem_rede(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"a": [1]}, chamadas))
+    primeira = cache.obter_json("https://exemplo/teste")
+    segunda = Cache(tmp_path, _buscador(OSError("sem rede"), chamadas)).obter_json(
+        "https://exemplo/teste")
+    assert primeira == segunda == {"a": [1]}
+    assert len(chamadas) == 1
+
+
+def test_chave_distingue_corpo_e_url(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"x": 1}, chamadas))
+    cache.obter_json("https://e/g", {"q": 1})
+    cache.obter_json("https://e/g", {"q": 2})
+    cache.obter_json("https://e/h", {"q": 1})
+    cache.obter_json("https://e/g", {"q": 1})
+    assert len(chamadas) == 3
+
+
+@pytest.mark.parametrize("resposta", [
+    {"errors": [{"message": "x"}]},
+    {"error_message": "boom"},
+    {"targets": [{}], "page_meta": {"total_count": 5}},   # pagina truncada
+    None])
+def test_resposta_ruim_nao_e_gravada(tmp_path, resposta):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador(resposta, chamadas))
+    assert cache.obter_json(URL) == resposta   # devolvida ao chamador...
+    cache.obter_json(URL)
+    assert len(chamadas) == 2                  # ...mas nunca servida do disco
+    assert not list(tmp_path.glob("*.json"))
+
+
+def test_excecao_propaga_e_nao_grava(tmp_path):
+    cache = Cache(tmp_path, _buscador(OSError("timeout"), []))
+    with pytest.raises(OSError):
+        cache.obter_json(URL)
+    assert not list(tmp_path.iterdir())
+
+
+def test_pagina_truncada_segue_erro_de_item(tmp_path):
+    resposta = {"targets": [{}], "page_meta": {"total_count": 5}}
+    cache = Cache(tmp_path, _buscador(resposta, []))
+    with pytest.raises(ListaTruncada):
+        _sem_truncar(cache.obter_json(URL), "targets", "teste")
+
+
+def test_somente_leitura_falta_e_erro_e_nao_busca(tmp_path):
+    chamadas = []
+    cache = Cache(tmp_path, _buscador({"a": 1}, chamadas), somente_leitura=True)
+    with pytest.raises(FaltaNoCache):
+        cache.obter_json(URL)
+    assert chamadas == []
+
+
+def test_entrada_corrompida_falha_alto(tmp_path):
+    cache = Cache(tmp_path, _buscador({"a": 1}, []))
+    cache.obter_json(URL)
+    arquivo = next(tmp_path.glob("*.json"))
+    arquivo.write_text("{ truncado", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="corrompida"):
+        cache.obter_json(URL)
+
+
+def _servicos(ot_mes=9, chembl="ChEMBL_35"):
+    def buscar(url, corpo=None):
+        if "opentargets" in url:
+            return {"data": {"meta": {"dataVersion": {"year": 24, "month": ot_mes,
+                                                      "iteration": None}}}}
+        if url.endswith("status.json"):
+            return {"chembl_db_version": chembl}
+        if url.endswith("database/version"):
+            return 93
+        return {"x": 1}
+    return buscar
+
+
+def test_versoes_vem_da_api_e_separam_as_pastas(tmp_path):
+    assert consultar_versoes(_servicos()) == {
+        "open_targets": "24.09", "chembl": "ChEMBL_35", "reactome": "93"}
+    c1, v1 = abrir_ao_vivo(tmp_path, _servicos(9))
+    c2, v2 = abrir_ao_vivo(tmp_path, _servicos(12))
+    assert c1.diretorio != c2.diretorio     # release nova nunca le o cache velho
+    c1.obter_json("https://e/x")
+    chamadas = []
+    c2._buscar = _buscador({"novo": 1}, chamadas)
+    assert c2.obter_json("https://e/x") == {"novo": 1} and len(chamadas) == 1
+    r, versoes = abrir_para_repeticao(tmp_path, c1.diretorio.name)
+    assert versoes == v1 and r.obter_json("https://e/x") == {"x": 1}
+
+
+def test_versao_indeterminada_aborta(tmp_path):
+    def quebrado(url, corpo=None):
+        return {"inesperado": True}
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(quebrado)
+
+
+def _rodar_enriquecido(tmp_path, nome, extra=()):
+    rot = tmp_path / "labels.tsv"
+    rot.write_text("target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\t"
+                   "active_molecules\tis_ckd\n0\t1\tCHEMBL222\tNET\tSINGLE PROTEIN\t"
+                   "Homo sapiens\t5\tTrue\n", encoding="utf-8")
+    pasta = tmp_path / nome
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(pasta / "e.tsv"), "--rotulos", str(rot),
+                   "--alvos-enriquecidos", str(pasta / "enr.tsv"),
+                   "--cache", str(tmp_path / "cache"), *extra])
+    return codigo, pasta
+
+
+def test_manifesto_grava_versoes_e_repeticao_funciona_sem_rede(tmp_path, monkeypatch):
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", _servicos())
+    monkeypatch.setattr(cli, "_enriquecer",
+                        lambda *a: [{"alvo_chembl_id": "CHEMBL222",
+                                                       "origem": "usuario"}])
+    codigo, pasta = _rodar_enriquecido(tmp_path, "um")
+    assert codigo == SAIDA_PARCIAL
+    m = ler_manifesto(pasta / "manifesto.json")
+    assert m["versoes"]["open_targets"] == "24.09" and m["versoes"]["chembl"] == "ChEMBL_35"
+    assert m["parametros"]["cache_pasta"].startswith("open_targets-24.09")
+
+    # Repeticao: a rede agora falha; mesmo assim roda, e nao toca o manifesto lido.
+    def cai(url, corpo=None):
+        raise OSError("fora do ar")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", cai)
+    original = (pasta / "manifesto.json").read_text()
+    codigo, pasta2 = _rodar_enriquecido(
+        tmp_path, "dois", ["--manifesto", str(pasta / "manifesto.json")])
+    assert codigo == SAIDA_PARCIAL
+    assert (pasta / "manifesto.json").read_text() == original
+    assert (pasta2 / "e.tsv").read_text() == (pasta / "e.tsv").read_text()
+
+
+def test_repeticao_recusa_cache_de_outra_versao(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", _servicos())
+    monkeypatch.setattr(cli, "_enriquecer", lambda *a: [])
+    codigo, pasta = _rodar_enriquecido(tmp_path, "um")
+    assert codigo == SAIDA_PARCIAL
+    caminho = pasta / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    m["versoes"]["open_targets"] = "23.12"
+    caminho.write_text(json.dumps(m))
+    codigo, pasta2 = _rodar_enriquecido(tmp_path, "dois", ["--manifesto", str(caminho)])
+    assert codigo == 2
+    assert "open_targets" in capsys.readouterr().err
+    assert not (pasta2 / "e.tsv").exists()
+
+
+def test_verificar_nomeia_o_arquivo_de_entrada_que_mudou():
+    anterior = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "c"}}
+    atual = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "X"}}
+    msg = " ".join(verificar_manifesto(anterior, atual))
+    assert "sintomas" in msg and "ligantes" not in msg and "alvos" not in msg
+
+
+def _servico_falso():
+    """Os tres servicos, no formato real, para um alvo (SCN9A)."""
+    scn9a = {"target_chembl_id": "CHEMBL4296", "pref_name": "SCN9A",
+             "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+    chamadas = []
+
+    def servico(url, corpo=None):
+        chamadas.append(url)
+        if corpo and "Versao" in corpo["query"] or url.endswith(("status.json", "database/version")):
+            return _servicos()(url, corpo)
+        if corpo is not None:
+            return {"data": {"disease": {"associatedTargets": {"count": 1, "rows": [
+                {"score": 0.6, "datatypeScores": [],
+                 "target": {"id": "E", "approvedSymbol": "SCN9A",
+                            "proteinIds": [{"id": "Q15858", "source": "uniprot_swissprot"}]}}]}}}}
+        if url.startswith("https://reactome.org"):
+            if "mapping" in url:
+                return [{"stId": "R-X", "displayName": "x"}]
+            return [{"databaseName": "UniProt", "identifier": "Q15858"}]
+        if "target/CHEMBL4296.json" in url:
+            return {**scn9a, "target_components": [{"accession": "Q15858"}]}
+        if "accession=Q15858" in url:
+            return {"targets": [scn9a], "page_meta": {"total_count": 1}}
+        return {"targets": [], "page_meta": {"total_count": 0}}
+    return servico, chamadas
+
+
+def _entrada_real(tmp_path):
+    (tmp_path / "alvos.tsv").write_text("alvo_chembl_id\nCHEMBL4296\n", encoding="utf-8")
+    (tmp_path / "sint.txt").write_text("dor\n", encoding="utf-8")
+    (tmp_path / "lig.tsv").write_text(
+        Path("tests/dados/ligantes_minimo.tsv").read_text(encoding="utf-8"),
+        encoding="utf-8")
+    (tmp_path / "labels.tsv").write_text(
+        "target_idx\ttid\tchembl_id\tpref_name\ttarget_type\torganism\tactive_molecules\tis_ckd\n"
+        "0\t1\tCHEMBL4296\tSCN9A\tSINGLE PROTEIN\tHomo sapiens\t50\tTrue\n", encoding="utf-8")
+
+
+def _cli_real(tmp_path, nome, extra=()):
+    pasta = tmp_path / nome
+    codigo = main(["--ligantes", str(tmp_path / "lig.tsv"), "--alvos", str(tmp_path / "alvos.tsv"),
+                   "--sintomas", str(tmp_path / "sint.txt"), "--saida", str(pasta / "e.tsv"),
+                   "--rotulos", str(tmp_path / "labels.tsv"), "--efo", "dor=EFO_1",
+                   "--alvos-enriquecidos", str(pasta / "enr.tsv"),
+                   "--cache", str(tmp_path / "cache"), *extra])
+    return codigo, pasta
+
+
+def test_enriquecimento_real_repetido_so_do_cache_e_entrada_alterada_recusa(
+        tmp_path, monkeypatch, capsys):
+    servico, chamadas = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == SAIDA_PARCIAL
+    enr = (vivo / "enr.tsv").read_text(encoding="utf-8")
+    assert "CHEMBL4296" in enr and "\t0.6\t" in enr and len(chamadas) > 3
+    m = ler_manifesto(vivo / "manifesto.json")
+    assert {"ligantes_md5", "alvos_md5", "sintomas_md5"} <= m["versoes"].keys()
+
+    def proibido(url, corpo=None):
+        raise AssertionError(f"repeticao foi a rede: {url}")
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", proibido)
+    ref = ["--manifesto", str(vivo / "manifesto.json")]
+    codigo, rep = _cli_real(tmp_path, "rep", ref)     # socket bloqueado tambem
+    assert codigo == SAIDA_PARCIAL
+    assert (rep / "enr.tsv").read_text(encoding="utf-8") == enr
+
+    # --limite diferente: recusa.
+    codigo, _ = _cli_real(tmp_path, "rep2", [*ref, "--limite", "1"])
+    assert codigo == 2 and "limite" in capsys.readouterr().err
+
+    # Entrada alterada: recusa nomeando o arquivo.
+    (tmp_path / "sint.txt").write_text("dor\nfadiga\n", encoding="utf-8")
+    codigo, rep3 = _cli_real(tmp_path, "rep3", ref)
+    err = capsys.readouterr().err
+    assert codigo == 2 and "sintomas_md5" in err and "ligantes_md5" not in err
+    assert not (rep3 / "enr.tsv").exists()
+
+
+def test_manifesto_sem_hash_de_entrada_recusa_a_repeticao(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == SAIDA_PARCIAL
+    caminho = vivo / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    del m["versoes"]["ligantes_md5"]
+    caminho.write_text(json.dumps(m))
+    capsys.readouterr()
+    codigo, rep = _cli_real(tmp_path, "rep", ["--manifesto", str(caminho)])
+    err = capsys.readouterr().err
+    assert codigo == 2
+    assert "anterior ao registro de MD5" in err and "ligantes_md5" in err
+    assert "alvos_md5" not in err
+    assert not (rep / "e.tsv").exists() and not (rep / "manifesto.json").exists()
+
+
+def test_falta_no_cache_nao_e_runtimeerror():
+    assert not issubclass(FaltaNoCache, RuntimeError)
+    assert not issubclass(VersaoIndeterminada, RuntimeError)
+
+
+def test_falta_no_cache_na_repeticao_sai_com_2_sem_saida(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == SAIDA_PARCIAL
+    for f in (tmp_path / "cache").glob("*/*.json"):   # esvazia o cache
+        if f.name != "versoes.json":
+            f.unlink()
+    capsys.readouterr()
+    codigo, rep = _cli_real(tmp_path, "rep", ["--manifesto", str(vivo / "manifesto.json")])
+    assert codigo == 2 and "ausente do cache" in capsys.readouterr().err
+    assert not (rep / "e.tsv").exists() and not (rep / "enr.tsv").exists()
+
+
+@pytest.mark.parametrize("reactome", [[], {}, "", None, "[]", True])
+def test_versao_do_reactome_malformada_aborta(reactome):
+    base = _servicos()
+
+    def buscar(url, corpo=None):
+        return reactome if url.endswith("database/version") else base(url, corpo)
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(buscar)
+
+
+@pytest.mark.parametrize("onde", ["ot", "chembl"])
+def test_versao_malformada_de_ot_e_chembl_aborta(onde):
+    base = _servicos()
+
+    def buscar(url, corpo=None):
+        if onde == "ot" and corpo:
+            return {"data": {"meta": {"dataVersion": []}}}
+        if onde == "chembl" and url.endswith("status.json"):
+            return {"chembl_db_version": ""}
+        return base(url, corpo)
+    with pytest.raises(VersaoIndeterminada):
+        consultar_versoes(buscar)
+
+
+def test_falhas_de_item_ficam_no_manifesto_e_a_repeticao_as_cita(tmp_path, monkeypatch, capsys):
+    servico, _ = _servico_falso()
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    _entrada_real(tmp_path)
+    codigo, vivo = _cli_real(tmp_path, "vivo")
+    assert codigo == SAIDA_PARCIAL
+    caminho = vivo / "manifesto.json"
+    m = json.loads(caminho.read_text())
+    assert m["contagens"]["falhas_de_item"] == {
+        "previsto": [], "enriquecimento": [], "medido": []}
+    m["contagens"]["falhas_de_item"]["enriquecimento"] = ["alvo X: resposta inesperada"]
+    caminho.write_text(json.dumps(m))
+    capsys.readouterr()
+    codigo, _ = _cli_real(tmp_path, "rep", ["--manifesto", str(caminho)])
+    assert codigo == SAIDA_PARCIAL
+    assert "falhas de item diferem" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("chave,param", [("checkpoint_md5", "checkpoint"),
+                                         ("rotulos_md5", "rotulos"),
+                                         ("evidencias_chembl_md5", "evidencias_chembl")])
+def test_hash_obrigatorio_quando_a_entrada_foi_usada(chave, param):
+    from mods.evidencias.manifesto import hashes_de_entrada_ausentes
+    m = {"versoes": {"ligantes_md5": "a", "alvos_md5": "b", "sintomas_md5": "c"},
+         "parametros": {param: "arquivo"}}
+    assert hashes_de_entrada_ausentes(m) == [chave]
+    m["versoes"][chave] = "x"
+    assert hashes_de_entrada_ausentes(m) == []
+
+
+def test_falha_de_item_real_entra_no_manifesto(tmp_path, monkeypatch, capsys):
+    """Falha de item DE VERDADE, ponta a ponta: o ChEMBL responde sem
+    `pref_name` para o alvo pedido e a resolucao dele falha. E o unico
+    mecanismo que impede uma coleta incompleta de parecer completa, e o outro
+    teste apenas injeta o valor no JSON do manifesto."""
+    base = _servicos()
+
+    def servico(url, corpo=None):
+        if "target/CHEMBL999.json" in url:
+            return {"target_chembl_id": "CHEMBL999"}   # sem pref_name/organism
+        return base(url, corpo)
+    monkeypatch.setattr("mods.evidencias.cache._buscar_padrao", servico)
+    alvos = tmp_path / "alvos.tsv"
+    alvos.write_text("alvo_chembl_id\nCHEMBL999\n", encoding="utf-8")
+    saida = tmp_path / "e.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", str(alvos), "--sintomas", "tests/dados/sintomas.txt",
+                   "--saida", str(saida), "--cache", str(tmp_path / "cache"),
+                   "--evidencias-chembl", "tests/dados/evidencias_amostra.csv"])
+    assert codigo == SAIDA_PARCIAL
+    m = ler_manifesto(tmp_path / "manifesto.json")
+    medido = m["contagens"]["falhas_de_item"]["medido"]
+    assert any("CHEMBL999" in p and "RespostaInesperada" in p for p in medido)
+    assert m["contagens"]["execucao_parcial"] is True
+    err = capsys.readouterr().err
+    assert "[aviso] evidencia medida" in err and "CHEMBL999" in err
+
+
+# ===========================================================================
+# Correcao I8: repetir um manifesto de outro commit do pipeline
+# ===========================================================================
+def test_repetir_manifesto_de_outro_commit_avisa():
+    """A decisao 2 mudou a lista de alvos com os MESMOS parametros: mesmo
+    arquivo, mesmo MD5, mesma versao de servico, tudo servido do cache -- e a
+    saida difere. A repeticao existe para RECUSAR execucao que divergiria, e
+    esta divergencia passava sem ninguem notar."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"pipeline_commit": "a" * 40, "chembl": "35"},
+                "parametros": {"corte": 0.1}}
+    atual = {"versoes": {"pipeline_commit": "b" * 40, "chembl": "35"},
+             "parametros": {"corte": 0.1}}
+    problemas = verificar_manifesto(anterior, atual)
+    assert any("pipeline_commit" in p for p in problemas), problemas
+
+
+def test_repetir_no_mesmo_commit_nao_avisa():
+    from mods.evidencias.manifesto import verificar_manifesto
+    igual = {"versoes": {"pipeline_commit": "a" * 40}, "parametros": {}}
+    assert verificar_manifesto(igual, dict(igual)) == []
+
+
+def test_manifesto_sem_pipeline_commit_nao_inventa_divergencia():
+    """So o que o anterior registrou e comparado -- a regra que a funcao ja
+    tinha. Manifesto antigo sem a chave nao vira erro."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"chembl": "35"}, "parametros": {}}
+    atual = {"versoes": {"pipeline_commit": "b" * 40, "chembl": "35"},
+             "parametros": {}}
+    assert verificar_manifesto(anterior, atual) == []
+
+
+def test_commit_desconhecido_nao_e_divergencia():
+    """Copia sem git, ou git ausente: o commit atual sai `None`. Tratar isso
+    como divergencia trancaria a repeticao em toda arvore sem historico.
+    Ausencia nunca vira veredito -- a mesma regra do resto do pipeline."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"pipeline_commit": "a" * 40}, "parametros": {}}
+    atual = {"versoes": {"pipeline_commit": None}, "parametros": {}}
+    assert verificar_manifesto(anterior, atual) == []
+    assert verificar_manifesto(
+        {"versoes": {"pipeline_commit": None}, "parametros": {}},
+        {"versoes": {"pipeline_commit": "b" * 40}, "parametros": {}}) == []

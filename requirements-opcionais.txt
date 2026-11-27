@@ -1,0 +1,17 @@
+# Dependencia opcional: pesada (alguns GB). Nao e necessaria para `pytest`,
+# para o painel nem para a coleta de evidencia MEDIDA; o codigo diz, na hora,
+# que ela falta e o que isso desliga.
+#
+#   pip install -r requirements-opcionais.txt
+#
+# torch: evidencia PREVISTA (PP4CKD), em mods/modelo.py e
+#   mods/evidencias/predito.py. Sem ele a etapa 1 roda em modo degradado (so
+#   evidencia medida) e diz isso; a fase 3 nao calcula o canal negativo, e a
+#   coluna sai `indeterminado`, nunca 0 -- zero afirmaria "nenhuma atividade
+#   indesejada".
+torch
+
+# Este arquivo e separado do requirements.txt porque o pip instala toda linha
+# que encontrar, comentada como "opcional" ou nao. Nada de `psycopg2` puro
+# aqui: ele exige pg_config no sistema e quebraria um clone limpo; se um dia
+# voltar a ser preciso, volta como `psycopg2-binary`.

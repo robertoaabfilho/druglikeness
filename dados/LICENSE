@@ -1,0 +1,44 @@
+Licenca dos dados versionados nesta pasta (dados)
+=================================================
+
+Esta pasta tem dados de DUAS procedencias diferentes, com licencas diferentes.
+O codigo do repositorio e distribuido sob a licenca MIT (ver LICENSE na raiz)
+e nenhuma destas licencas de dados o alcanca.
+
+Derivado do ChEMBL -- Creative Commons Attribution-ShareAlike 3.0 Unported
+(CC BY-SA 3.0), https://creativecommons.org/licenses/by-sa/3.0/
+
+    dados/evidencias_controle.tsv
+
+A clausula de compartilhamento pela mesma licenca (share-alike) se aplica
+apenas a estes dados.
+
+Fonte: ChEMBL (EMBL-EBI), https://www.ebi.ac.uk/chembl/
+
+Ao usar estes dados, cite o ChEMBL:
+
+Zdrazil B, Felix E, Hunter F, et al. The ChEMBL Database in 2023: a drug
+discovery platform spanning multiple bioactivity data types and time periods.
+Nucleic Acids Research. 2024;52(D1):D1180-D1192. doi:10.1093/nar/gkad1004
+
+Derivado do pipeline de prospeccao de plantas (projeto SEPARADO)
+
+    dados/validacao_neuro_prospector.tsv
+
+Este arquivo NAO deriva do ChEMBL, e atribui-lo a ele seria erro de
+licenciamento. Ele junta:
+
+  * os ROTULOS de atividade, da Dr. Duke's Phytochemical and Ethnobotanical
+    Database (USDA/ARS, https://phytochem.nal.usda.gov/) -- obra do governo
+    dos EUA, dominio publico;
+  * os SMILES, escolhidos pela prospeccao entre NPASS, COCONUT, LOTUS e
+    PubChem, cada uma com a sua licenca. NPASS e academico/nao comercial;
+    COCONUT e CC0; LOTUS e CC0; PubChem e dominio publico. Ao publicar
+    resultados que usem este conjunto, cite as bases de origem e confira a
+    licenca do NPASS para uso comercial;
+  * `chembl_id` e `correspondencia_chembl`, que sao IDENTIFICADORES do ChEMBL,
+    nao dados de bioatividade dele. Identificador nao carrega o share-alike;
+    nenhum valor medido do ChEMBL entra neste arquivo.
+
+A procedencia completa, a regra de selecao e as limitacoes conhecidas estao em
+`dados/validacao_neuro_prospector.LEIA-ME.md`.

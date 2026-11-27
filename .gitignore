@@ -1,0 +1,23 @@
+# Pesos do modelo: 33,8 MB o checkpoint, e nao sao redistribuiveis daqui.
+# Entram pelo instantaneo (mods/instantaneo.py); a procedencia fica registrada
+# em input/procedencia.json, que E versionado.
+modelo/
+
+# O que a maquina gerou. Cada tabela tem o seu manifesto.json ao lado, e e o
+# manifesto que a torna citavel -- mas o lugar dele e a pasta da execucao, nao
+# o historico do git.
+tsv/
+
+# Cache de rede, uma subpasta por versao dos servicos.
+json/cache_rede/
+
+# Os dados de `input/` sao instantaneos de dezenas de MB. O que o git carrega
+# e o REGISTRO deles -- origem, data, MD5 e contagens --, nao os dados: a
+# mesma regra de `modelo/`. `mods/instantaneo.py` os traz de volta.
+input/*
+!input/procedencia.json
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.superpowers/

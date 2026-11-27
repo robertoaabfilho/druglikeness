@@ -1,0 +1,59 @@
+{
+  "_nota": "Uma secao por etapa. Cada chave e o nome da flag da CLI daquela etapa, com '-' trocado por '_'. Chave ausente NAO entra na linha de comando: a CLI aplica o proprio padrao, que e onde os padroes moram e estao documentados. Chave desconhecida e ERRO, nunca ignorada em silencio.",
+
+  "_nota_gpu": "Nenhuma etapa pede GPU. Medido na etapa 2: 36 de 312 colunas diferem entre duas execucoes de GPU, e 0 de 312 entre duas de CPU. Reprodutibilidade vale mais que velocidade aqui.",
+
+  "etapa1": {
+    "ligantes": "input/ligantes.tsv",
+    "alvos": "input/alvos.txt",
+    "sintomas": "input/sintomas.txt",
+    "saida": "tsv/etapa1/evidencias.tsv",
+    "alvos_enriquecidos": "tsv/etapa1/alvos_enriquecidos.tsv",
+    "evidencias_chembl": "input/evidencias_chembl.csv",
+    "checkpoint": "modelo/ecfp4_fold_4.pt",
+    "rotulos": "modelo/target_labels.tsv",
+    "cache": "json/cache_rede",
+
+    "_nota_corte": "0,1 e o corte de PRODUCAO. Com 0 a etapa escreve a matriz densa (222 x 272 = 60.384 pares no conjunto de validacao, contra 297 linhas no corte padrao) e o resultado do enriquecimento INVERTE. Os dois regimes saem do mesmo arquivo, e so um deles e producao.",
+    "corte": 0.1,
+
+    "_nota_associacao": "0,4 contra 0,5 na dor neuropatica: 44 alvos em vez de 30. Os 14 a mais sao os canais de sodio dependentes de voltagem (SCN9A/Nav1.7 entre eles) e os adrenoceptores alfa-2 -- alvos reconhecidos da condicao.",
+    "corte_associacao": 0.4,
+
+    "_nota_teto": "150 proteinas por via. Descarta 'G alpha (i) signalling events' (317) e 'Peptide ligand-binding receptors' (200), que sao hubs e nao relevancia.",
+    "teto_via": 150,
+
+    "_nota_efo": "Sintoma -> EFO nunca e escolhido em silencio: sem --efo o sintoma nao e enriquecido e a CLI pede a escolha.",
+    "efo": []
+  },
+
+  "portao": {
+    "evidencias": "tsv/etapa1/evidencias.tsv",
+    "ligantes": "input/ligantes.tsv",
+    "alvos": "tsv/etapa1/alvos_enriquecidos.tsv",
+    "saida": "tsv/portao",
+    "cache": "json/cache_rede",
+    "gpu": false,
+
+    "_nota_politica": "O portao quase nao reprova, e isso e o que a medicao manda. No controle de 12 farmacos, cada criterio plausivel de exclusao apaga os positivos de referencia: PAINS reprovaria a amitriptilina, BRENK 65% da base, e expressao abaixo de 1 TPM mataria SERT (0,454) e NET. Por padrao so reprovam o SMILES ilegivel e o alerta forte de bula (0 de 6 falsos positivos medidos).",
+
+    "_nota_limite_bula": "500 e o teto de hoje, e ele deixa 99,5% da base em 'indeterminado' -- no criterio que mais reprova. O caminho certo e o download em massa (14 particoes, 1,7 GB), que e o plano C."
+  },
+
+  "ranking": {
+    "evidencias": "tsv/etapa1/evidencias.tsv",
+    "ligantes": "input/ligantes.tsv",
+    "alvos": "tsv/etapa1/alvos_enriquecidos.tsv",
+    "portao": "tsv/portao/portao.tsv",
+    "saida": "tsv/ranking",
+    "checkpoint": "modelo/ecfp4_fold_4.pt",
+    "rotulos": "modelo/target_labels.tsv",
+    "manifesto_etapa1": "tsv/etapa1/manifesto.json",
+    "gpu": false,
+
+    "_nota_minimo_treino": "50 moleculas ativas e a condicao para um alvo entrar no canal negativo. O recall@10 vai de 0,127 a 0,477 conforme o alvo sai de <50 para >=5.000 ativos: abaixo disso a previsao e pouco melhor que ruido.",
+    "minimo_treino": 50,
+
+    "_nota_canal": "O canal negativo deu 0,806 contra 0,750 no controle de 12 -- mas NAO se confirmou fora dele: 0,484 com e sem canal nos 222 compostos independentes. Ele continua ligado e desligavel (sem_canal_negativo), e nenhum peso e aprendido."
+  }
+}
