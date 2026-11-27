@@ -109,8 +109,28 @@ def data_do_export(catalogo: dict) -> str:
     return str(_label(catalogo).get("export_date") or "")
 
 
+def _nome_de_arquivo(url: str) -> str:
+    """O nome do arquivo no disco, a partir da URL, higienizado.
+
+    **O nome NUNCA vem do `display_name`.** O openFDA publica
+    `drug/label (part 1 of 14)` ali -- com barra --, e usa-lo como nome de
+    arquivo fazia o download escrever em `/drug/label (part 1 of 14).json.zip`,
+    fora da pasta de destino. Um nome vindo de servico remoto nao decide
+    caminho no disco.
+
+    E nem a URL decide sozinha: fica so a ultima parte do caminho, e qualquer
+    separador ou `..` que sobre e trocado por `_`."""
+    bruto = Path(urlparse(url).path).name or "particao.json.zip"
+    limpo = re.sub(r"[^A-Za-z0-9._-]", "_", bruto).lstrip(".")
+    return limpo or "particao.json.zip"
+
+
 def particoes(catalogo: dict) -> list[dict]:
-    """As particoes do export, com `nome`, `url` e `mb`."""
+    """As particoes do export.
+
+    `arquivo` e o nome no disco (da URL, higienizado) e `nome` e o rotulo
+    legivel que o servico publica -- este ultimo serve para a mensagem, nunca
+    para o caminho."""
     saida = []
     for parte in _label(catalogo).get("partitions") or []:
         url = str(parte.get("file") or "")
@@ -120,9 +140,10 @@ def particoes(catalogo: dict) -> list[dict]:
             mb = float(parte.get("size_mb") or 0)
         except (TypeError, ValueError):
             mb = 0.0
+        arquivo = _nome_de_arquivo(url)
         saida.append({
-            "nome": str(parte.get("display_name")
-                        or Path(urlparse(url).path).name).replace(".json.zip", ""),
+            "arquivo": arquivo,
+            "nome": str(parte.get("display_name") or "").strip() or arquivo,
             "url": url, "mb": mb,
             "registros": int(parte.get("records") or 0)})
     if not saida:
@@ -172,7 +193,7 @@ def baixar(catalogo: dict, pasta, *, baixador=baixar_url,
     partes = particoes(catalogo)
     rel = {"baixadas": 0, "ja_tinha": 0, "mb": 0.0, "particoes": len(partes)}
     for parte in partes:
-        destino = pasta / f"{parte['nome']}.json.zip"
+        destino = pasta / parte["arquivo"]
         if so_faltantes and destino.is_file() and _zip_valido(destino):
             rel["ja_tinha"] += 1
             continue
@@ -367,9 +388,34 @@ class Acervo:
 
     # ---------------------------------------------------------------
     def _ids(self, campo: str, nome: str) -> list[int]:
-        return [r[0] for r in self._con.execute(
-            "SELECT bula FROM nomes WHERE nome=? AND campo=?",
-            (nome.strip().casefold(), campo))]
+        """As bulas cujo campo de nome contem `nome` como PALAVRA INTEIRA.
+
+        MEDIDO contra a API: `openfda.generic_name:"ciprofloxacin"` responde
+        **166** bulas. Casar por igualdade de string dava 76 -- a diferenca
+        sao os nomes compostos (`ciprofloxacin hydrochloride`, `ciprofloxacin
+        and dexamethasone`), que a API tokeniza e casa. Importa porque esse
+        total e o **peso da evidencia** que vai para `n_bulas_com_o_termo`:
+        63 de 76 e outra afirmacao que 118 de 166.
+
+        Palavra inteira, nao trecho: `ciprofloxacin` nao casa `ciprofloxacina`
+        nem `norciprofloxacin`. E a mesma regra da busca por termo nas secoes.
+
+        O filtro grosso e feito no SQLite (`LIKE`, que usa o indice de nome) e
+        a fronteira de palavra em Python: um `LIKE '%x%'` sozinho casaria
+        dentro de outra palavra."""
+        alvo = " ".join(nome.strip().casefold().split())
+        if not alvo:
+            return []
+        padrao = re.compile(r"\b" + re.escape(alvo) + r"\b")
+        vistos: list[int] = []
+        visto = set()
+        for ident, texto in self._con.execute(
+                "SELECT bula, nome FROM nomes WHERE campo=? AND nome LIKE ?",
+                (campo, f"%{alvo}%")):
+            if ident not in visto and padrao.search(texto):
+                visto.add(ident)
+                vistos.append(ident)
+        return vistos
 
     def _bulas(self, ids: list[int], limite: int | None) -> list[dict]:
         if not ids:

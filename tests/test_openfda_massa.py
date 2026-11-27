@@ -361,3 +361,151 @@ def test_o_limite_da_janela_e_respeitado(tmp_path):
     local = massa.Acervo(indice)
     r = bula.buscar_bulas("Y", obter_json=local.obter_json, limite=3)
     assert len(r["bulas"]) == 3 and r["total"] == 10
+
+
+def test_o_acervo_baixado_nao_entra_no_git():
+    """O acervo sao 1,7 GB. O padrao do CLI e `dados/openfda`, e `dados/` E
+    versionado (dado de referencia com licenca propria) -- sem esta regra o
+    git tentaria carregar o acervo inteiro, que e a mesma falha que `modelo/`
+    e `tsv/` existem para evitar: dado gerado pela maquina nao vai para o
+    historico, o REGISTRO dele vai."""
+    import subprocess
+    from mods import caminhos
+    r = subprocess.run(["git", "check-ignore", "-q",
+                        "dados/openfda/drug-label-0001-of-0014.json.zip"],
+                       cwd=str(caminhos.RAIZ))
+    assert r.returncode == 0, "dados/openfda nao esta no .gitignore"
+
+
+def test_a_procedencia_do_acervo_CONTINUA_versionada():
+    """Como em `input/`: os dados saem do git, o registro deles fica."""
+    import subprocess
+    from mods import caminhos
+    r = subprocess.run(["git", "check-ignore", "-q",
+                        "dados/openfda/procedencia.json"],
+                       cwd=str(caminhos.RAIZ))
+    assert r.returncode != 0, "a procedencia do acervo esta sendo ignorada"
+
+
+# --------------------------------------------------------------------------
+# o nome do arquivo NAO pode vir do servico remoto
+# --------------------------------------------------------------------------
+def test_o_nome_do_arquivo_vem_da_URL_e_nao_do_display_name():
+    """ACHADO na execucao real: o `display_name` que o openFDA publica e
+    `drug/label (part 1 of 14)` -- **com barra**. Usado como nome de arquivo,
+    ele escapava da pasta de destino e o download tentava escrever em
+    `/drug/label (part 1 of 14).json.zip`.
+
+    Um nome vindo de servico remoto nunca decide caminho no disco. O nome sai
+    da ULTIMA parte da URL, e ainda e higienizado."""
+    catalogo = {"results": {"drug": {"label": {
+        "export_date": "2026-11-27",
+        "partitions": [{"size_mb": "120", "records": "1",
+                        "display_name": "drug/label (part 1 of 14)",
+                        "file": "https://download.open.fda.gov/drug/label/"
+                                "drug-label-0001-of-0014.json.zip"}]}}}}
+    parte = massa.particoes(catalogo)[0]
+    assert parte["arquivo"] == "drug-label-0001-of-0014.json.zip"
+    assert "/" not in parte["arquivo"] and "\\" not in parte["arquivo"]
+    # o rotulo legivel continua disponivel, so nao decide caminho
+    assert parte["nome"] == "drug/label (part 1 of 14)"
+
+
+def test_nome_de_arquivo_malicioso_na_url_e_higienizado():
+    """Mesmo a URL nao decide sozinha: `..` e separadores saem."""
+    catalogo = {"results": {"drug": {"label": {
+        "export_date": "x",
+        "partitions": [{"file": "https://x/a/../../etc/passwd",
+                        "display_name": "p", "size_mb": "1"}]}}}}
+    parte = massa.particoes(catalogo)[0]
+    assert ".." not in parte["arquivo"]
+    assert "/" not in parte["arquivo"]
+
+
+def test_o_download_escreve_dentro_da_pasta_pedida(tmp_path):
+    """A garantia que importa: qualquer que seja o nome que o servico mande, o
+    arquivo nasce DENTRO da pasta de destino."""
+    catalogo = {"results": {"drug": {"label": {
+        "export_date": "x", "total_records": 1,
+        "partitions": [{"file": "https://x/../../../fora.json.zip",
+                        "display_name": "../../fora", "size_mb": "1"}]}}}}
+    escritos = []
+
+    def baixador(url, destino):
+        escritos.append(destino.resolve())
+        destino.write_bytes(_zip_de([_rotulo()]))
+    massa.baixar(catalogo, tmp_path / "acervo", baixador=baixador)
+    for caminho in escritos:
+        assert (tmp_path / "acervo").resolve() in caminho.parents, caminho
+
+
+# --------------------------------------------------------------------------
+# fidelidade do casamento de nome
+# --------------------------------------------------------------------------
+def test_o_nome_casa_por_palavra_inteira_dentro_do_campo(tmp_path):
+    """MEDIDO contra a API: `openfda.generic_name:"ciprofloxacin"` responde
+    **166** bulas. O casamento por igualdade de string dava 76; o casamento
+    por palavra inteira dentro do campo da 166, exatamente.
+
+    A diferenca sao os nomes compostos -- `ciprofloxacin hydrochloride`,
+    `ciprofloxacin and dexamethasone` --, que a API tokeniza e casa. Importa
+    porque esse total e o **peso da evidencia** que vai para
+    `n_bulas_com_o_termo`: 63 de 76 e outra afirmacao que 118 de 166."""
+    import json
+    import zipfile
+    pasta = tmp_path / "b"
+    pasta.mkdir()
+    rotulos = [
+        _rotulo("ciprofloxacin", boxed_warning="peripheral neuropathy"),
+        _rotulo("ciprofloxacin hydrochloride", boxed_warning="neuropathy"),
+        _rotulo("ciprofloxacin and dexamethasone", warnings="neuropathy"),
+        _rotulo("moxifloxacin", warnings="neuropathy"),
+    ]
+    with zipfile.ZipFile(pasta / "p.json.zip", "w") as z:
+        z.writestr("p.json", json.dumps({"results": rotulos}))
+    indice = tmp_path / "i.sqlite"
+    massa.indexar(pasta, indice, export_date="x")
+    from mods.portao import bula
+    local = massa.Acervo(indice)
+    r = bula.buscar_bulas("ciprofloxacin", obter_json=local.obter_json)
+    assert r["total"] == 3, "nome composto nao casou"
+    assert r["campo_do_nome"] == "generic_name"
+
+
+def test_palavra_inteira_nao_casa_dentro_de_outra_palavra(tmp_path):
+    """`ciprofloxacin` nao pode casar `ciprofloxacina` nem `xciprofloxacin`:
+    seria a mesma falha que tirou a busca por trecho do criterio na rede."""
+    import json
+    import zipfile
+    pasta = tmp_path / "b"
+    pasta.mkdir()
+    with zipfile.ZipFile(pasta / "p.json.zip", "w") as z:
+        z.writestr("p.json", json.dumps({"results": [
+            _rotulo("ciprofloxacina", warnings="x"),
+            _rotulo("norciprofloxacin", warnings="x")]}))
+    indice = tmp_path / "i.sqlite"
+    massa.indexar(pasta, indice, export_date="x")
+    from mods.portao import bula
+    local = massa.Acervo(indice)
+    assert bula.buscar_bulas("ciprofloxacin",
+                             obter_json=local.obter_json)["total"] == 0
+
+
+def test_nome_com_varias_palavras_casa_como_frase(tmp_path):
+    """A API casa FRASE entre aspas: `"neuropathic pain"` nao casa um texto que
+    tenha as duas palavras soltas e distantes."""
+    import json
+    import zipfile
+    pasta = tmp_path / "b"
+    pasta.mkdir()
+    with zipfile.ZipFile(pasta / "p.json.zip", "w") as z:
+        z.writestr("p.json", json.dumps({"results": [
+            _rotulo("lidocaine patch 5 percent", warnings="x")]}))
+    indice = tmp_path / "i.sqlite"
+    massa.indexar(pasta, indice, export_date="x")
+    from mods.portao import bula
+    local = massa.Acervo(indice)
+    assert bula.buscar_bulas("lidocaine patch",
+                             obter_json=local.obter_json)["total"] == 1
+    assert bula.buscar_bulas("lidocaine percent",
+                             obter_json=local.obter_json)["total"] == 0

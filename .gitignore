@@ -21,3 +21,11 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .superpowers/
+
+# O acervo do openFDA baixado em massa: 1,7 GB em 14 particoes, mais o indice
+# SQLite. `dados/` e versionado (dado de referencia com licenca propria), por
+# isso a excecao e explicita aqui. A mesma regra de `modelo/` e `input/`: o
+# dado gerado pela maquina nao vai para o historico, o REGISTRO dele vai --
+# `dados/openfda/procedencia.json` continua versionado.
+dados/openfda/*
+!dados/openfda/procedencia.json
