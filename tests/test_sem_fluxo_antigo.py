@@ -142,9 +142,18 @@ def test_input_versiona_a_procedencia_e_nao_os_dados():
     `modelo/`. Versionar os dois seria 140 MB num repositorio de codigo, e
     versionar um e nao o outro nao teria criterio."""
     import subprocess
-    saida = subprocess.run(["git", "ls-files", "input/"], cwd=RAIZ,
-                           capture_output=True, text=True).stdout.split()
-    assert saida == ["input/procedencia.json"], saida
+    r = subprocess.run(["git", "ls-files", "input/"], cwd=RAIZ,
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        # Fora de um checkout (o pacote para outra maquina) nao ha indice do
+        # git a consultar. A propriedade equivalente ali e: a pasta `input/`
+        # que veio no pacote nao traz os dados grandes.
+        import pathlib
+        grandes = [p.name for p in (pathlib.Path(RAIZ) / "input").glob("*")
+                   if p.is_file() and p.stat().st_size > 5 * 1024 * 1024]
+        assert not grandes, grandes
+        return
+    assert r.stdout.split() == ["input/procedencia.json"], r.stdout
 
 
 def test_a_procedencia_nao_carrega_caminho_absoluto_de_destino():

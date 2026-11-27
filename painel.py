@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st  # noqa: E402
 
 import main  # noqa: E402
-from mods import caminhos, config  # noqa: E402
+from mods import caminhos, config, dependencias  # noqa: E402
 from mods.painel import alvos as palvos  # noqa: E402
 from mods.painel import entradas, execucao, leitura  # noqa: E402
 from mods.painel import estrutura, parametros, vistas  # noqa: E402
@@ -558,7 +558,20 @@ def barra_lateral():
             "pela metade.")
 
         st.markdown("### Dependencias")
-        st.caption(", ".join(f"`{d}`" for d in estrutura.dependencias()))
+        # O painel NAO instala: ele e uma interface, e instalar por clique
+        # mexe no ambiente de quem abriu a aba. Ele mostra o estado e o
+        # comando -- quem instala e o orquestrador, na partida, ou a pessoa.
+        estado = dependencias.conferir()
+        if estado["completo"]:
+            st.caption("exigidas: todas presentes — "
+                       + ", ".join(f"`{d}`" for d in estrutura.dependencias()))
+        else:
+            st.error("faltam dependencias exigidas: "
+                     + ", ".join(d["requisito"] for d in estado["faltando"])
+                     + ". Rode `pip install -r requirements.txt`")
+        for item in estado["opcionais_ausentes"]:
+            st.warning(f"`{item['pacote']}` nao esta instalado (opcional, "
+                       f"pesado). Sem ele, desliga {item['desliga']}")
 
 
 st.title("Pipeline druglikeness")

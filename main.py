@@ -48,7 +48,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from mods import caminhos, config  # noqa: E402
+from mods import caminhos, config, dependencias  # noqa: E402
 
 COMANDO = "python main.py"
 
@@ -280,11 +280,28 @@ def _argumentos(argv):
     p.add_argument("--a-partir-de", dest="a_partir_de", choices=IDS,
                    help="Comeca nesta etapa.")
     p.add_argument("--somente", choices=IDS, help="Roda so esta etapa.")
+    p.add_argument("--sem-instalar", dest="sem_instalar", action="store_true",
+                   help="Confere as dependencias e NAO instala nada. Para "
+                        "ambiente compartilhado, automacao ou maquina sem "
+                        "rede: o que falta e dito, e a execucao para.")
     return p.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = _argumentos(argv)
+
+    # ANTES de qualquer coisa: o ambiente. Uma execucao real sao ~23 milhoes
+    # de pares, e um ModuleNotFoundError no meio dela custa horas por algo que
+    # custa milissegundos conferir -- a mesma razao de `_precheca`.
+    ambiente = dependencias.garantir(instalar=not args.sem_instalar)
+    for linha in dependencias.relato(ambiente):
+        print(linha, file=sys.stderr)
+    if not ambiente["completo"]:
+        print("[ERRO] o ambiente nao esta completo; nada foi executado. "
+              "Nenhuma etapa roda com biblioteca faltando -- ela quebraria no "
+              "meio, depois de horas.", file=sys.stderr)
+        return 2
+
     try:
         cfg = config.ler(args.config)
     except config.ErroDeConfig as e:

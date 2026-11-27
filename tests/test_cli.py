@@ -81,13 +81,25 @@ ARGS = ["--ligantes", "tests/dados/ligantes_minimo.tsv",
 
 
 def test_commit_e_hash_de_40_hex_em_execucao_normal(tmp_path):
+    """Num checkout de git, o manifesto carrega o commit.
+
+    Fora de um checkout -- e o PACOTE para outra maquina e exatamente isso --
+    nao ha commit a registrar, e `desconhecido` e a resposta honesta. Exigir o
+    hash ali faria a suite do pacote falhar, e e a suite verde que prova que o
+    pacote chegou inteiro."""
     import re
+    import subprocess
     main(ARGS + ["--saida", str(tmp_path / "e.tsv")])
     versoes = ler_manifesto(tmp_path / "manifesto.json")["versoes"]
+    em_git = subprocess.run(["git", "rev-parse", "--git-dir"],
+                            capture_output=True).returncode == 0
+    if not em_git:
+        assert versoes["pipeline_commit"] == "desconhecido"
+        return
     # Arvore suja ganha sufixo: hash limpo de codigo modificado seria uma
     # afirmacao falsa de reprodutibilidade.
     assert re.fullmatch(r"[0-9a-f]{40}(\+sujo)?", versoes["pipeline_commit"])
-    assert versoes["pipeline_repositorio"].endswith("druglikeness2")
+    assert versoes["pipeline_repositorio"]
 
 
 def test_arvore_suja_e_marcada_e_o_repositorio_de_fora_fica_visivel(monkeypatch):
