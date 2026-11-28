@@ -293,6 +293,7 @@ def main():
     emp = {k: {"alta": {"p": [], "r": []}, "baixa": {"p": [], "r": []}}
            for k in PROXIES}
     agr = {"cru": {"p": [], "r": []}, "corrigido": {"p": [], "r": []}}
+    dec = {q: {"p": [], "r": [], "v": []} for q in range(10)}
     linhas_alvo = []
     classes = json.loads(CLASSES.read_text()) if CLASSES.is_file() else {}
 
@@ -332,6 +333,19 @@ def main():
             "n_cabecas_90": (P[li] > 0.9).sum(axis=1).astype(float),
             "n_bits": B[li],
         }
+        # Decis de sim_top5 dentro do estrato: onde o sinal morre?
+        xs5 = sim5[sel]
+        for q in range(10):
+            lo, hi = np.percentile(xs5, q * 10), np.percentile(xs5,
+                                                               (q + 1) * 10)
+            m2 = (xs5 >= lo) & (xs5 <= hi) if q == 9 else (
+                (xs5 >= lo) & (xs5 < hi))
+            rr = rot[sel][m2]
+            if rr.sum() < 1 or len(rr) < 20:
+                continue
+            dec[q]["p"].extend(pct(cru[sel][m2]))
+            dec[q]["r"].extend(rr.tolist())
+            dec[q]["v"].extend(xs5[m2].tolist())
         for nome, x in val.items():
             xs = x[sel]
             med = float(np.median(xs))
@@ -423,6 +437,25 @@ def main():
         w = csv.DictWriter(fh, fieldnames=list(linhas_proxy[0].keys()),
                            delimiter="\t")
         w.writeheader(); w.writerows(linhas_proxy)
+
+    print("\n=== CORRECAO 1b: onde o sinal morre, por decil de sim_top5 ===")
+    print(f"  {'decil':<7} {'sim_top5 medio':>15} {'AUROC':>8} {'EP':>7} "
+          f"{'ativos':>7}")
+    linhas_dec = []
+    for q in range(10):
+        if len(dec[q]["r"]) < 50:
+            continue
+        a, ep, na = auroc_ep(dec[q]["p"], dec[q]["r"])
+        mv5 = sum(dec[q]["v"]) / len(dec[q]["v"])
+        print(f"  {q+1:<7} {mv5:>15.4f} {a:>8.4f} {ep:>7.4f} {na:>7}")
+        linhas_dec.append(dict(decil=q + 1, sim_top5_medio=round(mv5, 4),
+                               auroc=round(a, 4), ep=round(ep, 4),
+                               ativos=na, n=len(dec[q]["r"])))
+    with open(AQUI / "resultado_decis_similaridade.tsv", "w",
+              newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(linhas_dec[0].keys()),
+                           delimiter="\t")
+        w.writeheader(); w.writerows(linhas_dec)
 
     # =====================================================================
     # resultado da CORRECAO 3
