@@ -285,3 +285,92 @@ documentação: `construir_rede` termina em `Linear` e devolve logit, enquanto o
 docstring do módulo desenha "→ sigmoide". Quem reusar `construir_rede` fora do
 `ranquear.py` erra — foi o que aconteceu no primeiro arame deste benchmark, e
 custou uma AUC de 0,750 virar 0,444.
+
+---
+
+# Adendo 2 — fusão de canais e domínio de aplicabilidade, medidos por precisão no topo
+
+Medido em 2026-11-28. Pergunta: investir em computação reduz o gasto de
+bancada? A métrica, portanto, é `precisão@20` — não AUC, não EF1% sobre
+centenas de milhares de compostos.
+
+Divisão LIT-PCBA **AVE-unbiased**, que corrige um defeito do Adendo 1: ali o
+1-NN era leave-one-out e um ativo de teste via outros ativos de teste. Aqui o
+canal de similaridade usa `active_T` como referência e é avaliado em
+`active_V` + `inactive_V`. 10 alvos com ≥ 15 ativos em V.
+`benchmark_fusao.py`, `resultado_fusao.tsv`.
+
+Canais: `p_alvo` (PP4CKD na cabeça do alvo), `sim_T` (maior Tanimoto aos
+ativos de treino), `famil` (maior probabilidade entre os 7.676 alvos, proxy de
+domínio de aplicabilidade). Fusões: média de postos percentuais, RRF (k = 60),
+produto e máximo dos postos.
+
+## As duas alavancas mais baratas da literatura não deram nada
+
+| canal | prec@20 | prec@50 | prec@100 | EF1% | AUROC |
+|---|---:|---:|---:|---:|---:|
+| `p_alvo` | 0,100 | 0,078 | 0,065 | 6,50 | 0,600 |
+| `sim_T` | 0,060 | 0,066 | 0,048 | 5,41 | 0,555 |
+| `famil` | 0,010 | 0,012 | 0,011 | 1,45 | 0,562 |
+| média de postos | 0,105 | 0,098 | 0,075 | 4,42 | 0,598 |
+| RRF | 0,095 | 0,084 | 0,071 | 6,65 | 0,610 |
+| produto | **0,110** | **0,100** | 0,075 | 4,42 | 0,583 |
+| máximo | 0,080 | 0,076 | 0,069 | 6,77 | 0,610 |
+
+A melhor fusão dá prec@20 = 0,110 contra 0,100 do PP4CKD sozinho. Em 20
+compostos × 10 alvos são 200 vagas, logo **+2 acertos no total** — ruído.
+
+Filtro de domínio (descarta a metade de menor `famil`): `p_alvo` vai de 0,100
+para 0,110 em prec@20 (+0,010, ruído) e de 6,50 para **8,77 em EF1%** (+35%
+relativo, real mas irrelevante para quem ensaia 20 compostos). O canal `famil`
+isolado é inútil como ranqueador (prec@20 = 0,010) — serve como filtro, não
+como escore.
+
+## O número que responde à pergunta
+
+| alvo | n | ativos | taxa-base | prec@20 | ganho |
+|---|---:|---:|---:|---:|---:|
+| ALDH1 | 26.640 | 1.343 | 5,041% | 0,65 | 13× |
+| ESR1_ant | 819 | 25 | 3,053% | 0,05 | 2× |
+| FEN1 | 87.038 | 91 | 0,105% | 0,05 | 48× |
+| GBA | 72.240 | 41 | 0,057% | 0,00 | 0× |
+| KAT2A | 84.710 | 48 | 0,057% | 0,05 | 88× |
+| MAPK1 | 15.327 | 77 | 0,502% | 0,05 | 10× |
+| MTORC1 | 8.267 | 24 | 0,290% | 0,00 | 0× |
+| PKM2 | 61.143 | 136 | 0,222% | 0,10 | 45× |
+| TP53 | 811 | 16 | 1,973% | 0,05 | 3× |
+| VDR | 65.256 | 165 | 0,253% | 0,00 | 0× |
+
+`prec@20` ≤ 0,15 em **9 de 10 alvos**. Sem o ALDH1, cuja taxa-base é 50× a dos
+demais, a média dos 8 alvos restantes é **0,038 — 0,8 acerto esperado em 20
+compostos ensaiados**.
+
+O ganho relativo sobre a taxa-base é real e grande (mediana 6×, até 88×), mas
+**zero em 3 dos 10 alvos**. E a taxa-base não explica estatisticamente o
+`prec@20` (Spearman rho = 0,361, p = 0,31) — a hipótese de que tudo se reduz a
+taxa-base **não se sustenta**; com n = 10 a variância é que domina.
+
+## Consequência para a estratégia
+
+As duas alavancas computacionais mais barata e melhor documentadas da área —
+fusão de canais independentes e domínio de aplicabilidade — foram medidas
+sobre o modelo real deste pipeline e **não movem a precisão no topo**. Isso é
+informação: mais computação *desse tipo* não é onde está o ganho.
+
+O que a evidência acumulada sustenta, em ordem:
+
+1. **Maximizar a fração do top-k com evidência MEDIDA.** A faixa `1a` já
+   ordena medido acima de previsto. Quantificar quantos compostos o top-k
+   consegue preencher só com `pchembl` do ChEMBL, antes de recorrer a
+   previsão, é contagem — não precisa de modelo nem de validação — e é onde a
+   precisão de fato existe.
+2. **Encolher o conjunto candidato antes de ranquear, não melhorar o
+   ranqueador.** Com 107.123 ligantes e taxa-base de 0,1%, o top-20 rende ~1
+   acerto. A alavanca é o denominador.
+3. **Especialistas de cobertura e direção** continuam justificados — não por
+   melhorarem o ranqueamento, mas por ampliarem quais compostos conseguem
+   receber evidência de faixa 1 ou 2.
+
+O que a evidência **não** sustenta: acrescentar preditor esperando
+ranqueamento melhor (o painel oficial do ChEMBL ficou no azar; fusão deu
+ruído), e finetuning antes de existir instrumento de medição.
