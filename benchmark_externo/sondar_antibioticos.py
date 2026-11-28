@@ -19,11 +19,13 @@ Lista: classe ATC J01 (antibacterianos sistemicos) do ChEMBL.
 import csv, json, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 
+import caminhos_dados as cd_
+
 AQUI = Path(__file__).parent
 sys.path.insert(0, str(AQUI))
 MT28 = AQUI / "mt/trained_models/chembl_28_model"
 CACHE = AQUI / "cache_chembl_dor"
-LITPCBA = Path("/home/user/litpcba_download/full/LIT-PCBA_full")
+LITPCBA = cd_.de_ambiente("LITPCBA_FULL")
 SAIDA = AQUI / "resultado_antibioticos.tsv"
 LISTA = AQUI / "lista_j01.json"
 AGENTE = "druglikeness-benchmark/1.0 (research script)"

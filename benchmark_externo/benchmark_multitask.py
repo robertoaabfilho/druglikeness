@@ -12,9 +12,11 @@ import zlib
 import time
 from pathlib import Path
 
+import caminhos_dados as cd_
+
 sys.path.insert(0, str(Path(__file__).parent))
 
-LITPCBA = Path("/home/user/litpcba_download/full/LIT-PCBA_full")
+LITPCBA = cd_.de_ambiente("LITPCBA_FULL")
 MT = Path(__file__).parent / "mt/trained_models/chembl_36_model"
 ONNX = MT / "chembl_36_multitask.onnx"
 ALVOS_JSON = MT / "targets_36_all.json"

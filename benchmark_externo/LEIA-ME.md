@@ -50,7 +50,7 @@ os seis "trata" são fármacos de SNC. `CHEMBL360` tira 1,000 porque é
 literalmente um classificador de antibacteriano.
 
 > **Defeito achado de passagem:** a rede devolve **logits**, não
-> probabilidades. `prever_alvos.py` aplica o sigmoide corretamente, mas o termo
+> probabilidades. O carregador do modelo aplica o sigmoide corretamente, mas o termo
 > negativo `(1 − p)` só faz sentido com `p ∈ [0,1]`. Sobre logits ele inverte o
 > ranking: no primeiro arame deste benchmark, antes da correção, a AUC caiu de
 > 0,750 para 0,444. **Conferir se `mods/ranque/negativo.py::agregar` recebe
@@ -112,7 +112,7 @@ SPRINT 10,78 de EF1%) **não** são comparáveis de frente com os de cima:
 
 Contagem de ativos de treino do alvo **não** explica o desempenho aqui
 (Spearman rho = −0,238, p = 0,39) — ao contrário do que o
-`validar_alvos_medidos.py` encontrou no seu próprio conjunto. O que separa é a
+a validação do próprio projeto encontrou no seu conjunto. O que separa é a
 **natureza do ensaio**:
 
 | ensaio do LIT-PCBA | n | EF1% médio | mediana |
@@ -488,7 +488,8 @@ previsão de similaridade. `benchmark_descritor.py`,
 `sim_desc` = proximidade ao ativo de treino mais próximo no espaço de 12
 descritores do RDKit (MW, logP, TPSA, HBD, HBA, ligações rotáveis, anéis
 aromáticos, fração Csp3, átomos pesados, QED, MolMR, anéis), padronizados por
-z-score sobre o conjunto de triagem. O Deep-PK não entra: é API externa e
+z-score sobre o conjunto de triagem. O preditor de ADMET por serviço externo
+não entra: é API e
 rejeita 30–35% das moléculas.
 
 Avaliado **dentro** do estrato de novidade (`sim_T < 0,25` em ECFP4), nos 10

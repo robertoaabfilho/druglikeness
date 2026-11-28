@@ -29,13 +29,15 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path("/home/user/druglikeness")
+import caminhos_dados as cd_
+
+REPO = cd_.REPO
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(Path(__file__).parent))
 
-AVE = Path("/home/user/litpcba_download/ave/LIT-PCBA_AVE_unbiased")
-CKPT = "/home/user/pp4ckd_download/extraido/models/ecfp4_fold_4.pt"
-ROTULOS = "/home/user/jixing475/pp4ckd/data/target_labels.tsv"
+AVE = cd_.de_ambiente("LITPCBA_AVE")
+CKPT = str(cd_.de_ambiente("CHECKPOINT_PP4CKD"))
+ROTULOS = str(cd_.de_ambiente("ROTULOS_PP4CKD"))
 SAIDA = Path(__file__).parent / "resultado_fusao.tsv"
 
 LOTE = 2048

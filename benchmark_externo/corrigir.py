@@ -33,6 +33,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+import caminhos_dados as cd_
+
 AQUI = Path(__file__).parent
 sys.path.insert(0, str(AQUI))
 
@@ -53,7 +55,7 @@ def _base():
                      "defina DADOS_BENCHMARK")
 DADOS = _base()
 MT28 = DADOS / "mt/trained_models/chembl_28_model"
-LITPCBA = Path("/home/user/litpcba_download/full/LIT-PCBA_full")
+LITPCBA = cd_.de_ambiente("LITPCBA_FULL")
 SONDAGEM = AQUI / "sondagem_alvos.json"
 CACHE_ATIV = DADOS / "cache_chembl_dor"
 CLASSES = AQUI / "classes_alvo.json"

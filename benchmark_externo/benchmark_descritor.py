@@ -11,7 +11,8 @@ AVE-unbiased:
 3. Quanto os dois espacos DISCORDAM sobre o que e novo? Um composto distante
    em ECFP4 e vizinho em descritor nao e novidade no sentido que interessa.
 
-Descritores: conjunto padrao do RDKit, calculado localmente. O Deep-PK e API
+Descritores: conjunto padrao do RDKit, calculado localmente. O preditor de
+ADMET por servico externo e API
 externa e rejeita 30-35% das moleculas, entao nao entra aqui; o bloco
 fisico-quimico e o que o projeto chama de druglikeness e e computavel.
 Padronizacao por z-score sobre o proprio conjunto de triagem.
@@ -21,13 +22,15 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path("/home/user/druglikeness")
+import caminhos_dados as cd_
+
+REPO = cd_.REPO
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(Path(__file__).parent))
 
-AVE = Path("/home/user/litpcba_download/ave/LIT-PCBA_AVE_unbiased")
-CKPT = "/home/user/pp4ckd_download/extraido/models/ecfp4_fold_4.pt"
-ROTULOS = "/home/user/jixing475/pp4ckd/data/target_labels.tsv"
+AVE = cd_.de_ambiente("LITPCBA_AVE")
+CKPT = str(cd_.de_ambiente("CHECKPOINT_PP4CKD"))
+ROTULOS = str(cd_.de_ambiente("ROTULOS_PP4CKD"))
 SAIDA = Path(__file__).parent / "resultado_descritor.tsv"
 
 LOTE = 2048

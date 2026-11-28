@@ -29,11 +29,13 @@ import sys
 import time
 from pathlib import Path
 
+import caminhos_dados as cd_
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 AQUI = Path(__file__).parent
 CACHE = AQUI / "cache_chembl_dor"
-LITPCBA = Path("/home/user/litpcba_download/full/LIT-PCBA_full")
+LITPCBA = cd_.de_ambiente("LITPCBA_FULL")
 MT28 = AQUI / "mt/trained_models/chembl_28_model"
 SAIDA = AQUI / "resultado_calibracao_temporal.tsv"
 

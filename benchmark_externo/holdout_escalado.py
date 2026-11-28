@@ -25,11 +25,13 @@ import sys
 import time
 from pathlib import Path
 
+import caminhos_dados as cd_
+
 AQUI = Path(__file__).parent
 sys.path.insert(0, str(AQUI))
 
 MT28 = AQUI / "mt/trained_models/chembl_28_model"
-LITPCBA = Path("/home/user/litpcba_download/full/LIT-PCBA_full")
+LITPCBA = cd_.de_ambiente("LITPCBA_FULL")
 SONDAGEM = AQUI / "sondagem_alvos.json"
 SAIDA = AQUI / "resultado_holdout_escalado.tsv"
 

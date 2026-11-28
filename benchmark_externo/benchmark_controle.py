@@ -8,11 +8,13 @@ import sys
 from itertools import combinations
 from pathlib import Path
 
-REPO = Path("/home/user/druglikeness")
+import caminhos_dados as cd_
+
+REPO = cd_.REPO
 sys.path.insert(0, str(REPO))
 
-CKPT = "/home/user/pp4ckd_download/extraido/models/ecfp4_fold_4.pt"
-ROTULOS = "/home/user/jixing475/pp4ckd/data/target_labels.tsv"
+CKPT = str(cd_.de_ambiente("CHECKPOINT_PP4CKD"))
+ROTULOS = str(cd_.de_ambiente("ROTULOS_PP4CKD"))
 
 ALVOS_HUMANOS = ["CHEMBL1919", "CHEMBL3896", "CHEMBL228", "CHEMBL222",
                  "CHEMBL1845", "CHEMBL4794", "CHEMBL233", "CHEMBL2015",
