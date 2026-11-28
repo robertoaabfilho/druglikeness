@@ -186,9 +186,28 @@ REGRAS_ENTRE_CHAVES = {
 }
 
 
+# Chaves opcionais que, quando preenchidas, apontam um arquivo que TEM de
+# existir -- e a conferencia vale antes de qualquer etapa, nao quando a etapa
+# que o usa comeca. O acervo do openFDA e o caso: a etapa 2 so roda depois da
+# etapa 1, que numa execucao real leva horas.
+ARQUIVOS_SE_PEDIDOS = {
+    "portao": {"acervo_bula": "baixe com `python mods/openfda_massa.py "
+                              "--baixar --indexar`, ou rode `python main.py "
+                              "--baixar-acervo`"},
+}
+
+
 def _precheca_das_regras(escolhidas: list[dict], cfg: dict) -> list[str]:
-    """Chave que EXIGE outra chave, conferida antes de rodar."""
+    """Chave que EXIGE outra chave, e chave opcional que aponta arquivo
+    ausente -- as duas conferidas antes de rodar."""
     erros = []
+    for etapa in escolhidas:
+        secao = cfg.get(etapa["id"]) or {}
+        for chave, remedio in ARQUIVOS_SE_PEDIDOS.get(etapa["id"], {}).items():
+            valor = secao.get(chave)
+            if valor and not (caminhos.RAIZ / valor).exists():
+                erros.append(
+                    f"{etapa['id']}.{chave}: {valor} nao existe -- {remedio}")
     for etapa in escolhidas:
         for exige, exigida, motivo in REGRAS_ENTRE_CHAVES.get(etapa["id"], ()):
             secao = cfg.get(etapa["id"]) or {}
@@ -197,6 +216,38 @@ def _precheca_das_regras(escolhidas: list[dict], cfg: dict) -> list[str]:
                     f"{etapa['id']}.{exige} esta na configuracao mas "
                     f"{etapa['id']}.{exigida} nao: {motivo}")
     return erros
+
+
+def _baixar_acervo(cfg: dict) -> bool:
+    """Baixa e indexa o acervo do openFDA, quando `--baixar-acervo` foi pedido.
+
+    So por pedido explicito. Sao ~3,7 GB e ~20 min, e existe alternativa (a
+    rede, com o teto de taxa) -- a mesma regra do `torch`: baixar GB sem pedir
+    e decidir pelo pesquisador num ponto em que ele tem escolha. E, para uma
+    base de produto natural, o acervo compra pouco: medido, 58 de 60 ligantes
+    nao tem bula nenhuma no openFDA.
+
+    O destino e o que a configuracao aponta em `portao.acervo_bula`; sem ele,
+    o padrao do modulo."""
+    from mods import openfda_massa
+    indice = (cfg.get("portao") or {}).get("acervo_bula")
+    indice = (caminhos.RAIZ / indice) if indice else None
+    pasta = indice.parent if indice else caminhos.RAIZ / "dados/openfda"
+    if indice and indice.is_file():
+        print(f"[info] acervo do openFDA ja esta em {indice}; nada a baixar",
+              file=sys.stderr)
+        return True
+    print(f"[info] baixando o acervo do openFDA em {pasta} "
+          f"(~1,7 GB em 14 particoes, mais o indice; retoma se interromper)",
+          file=sys.stderr)
+    codigo = openfda_massa.main(
+        ["--baixar", "--indexar", "--saida", str(pasta)]
+        + (["--indice", str(indice)] if indice else []))
+    if codigo != 0:
+        print("[ERRO] o acervo nao foi construido; nada foi executado",
+              file=sys.stderr)
+        return False
+    return True
 
 
 def _degradar_sem_modelo(cfg: dict) -> list[str]:
@@ -280,6 +331,13 @@ def _argumentos(argv):
     p.add_argument("--a-partir-de", dest="a_partir_de", choices=IDS,
                    help="Comeca nesta etapa.")
     p.add_argument("--somente", choices=IDS, help="Roda so esta etapa.")
+    p.add_argument("--baixar-acervo", dest="baixar_acervo",
+                   action="store_true",
+                   help="Baixa e indexa o acervo do openFDA antes de rodar "
+                        "(~3,7 GB com o indice; retoma). NAO e automatico: ha "
+                        "alternativa (a rede, com o teto de taxa), e para uma "
+                        "base de produto natural o acervo compra pouco -- a "
+                        "maioria dos compostos nao tem bula. Pedir e seu.")
     p.add_argument("--sem-instalar", dest="sem_instalar", action="store_true",
                    help="Confere as dependencias e NAO instala nada. Para "
                         "ambiente compartilhado, automacao ou maquina sem "
@@ -306,6 +364,9 @@ def main(argv=None) -> int:
         cfg = config.ler(args.config)
     except config.ErroDeConfig as e:
         print(f"[ERRO] configuracao: {e}", file=sys.stderr)
+        return 2
+
+    if args.baixar_acervo and not _baixar_acervo(cfg):
         return 2
 
     if args.somente:

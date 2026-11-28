@@ -37,6 +37,8 @@
 
     "_nota_politica": "O portao quase nao reprova, e isso e o que a medicao manda. No controle de 12 farmacos, cada criterio plausivel de exclusao apaga os positivos de referencia: PAINS reprovaria a amitriptilina, BRENK 65% da base, e expressao abaixo de 1 TPM mataria SERT (0,454) e NET. Por padrao so reprovam o SMILES ilegivel e o alerta forte de bula (0 de 6 falsos positivos medidos).",
 
+    "_nota_acervo_bula": "Indice do acervo do openFDA baixado em massa. Com ele a consulta de bula e LOCAL: nao ha taxa, e limite_bula deixa de valer. Construa com `python mods/openfda_massa.py --baixar --indexar`, ou rode `python main.py --baixar-acervo`. Sao ~3,7 GB. MEDIDO: para uma base de produto natural compra pouco -- 58 de 60 ligantes de exemplo nao tem bula nenhuma no openFDA, e indeterminado por falta de documento e a resposta certa. Vazio = usa a rede, com o teto de taxa.",
+    "acervo_bula": null,
     "_nota_limite_bula": "500 e o teto de hoje, e ele deixa 99,5% da base em 'indeterminado' -- no criterio que mais reprova. O caminho certo e o download em massa (14 particoes, 1,7 GB), que e o plano C."
   },
 

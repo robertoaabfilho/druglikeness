@@ -274,3 +274,97 @@ def test_o_painel_nao_instala_nada():
     import pathlib
     fonte = pathlib.Path("painel.py").read_text(encoding="utf-8")
     assert "garantir(" not in fonte, "o painel nao deve instalar dependencias"
+
+
+# ===========================================================================
+# O acervo do openFDA: verificar sempre, baixar so se pedido
+# ===========================================================================
+def test_acervo_bula_e_configuravel():
+    """ACHADO: `--acervo-bula` existia como flag da CLI e NAO estava nas chaves
+    do config -- pelo orquestrador o acervo era inalcancavel."""
+    from mods import config
+    assert "acervo_bula" in config.CHAVES["portao"]
+
+
+def test_toda_flag_da_etapa_2_que_muda_a_saida_esta_nas_chaves():
+    """A guarda inversa da que ja existia. A antiga provava que toda chave tem
+    flag; faltava provar que toda flag ALCANCAVEL pelo orquestrador esta como
+    chave -- foi por essa fresta que `--acervo-bula` passou."""
+    import re
+    from pathlib import Path
+
+    from mods import caminhos, config
+    fonte = (caminhos.RAIZ / "mods/aplicar_portao.py").read_text(
+        encoding="utf-8")
+    flags = set(re.findall(r'"--([a-z0-9-]+)"', fonte))
+    # Flags que sao do uso direto da CLI, nao da configuracao: a repeticao
+    # aponta um manifesto anterior, e --help nao e parametro.
+    so_da_cli = {"help", "manifesto"}
+    faltando = {f for f in flags - so_da_cli
+                if f.replace("-", "_") not in config.CHAVES["portao"]}
+    assert not faltando, faltando
+
+
+def test_o_acervo_ausente_e_conferido_antes_de_rodar(tmp_path, monkeypatch):
+    """Se a configuracao aponta um acervo que nao existe, isso tem de aparecer
+    ANTES da etapa 1 -- nao depois de horas, quando a etapa 2 comeca."""
+    import main
+    monkeypatch.setattr(main.caminhos, "RAIZ", tmp_path)
+    for nome in ("l.tsv", "e.tsv"):
+        (tmp_path / nome).write_text("x", encoding="utf-8")
+    cfg = {"portao": {"evidencias": "e.tsv", "ligantes": "l.tsv",
+                      "saida": "p", "acervo_bula": "dados/openfda/nao.sqlite"}}
+    erros = main._precheca([e for e in main.ETAPAS if e["id"] == "portao"], cfg)
+    assert any("acervo_bula" in e for e in erros), erros
+    assert any("openfda_massa" in e for e in erros), erros
+
+
+def test_acervo_presente_nao_gera_erro(tmp_path, monkeypatch):
+    import main
+    monkeypatch.setattr(main.caminhos, "RAIZ", tmp_path)
+    for nome in ("l.tsv", "e.tsv", "a.sqlite"):
+        (tmp_path / nome).write_text("x", encoding="utf-8")
+    cfg = {"portao": {"evidencias": "e.tsv", "ligantes": "l.tsv",
+                      "saida": "p", "acervo_bula": "a.sqlite"}}
+    assert main._precheca([e for e in main.ETAPAS if e["id"] == "portao"],
+                          cfg) == []
+
+
+def test_baixar_o_acervo_NAO_e_automatico(tmp_path, monkeypatch):
+    """3,7 GB e ~20 min, e ha alternativa: a rede com o teto de taxa. A mesma
+    regra do `torch` -- baixar GB sem pedir e decidir pelo pesquisador num
+    ponto em que ele tem escolha. E, para uma base de produto natural, o acervo
+    compra quase nada: 58 de 60 ligantes nao tem bula nenhuma."""
+    import main
+    baixou = []
+    monkeypatch.setattr(main, "_baixar_acervo",
+                        lambda *a, **k: baixou.append(1) or True)
+    monkeypatch.setattr(main.caminhos, "RAIZ", tmp_path)
+    for nome in ("l.tsv", "e.tsv"):
+        (tmp_path / nome).write_text("x", encoding="utf-8")
+    cfg = {"portao": {"evidencias": "e.tsv", "ligantes": "l.tsv",
+                      "saida": "p", "acervo_bula": "dados/openfda/nao.sqlite"}}
+    main._precheca([e for e in main.ETAPAS if e["id"] == "portao"], cfg)
+    assert baixou == [], "baixou 3,7 GB sem ninguem pedir"
+
+
+def test_a_flag_de_baixar_o_acervo_existe():
+    """Para que caiba num comando so quando o pesquisador QUER."""
+    import main
+    args = main._argumentos(["--baixar-acervo"])
+    assert args.baixar_acervo is True
+    assert main._argumentos([]).baixar_acervo is False
+
+
+def test_com_a_flag_o_acervo_e_baixado_antes_das_etapas(monkeypatch, tmp_path):
+    import main
+    ordem = []
+    monkeypatch.setattr(main.dependencias, "garantir", lambda **k: {
+        "completo": True, "faltando": [], "opcionais_ausentes": [],
+        "instalou": [], "erros": []})
+    monkeypatch.setattr(main, "_baixar_acervo",
+                        lambda *a, **k: ordem.append("acervo") or True)
+    monkeypatch.setattr(main, "_precheca",
+                        lambda *a, **k: ordem.append("precheca") or ["parar"])
+    main.main(["--baixar-acervo", "--config", "json/config.json"])
+    assert ordem[:2] == ["acervo", "precheca"]

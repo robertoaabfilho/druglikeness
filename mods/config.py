@@ -51,6 +51,7 @@ CHAVES: dict[str, dict[str, tuple]] = {
         "evidencias": (str,), "ligantes": (str,), "alvos": (str,),
         "saida": (str,), "cache": (str,), "manifesto": (str,),
         "termos_alerta": (str, list), "tecidos": (str, list),
+        "acervo_bula": (str,),
         "reprovar": (str, list), "marcar": (str, list),
         "corte_expressao": (int, float), "percentil_toxicidade": (int, float),
         "limite": (int,), "limite_bula": (int,), "workers": (int,),

@@ -447,12 +447,29 @@ padrão 500 — o que faz o critério sair `indeterminado` para **99,5% da base*
 Com o acervo baixado, a consulta é local e **não há taxa**:
 
 ```bash
-# ~1,7 GB em 14 partições. Retoma: interromper é seguro.
+# ~1,7 GB em 14 partições, mais ~2 GB de índice. Retoma: interromper é seguro.
 python mods/openfda_massa.py --baixar --indexar --saida dados/openfda
 
-# e então, sem teto:
-python mods/aplicar_portao.py ... --acervo-bula dados/openfda/openfda.sqlite
+# ou, num comando só, antes de rodar o pipeline:
+python main.py --baixar-acervo
 ```
+
+Depois, aponte a configuração para ele — `portao.acervo_bula` em
+`json/config.json` — e o teto de taxa deixa de valer. Vazio, o pipeline usa a
+rede com `--limite-bula`.
+
+### Noutra máquina: verifica sempre, baixa se você pedir
+
+Se a configuração aponta um acervo que **não existe**, o orquestrador diz isso
+**antes de qualquer etapa**, com o comando que resolve. Não depois de horas,
+quando a etapa 2 começa.
+
+O download **não** é automático, e a razão é a mesma do `torch`:
+são ~3,7 GB e ~20 min, existe alternativa (a rede, com o teto), e **para uma
+base de produto natural o acervo compra pouco** — medido, 58 de 60 ligantes de
+exemplo não têm bula nenhuma. Baixar GB como efeito colateral de rodar o
+pipeline seria decidir por você num ponto em que você tem escolha. `--baixar-
+acervo` existe para quando a escolha é sua.
 
 **Como isto funciona sem reescrever o critério.** O acervo responde as *mesmas
 URLs* que `mods/portao/bula.py` monta. O módulo da bula não muda uma linha: ele
