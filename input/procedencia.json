@@ -1,0 +1,17 @@
+{
+  "data": "2026-11-27T01:58:13+00:00",
+  "entradas": [
+    {
+      "papel": "ligantes",
+      "destino": "input/ligantes.tsv",
+      "linhas": 126240,
+      "gravados": 107123,
+      "truncadas": 0,
+      "invalidas": 17305,
+      "duplicadas": 1812,
+      "origem": "/home/nap_07/prospector/pipeline_prospeccao_v4/resultados/atividades_compostos_parcial.csv",
+      "md5": "70876ac3c7b5f6b40c7a5ebca3622f01",
+      "bytes": 137882195
+    }
+  ]
+}

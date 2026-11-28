@@ -126,19 +126,32 @@ def _chembl_falso(mapa):
 
 
 def test_filtro_do_modelo_mede_o_corte():
+    """As quatro proteinas, uma por caso, depois da decisao 2 do espectro:
+
+    * P1 -> CHEMBL1, nos rotulos          -> entra, `no_modelo` True
+    * P2 -> CHEMBL2, FORA dos rotulos     -> entra, `no_modelo` False
+                                             (antes era descartada: era a
+                                             maior perda do enriquecimento)
+    * P3 -> CHEMBL3, ja em `ja_presentes` -> fica fora, sem repetir
+    * P4 -> sem alvo no ChEMBL            -> fica fora, nao se liga a nada
+    """
     alvo = lambda i: {"target_chembl_id": i, "pref_name": i, "organism": "Homo sapiens",
                       "target_type": "SINGLE PROTEIN"}
     rotulos = [{"chembl_id": "CHEMBL1", "n_ativos": 10}, {"chembl_id": "CHEMBL3", "n_ativos": 5}]
     mapa = {"P1": alvo("CHEMBL1"), "P2": alvo("CHEMBL2"), "P3": alvo("CHEMBL3")}
-    exp = [{"uniprot": u, "origem": "reactome", "via_origem": "R", "alvo_semente": "S"}
+    exp = [{"uniprot": u, "origem": "reactome", "via_origem": "R",
+            "via_nome": "V", "alvo_semente": "S"}
            for u in ("P1", "P2", "P3", "P4")]
     rel = {}
     saida = alvos_expandidos_no_modelo(exp, rotulos, obter_json_chembl=_chembl_falso(mapa),
                                        ja_presentes={"CHEMBL3"}, relatorio=rel)
-    assert [a["alvo_chembl_id"] for a in saida] == ["CHEMBL1"]
+    assert [a["alvo_chembl_id"] for a in saida] == ["CHEMBL1", "CHEMBL2"]
+    assert [a["no_modelo"] for a in saida] == [True, False]
     assert saida[0]["n_moleculas_treino"] == 10
+    assert saida[1]["n_moleculas_treino"] == ""
     assert (rel["proteinas"], rel["no_modelo"], rel["fora_do_modelo"],
-            rel["sem_alvo_chembl"], rel["ja_na_lista"]) == (4, 1, 1, 1, 1)
+            rel["sem_alvo_chembl"], rel["ja_na_lista"], rel["entraram"]
+            ) == (4, 1, 1, 1, 1, 2)
 
 
 def test_alvos_do_chembl_marca_modelo_e_registra_falha_por_item():
@@ -293,3 +306,271 @@ def test_a_suite_bloqueia_a_rede():
     import socket
     with pytest.raises(RuntimeError, match="rede"):
         socket.create_connection(("93.184.216.34", 80), timeout=1)
+
+
+# ===========================================================================
+# Espectro de alvos, decisao 2: alvo fora do modelo ENTRA, marcado
+# ===========================================================================
+# O filtro existia porque alvo fora do modelo nao recebe evidencia PREVISTA --
+# `casar_alvos` o omite, corretamente. Mas ele recebe evidencia MEDIDA, porque
+# `medido.py` usa os rotulos so para dar nome ao alvo. E medida ranqueia em
+# `1a`/`1b`, ACIMA de qualquer previsao. Descartar esses alvos jogava fora a
+# classe de evidencia mais forte do pipeline.
+#
+# Corrige tambem uma assimetria: declarar protegia e enriquecer nao. Alvo do
+# usuario fora do modelo ficava, alvo do Open Targets fora do modelo ficava, e
+# so o do Reactome saia.
+def _alvo_chembl(ident, nome=None):
+    return {"target_chembl_id": ident, "pref_name": nome or ident,
+            "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+
+
+def _proteina(uniprot, via="R-HSA-1", semente="CHEMBL_S"):
+    return {"uniprot": uniprot, "origem": "reactome", "via_origem": via,
+            "via_nome": f"via {via}", "alvo_semente": semente,
+            "observacao": ""}
+
+
+def test_alvo_fora_do_modelo_entra_marcado():
+    rel = {}
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P9")], rotulos=[],
+        obter_json_chembl=_chembl_falso({"P9": _alvo_chembl("CHEMBL9", "TRPA1")}),
+        relatorio=rel)
+    assert [a["alvo_chembl_id"] for a in saida] == ["CHEMBL9"]
+    assert saida[0]["no_modelo"] is False
+    assert saida[0]["alvo"] == "TRPA1"
+    assert saida[0]["organismo"] == "Homo sapiens"
+
+
+def test_alvo_fora_do_modelo_sai_sem_n_moleculas_treino():
+    """Vazio, nao zero: zero diria "treinado com zero moleculas", e o alvo nao
+    esta no treino nenhum -- a distincao importa para o canal negativo, que
+    exige >= 50 moleculas de treino."""
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P9")], rotulos=[],
+        obter_json_chembl=_chembl_falso({"P9": _alvo_chembl("CHEMBL9")}))
+    assert saida[0]["n_moleculas_treino"] == ""
+
+
+def test_a_observacao_diz_que_nao_recebe_evidencia_prevista():
+    """O alvo entra e NAO e pontuado pelo modelo. Sem isso escrito na linha,
+    zero previsoes para ele pareceria "sem atividade"."""
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P9")], rotulos=[],
+        obter_json_chembl=_chembl_falso({"P9": _alvo_chembl("CHEMBL9")}))
+    assert "prevista" in saida[0]["observacao"]
+
+
+def test_alvo_no_modelo_continua_marcado_e_com_o_treino():
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P1")], rotulos=[{"chembl_id": "CHEMBL1", "n_ativos": 1200}],
+        obter_json_chembl=_chembl_falso({"P1": _alvo_chembl("CHEMBL1")}))
+    assert saida[0]["no_modelo"] is True
+    assert saida[0]["n_moleculas_treino"] == 1200
+    assert "prevista" not in saida[0].get("observacao", "")
+
+
+def test_proteina_sem_alvo_no_chembl_continua_fora():
+    """O filtro que SOBREVIVE: sem ID do ChEMBL o alvo nao se liga a evidencia
+    medida nem ao rotulo do modelo -- nao ha o que colher."""
+    rel = {}
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("PX")], rotulos=[], obter_json_chembl=_chembl_falso({}),
+        relatorio=rel)
+    assert saida == [] and rel["sem_alvo_chembl"] == 1
+
+
+def test_alvo_ja_na_lista_continua_fora():
+    rel = {}
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P9")], rotulos=[],
+        obter_json_chembl=_chembl_falso({"P9": _alvo_chembl("CHEMBL9")}),
+        ja_presentes={"CHEMBL9"}, relatorio=rel)
+    assert saida == [] and rel["ja_na_lista"] == 1
+
+
+def test_duas_proteinas_no_mesmo_alvo_fora_do_modelo_dao_uma_linha():
+    """O colapso por alvo repetido (grupo, complexo) vale igual fora do
+    modelo, e o rastro das duas vias fica na mesma linha."""
+    rel = {}
+    saida = alvos_expandidos_no_modelo(
+        [_proteina("P9", via="R-HSA-1"), _proteina("P8", via="R-HSA-2")],
+        rotulos=[],
+        obter_json_chembl=_chembl_falso({"P9": _alvo_chembl("CHEMBL9"),
+                                         "P8": _alvo_chembl("CHEMBL9")}),
+        relatorio=rel)
+    assert len(saida) == 1
+    assert sorted(saida[0]["via_origem"].split(";")) == ["R-HSA-1", "R-HSA-2"]
+    assert rel["mesmo_alvo_de_outra_proteina"] == 1
+
+
+def test_o_relatorio_separa_quem_entrou_dentro_e_fora_do_modelo():
+    rel = {}
+    alvos_expandidos_no_modelo(
+        [_proteina("P1"), _proteina("P9")],
+        rotulos=[{"chembl_id": "CHEMBL1", "n_ativos": 10}],
+        obter_json_chembl=_chembl_falso({"P1": _alvo_chembl("CHEMBL1"),
+                                         "P9": _alvo_chembl("CHEMBL9")}),
+        relatorio=rel)
+    assert rel["no_modelo"] == 1
+    assert rel["fora_do_modelo"] == 1
+    assert rel["entraram"] == 2
+
+
+# ===========================================================================
+# Espectro de alvos, decisao 1: o enriquecimento roda sempre
+# ===========================================================================
+# "O enriquecimento roda sempre, sem parada para revisao, com os parametros
+# abertos." E seguro para o topo do ranking porque a fase 3 separa procedencia
+# por SUB-FAIXA: alvo pedido ordena em `2a`, alvo do enriquecimento em `2b`, e
+# `2a` vem antes. Coletar largo nao e ranquear largo.
+#
+# Estes testes existem para que ninguem desfaca a decisao 1 achando que e
+# economia -- e para que ninguem reintroduza uma parada para revisao humana.
+def test_o_enriquecimento_nao_tem_parada_para_revisao():
+    import inspect
+
+    from mods.evidencias import enriquecimento as modulo
+    fonte = inspect.getsource(modulo)
+    assert "input(" not in fonte
+    assert "sys.stdin" not in fonte
+
+
+def test_a_etapa_1_nao_espera_humano_em_nenhuma_cli():
+    """A revisao da lista de alvos existe no painel, como FERRAMENTA. A etapa
+    nunca para esperando alguem."""
+    import inspect
+
+    from mods import coletar_evidencias
+    fonte = inspect.getsource(coletar_evidencias)
+    assert "input(" not in fonte
+
+
+def test_hub_de_grafo_nao_vence_alvo_pedido_por_ser_muitos():
+    """Os concentradores que lideram o enriquecimento (Calmodulina-1 com 17
+    sementes, quatro subunidades de CaMKII com 14) nao sobem ao topo: previsao
+    em alvo do enriquecimento e `2b`, atras de `2a` de qualquer previsao em
+    alvo declarado -- mesmo com probabilidade muito maior."""
+    from mods.ranque.faixa import chave, classificar
+    from mods.evidencias.esquema import TIPO_PREDITO
+
+    def prev(origem, valor):
+        return {"tipo_evidencia": TIPO_PREDITO, "origem_alvo": origem,
+                "valor": valor, "alvo": "A", "alvo_chembl_id": "CHEMBL1",
+                "pchembl": "", "organismo": "Homo sapiens"}
+
+    hub = chave(classificar([prev("reactome", "0.99")], p_negativo=None), "K1")
+    pedido = chave(classificar([prev("usuario", "0.02")], p_negativo=None), "K2")
+    assert pedido < hub
+
+
+def test_alvo_do_enriquecimento_nunca_ocupa_as_faixas_do_usuario():
+    """`1a` e `2a` sao do alvo DECLARADO. Alvo do enriquecimento so alcanca
+    `1b`, `2b` e `3` -- e e isso que torna seguro coletar largo."""
+    from mods.evidencias.esquema import TIPO_MEDIDO, TIPO_PREDITO
+    from mods.ranque.faixa import classificar
+
+    def linha(tipo, origem, **extra):
+        base = {"tipo_evidencia": tipo, "origem_alvo": origem, "alvo": "A",
+                "alvo_chembl_id": "CHEMBL1", "organismo": "Homo sapiens",
+                "pchembl": "", "valor": "", "unidade": ""}
+        return {**base, **extra}
+
+    faixas = set()
+    for origem in ("open_targets", "reactome"):
+        faixas.add(classificar([linha(TIPO_MEDIDO, origem, pchembl="9.9",
+                                      unidade="nM")], p_negativo=None)["faixa"])
+        faixas.add(classificar([linha(TIPO_PREDITO, origem, valor="0.99")],
+                               p_negativo=None)["faixa"])
+    assert faixas <= {"1b", "2b", "3"}, faixas
+
+
+# ===========================================================================
+# Correcoes da revisao do ramo
+# ===========================================================================
+def test_a_observacao_de_fora_do_modelo_nao_e_apagada():
+    """ACHADO proprio, que a revisao nao pegou: `enriquecimento.py` sobrescrevia
+    `observacao` com `=` ao anotar "tambem associado no Open Targets abaixo do
+    corte", apagando a explicacao de que o alvo esta fora do modelo. Sem ela,
+    zero previsoes para o alvo volta a parecer "sem atividade"."""
+    import inspect
+
+    from mods.evidencias import enriquecimento as modulo
+    fonte = inspect.getsource(modulo)
+    assert 'n["observacao"] = (f"tambem associado' not in fonte, \
+        "a anotacao do Open Targets ainda sobrescreve a observacao"
+
+
+def test_o_relatorio_expoe_fora_do_modelo_no_topo():
+    """I2: `coletar_evidencias` lia `contagens_enriquecimento["fora_do_modelo"]`,
+    que `enriquecer` nunca grava no topo -- o contador fica aninhado em
+    `reactome_modelo`. A chave que mede o efeito da propria decisao 2 lia 0 em
+    toda execucao real, indistinguivel de "a mudanca nao fez nada"."""
+    rel = {"reactome_modelo": {"fora_do_modelo": 7, "no_modelo": 2}}
+    from mods.evidencias.enriquecimento import reactome_fora_do_modelo
+    assert reactome_fora_do_modelo(rel) == 7
+
+
+def test_reactome_fora_do_modelo_de_relatorio_sem_reactome_e_zero():
+    from mods.evidencias.enriquecimento import reactome_fora_do_modelo
+    assert reactome_fora_do_modelo({}) == 0
+
+
+def test_o_relatorio_conta_os_dobrados_por_familia():
+    """I3: `dobrados_por_familia` era contado sobre a lista `--alvos`, que na
+    execucao que FAZ o colapso nao tem a coluna -- lia 0 exatamente onde
+    importava. O contador passa a vir do enriquecimento."""
+    from mods.evidencias.open_targets import colapsar_familia
+    rel = {}
+    alvos = [
+        {"alvo_chembl_id": "CHEMBL_IN", "classe": "C", "score": 0.9,
+         "no_modelo": True, "origem": "open_targets"},
+        {"alvo_chembl_id": "CHEMBL_OUT", "classe": "C", "score": 0.5,
+         "no_modelo": False, "origem": "open_targets"},
+    ]
+    ficaram = colapsar_familia(alvos, relatorio=rel)
+    assert len(ficaram) == 1
+    assert rel["dobrados_por_familia"] == 1
+    assert rel["dobrados_fora_do_modelo"] == ["CHEMBL_OUT"]
+
+
+def test_alvo_dobrado_nao_fica_barrado_de_voltar_pelo_reactome():
+    """I4: `presentes` recebia todo ID do Open Targets ANTES do colapso, e
+    depois servia de `ja_presentes` para o Reactome. O alvo dobrado era
+    removido da lista e, ao ser alcancado por uma via, era recusado como "ja na
+    lista" -- desaparecia do pipeline inteiro. E exatamente a classe que a
+    decisao 2 protege: alvo fora do modelo que pode carregar evidencia medida."""
+    from mods.evidencias.open_targets import colapsar_familia
+    rel = {}
+    alvos = [
+        {"alvo_chembl_id": "CHEMBL_IN", "classe": "C", "score": 0.9,
+         "no_modelo": True, "origem": "open_targets"},
+        {"alvo_chembl_id": "CHEMBL_OUT", "classe": "C", "score": 0.5,
+         "no_modelo": False, "origem": "open_targets"},
+    ]
+    colapsar_familia(alvos, relatorio=rel)
+    assert "CHEMBL_OUT" in rel["dobrados_fora_do_modelo"]
+
+
+def test_alvo_do_open_targets_fora_do_modelo_tambem_diz_que_nao_recebe_previsao():
+    """ACHADO na remedicao com rede: dos 182 alvos fora do modelo na lista,
+    180 (os do Reactome) carregavam a explicacao e **2 nao** -- os do Open
+    Targets, que vem por outro caminho (`alvos_do_chembl`).
+
+    O alvo fora do modelo nao recebe evidencia prevista, venha de onde vier. Se
+    a linha nao diz isso, zero previsoes para ele continua parecendo "sem
+    atividade" -- exatamente o que a marca existe para evitar."""
+    from mods.evidencias.open_targets import alvos_do_chembl
+    alvo = {"target_chembl_id": "CHEMBL9", "pref_name": "TRPA1",
+            "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+
+    def obter(url):
+        return {"targets": [alvo], "page_meta": {"total_count": 1}}
+
+    saida = alvos_do_chembl(
+        [{"uniprot": "P9", "efo_id": "EFO_1", "sintoma": "dor", "score": 0.9,
+          "gene": "TRPA1", "ensembl": "ENSG1", "escore_rna_expression": ""}],
+        rotulos=[], obter_json_chembl=obter)
+    assert saida and saida[0]["no_modelo"] is False
+    assert "prevista" in saida[0]["observacao"], saida[0]["observacao"]

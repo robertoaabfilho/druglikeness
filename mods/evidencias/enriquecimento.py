@@ -28,6 +28,7 @@ from mods.evidencias.chembl import (
     AlvoAmbiguo, ListaTruncada, RespostaInesperada, erro_de_item)
 from mods.evidencias.open_targets import (
     alvos_associados, alvos_do_chembl, colapsar_familia)
+from mods.evidencias.esquema import acrescentar_observacao
 from mods.evidencias.reactome import alvos_expandidos_no_modelo, expandir_vias
 
 _ERROS_POR_ITEM = (ListaTruncada, RespostaInesperada, AlvoAmbiguo, LookupError,
@@ -69,6 +70,16 @@ def _linha_do_usuario(a: dict, no_modelo: dict, obter_json) -> dict:
     if modelo:
         linha.update(no_modelo=True, n_moleculas_treino=modelo["n_ativos"])
     return linha
+
+
+def reactome_fora_do_modelo(relatorio: dict) -> int:
+    """Quantos alvos o Reactome trouxe de FORA do espaco do modelo.
+
+    E a chave que mede o efeito da decisao 2, e por isso tem funcao propria: o
+    contador mora aninhado em `relatorio["reactome_modelo"]`, e quem o lia por
+    `relatorio["fora_do_modelo"]` recebia 0 em toda execucao real -- um zero
+    indistinguivel de "a mudanca nao fez nada"."""
+    return int((relatorio.get("reactome_modelo") or {}).get("fora_do_modelo", 0))
 
 
 def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[dict],
@@ -127,7 +138,19 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
                 r["classe"] = None
                 r["observacao"] = (r["observacao"] + "; " if r["observacao"] else "") + f"classe: {e}"
         ot.append(r)
-    ot = colapsar_familia(ot)
+    rel_familia: dict = {}
+    ot = colapsar_familia(ot, relatorio=rel_familia)
+    rel["dobrados_por_familia"] = rel_familia["dobrados_por_familia"]
+    rel["dobrados_fora_do_modelo"] = list(rel_familia["dobrados_fora_do_modelo"])
+    # O alvo DOBRADO saiu da lista, entao ele nao esta "ja presente": deixa-lo
+    # em `presentes` fazia o Reactome recusa-lo como "ja na lista" e ele
+    # desaparecia do pipeline inteiro -- justamente a classe que a decisao 2
+    # protege, alvo fora do modelo que ainda recebe evidencia medida.
+    ficaram = {l["alvo_chembl_id"] for l in ot if l.get("alvo_chembl_id")}
+    for ident in rel_familia["dobrados_fora_do_modelo"]:
+        if ident not in ficaram:
+            presentes.discard(ident)
+            por_id.pop(ident, None)
     rel["open_targets"] = len(ot)
     linhas.extend(ot)
 
@@ -158,8 +181,13 @@ def enriquecer(alvos_usuario: list[dict], efos: dict[str, str], rotulos: list[di
         a = abaixo.get(n["uniprot"])
         if a:
             n.update(efo_id=a["efo_id"], sintoma=a["sintoma"], score=a["score"])
-            n["observacao"] = (f"tambem associado no Open Targets (escore "
-                               f"{a['score']:.3f}, abaixo do corte {corte_associacao})")
+            # ACRESCENTA, nao substitui: com `=` esta linha apagava a
+            # explicacao de que o alvo esta fora do modelo, e zero previsoes
+            # para ele voltaria a parecer "sem atividade".
+            n["observacao"] = acrescentar_observacao(
+                n.get("observacao"),
+                f"tambem associado no Open Targets (escore {a['score']:.3f}, "
+                f"abaixo do corte {corte_associacao})")
             rel["reactome_tambem_open_targets"] = rel.get("reactome_tambem_open_targets", 0) + 1
     rel["reactome"] = len(novos)
     linhas.extend(novos)

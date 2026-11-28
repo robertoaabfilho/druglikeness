@@ -1,874 +1,748 @@
-# Drogabilidade — Pipeline de Análise e Ranking de Compostos
+# Drogabilidade — ranqueamento de compostos por evidência de alvo
 
-Pipeline para (1) calcular propriedades de drogabilidade/ADMET de uma lista de compostos, (2) ranqueá-los por semelhança ao perfil químico de drogas já usadas para tratar um sintoma/condição específica, e (3) sinalizar compostos cuja bula indica que eles **causam** (em vez de tratar) esse mesmo efeito — com ferramentas de validação e um orquestrador que roda tudo a partir de um único arquivo de configuração.
+Pipeline que responde a uma pergunta: **dada uma lista de compostos e uma lista
+de alvos, quais compostos têm evidência de agir sobre esses alvos, e em que
+ordem?**
 
-## Estrutura de pastas
-
-```
-./main.py                  <- orquestrador (único arquivo solto na raiz)
-./config.txt                <- você cria/edita (main.py gera um modelo na 1ª vez)
-./input.txt                 <- você edita (lista de compostos)
-./input.exemplo.tsv         <- 200 compostos reais, para testar sem montar entrada
-./requirements.txt          <- instalavel num clone limpo
-./requirements-opcionais.txt <- pesadas: torch, transformers, psycopg2-binary
-./painel.py                 <- painel Streamlit da etapa 1
-./dados/                    <- dado derivado do ChEMBL (CC BY-SA 3.0, dados/LICENSE)
-    evidencias_controle.tsv
-./mods/                     <- todos os scripts do pipeline
-    configuracao.py
-    farmaco_completo.py
-    ranking_multibase.py
-    comparar_metodos_ranking.py
-    validar_enriquecimento.py
-    ranking_embeddings.py
-    checar_alertas_adversos.py
-    calibrar_deeppk.py
-    importar_prospector.py
-    prever_alvos.py
-    validar_alvos_medidos.py
-./exemplos/                 <- fixtures de validação (ver exemplos/LEIA-ME.md)
-    controle.dor_neuropatica.tsv
-    alvos.dor_neuropatica.txt
-    alvos.patogeno.txt
-    validacao.alvos_medidos.md
-./results/                  <- criada automaticamente; todas as saídas vão aqui
-    farmaco.csv
-    farmaco.deeppk_raw.csv
-    deeppk_progress.json
-    ranking.csv
-    ranking.referencia.csv
-    ranking.pesos.json
-    comparacao_metodos.csv          (se rodar_comparacao_metodos = true)
-    comparacao_metodos.spearman.csv
-    validacao_enriquecimento.csv    (se rodar_validacao_enriquecimento = true)
-    validacao_enriquecimento.cortes.csv
-    ranking_embeddings.csv          (se rodar_embeddings = true)
-    ranking.alertas.csv             (se rodar_alertas_adversos = true)
-```
-
-## Visão geral do fluxo
+Três etapas, com papéis que não se misturam:
 
 ```
-input.txt ──► mods/farmaco_completo.py ──► results/farmaco.csv
-                                                  │
-config.txt (sintomas) ──► mods/ranking_multibase.py ──► results/ranking.csv
-                                                  │        results/ranking.referencia.csv
-                                                  │        results/ranking.pesos.json
-                    ┌─────────────┬───────────────┼───────────────┐
-                    ▼             ▼               ▼               ▼
-     comparar_metodos_ranking.py  │  validar_enriquecimento.py  ranking_embeddings.py
-        (validação: 4 métodos)    │  (validação: leave-one-out)  (ranking alternativo)
-                                   ▼
-                     checar_alertas_adversos.py
-                (sinaliza compostos que CAUSAM o sintoma-alvo)
+etapa 1  COLETAR    o que se sabe           -> nunca decide
+etapa 2  O PORTÃO   o que fica marcado      -> quase nunca reprova
+fase 3   RANQUEAR   a ordem usando os alvos -> faixas de evidência
 ```
 
-`mods/calibrar_deeppk.py` existe como ferramenta complementar, fora do fluxo do `main.py` (decisão do projeto: não seguir com essa abordagem).
+Cada etapa publica a própria tabela com o próprio manifesto ao lado. **Tabela
+sem manifesto não é citável**, e é por isso que as duas são escritas em
+temporários e trocadas juntas: uma falha no meio não publica nada.
 
 ---
 
-## Requisitos
+## Arquitetura
 
-Só `rdkit` e `requests` são estritamente necessários para começar — **o `main.py` verifica e instala automaticamente** (via pip) qualquer dependência que faltar, etapa por etapa, conforme você for ativando-as no `config.txt`. Se preferir instalar tudo de uma vez:
+```mermaid
+flowchart TB
+    subgraph VOCE["o que VOCÊ fornece — input/"]
+        LIG["ligantes.tsv<br/>nome + smiles"]
+        ALV["alvos.txt<br/>IDs do ChEMBL"]
+        SIN["sintomas.txt"]
+        MED["evidencias_chembl.csv<br/>bioatividade medida"]
+    end
+
+    subgraph MODELO["modelo/ — fora do git"]
+        CKPT["ecfp4_fold_4.pt<br/>PP4CKD, 7.676 alvos"]
+        ROT["target_labels.tsv"]
+    end
+
+    ORQ["main.py<br/>orquestrador: chama cada etapa<br/>como processo separado"]
+
+    E1["etapa 1 · COLETAR<br/>mods/coletar_evidencias.py<br/><b>nunca decide</b>"]
+    E2["etapa 2 · O PORTÃO<br/>mods/aplicar_portao.py<br/><b>quase nunca reprova</b>"]
+    E3["fase 3 · RANQUEAR<br/>mods/ranquear.py<br/><b>faixas de evidência</b>"]
+
+    T1["tsv/etapa1/<br/>evidencias.tsv<br/>alvos_enriquecidos.tsv<br/>manifesto.json"]
+    T2["tsv/portao/<br/>propriedades.tsv · portao.tsv<br/>alertas_bula.tsv · alvos_anotados.tsv<br/>manifesto.json"]
+    T3["tsv/ranking/<br/>ranking.tsv<br/>nao_ranqueados.tsv<br/>manifesto.json"]
+
+    PAINEL["painel.py<br/>Operar escreve · Analisar só lê"]
+
+    LIG & ALV & SIN & MED --> E1
+    CKPT & ROT --> E1
+    ORQ -.->|subprocesso| E1 & E2 & E3
+    E1 --> T1
+    T1 --> E2
+    E2 --> T2
+    T1 & T2 --> E3
+    CKPT --> E3
+    E3 --> T3
+    T1 & T2 & T3 --> PAINEL
+    PAINEL -.->|dispara| ORQ
+
+    REDE[("rede<br/>ChEMBL · Open Targets<br/>Reactome · openFDA")] -.-> E1 & E2
+```
+
+**Por que subprocesso, e não um processo só.** Se a fase 3 falhar, a etapa 2
+continua publicada e citável. Rodar tudo num processo deixaria uma falha no
+fim derrubando o que já estava pronto. O custo é carregar o checkpoint duas
+vezes — e ele tem 33,8 MB.
+
+**O painel não orquestra.** Ele lança `python main.py` como processo separado e
+lê a tabela `ETAPAS` dele. Se a sequência das etapas virasse código de
+interface, sairia do alcance de qualquer script.
+
+**O único acoplamento entre operar e analisar é o sistema de arquivos.**
+Execução disparada no terminal aparece no painel; execução disparada no painel
+é lida por um script.
+
+### Mapa dos módulos
+
+| módulo | responsabilidade |
+|---|---|
+| `main.py` | a sequência das etapas, a retomada, o código de saída |
+| `mods/caminhos.py` | onde fica cada coisa. Sem efeito colateral: nada é criado no import |
+| `mods/config.py` | as 46 flags das três etapas num arquivo só, validadas |
+| `mods/quimica.py` | forma parental (`Cleanup` → maior fragmento orgânico → neutralização), que é a chave de identidade |
+| `mods/modelo.py` | carrega o PP4CKD e calcula o ECFP4 (Morgan r=2, 4.096 bits) |
+| `mods/evidencias/` | a etapa 1: entrada, evidência medida, prevista, enriquecimento, cache de rede, manifesto, escrita atômica |
+| `mods/portao/` | a etapa 2: propriedades, ADMET, bula, expressão, decisão |
+| `mods/ranque/` | a fase 3: faixa, canal negativo, validação |
+| `mods/openfda_massa.py` | o acervo do openFDA baixado e respondido localmente |
+| `mods/painel/` | a biblioteca do painel, testável sem servidor |
+| `mods/instantaneo.py` | traz os dados de origem para `input/`, com procedência |
+| `mods/validar_modelo.py` | mede o preditor contra bioatividade medida (recall@10) |
+
+---
+
+## Início rápido
+
+Num clone limpo:
+
+```bash
+git clone https://github.com/robertoaabfilho/druglikeness.git
+cd druglikeness
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python -m pytest -q                                  # 810 testes, nenhum usa rede
+```
+
+O que **não** vem no repositório, e precisa ser trazido:
+
+| o que falta | por que | como trazer |
+|---|---|---|
+| `modelo/` | 33,8 MB de pesos, não redistribuíveis daqui | `python mods/instantaneo.py --modelo-origem <pasta>` |
+| `input/ligantes.tsv` | instantâneo de dezenas de MB (a última execução real: 126.240 linhas lidas → **107.123 ligantes**, 17.305 sem nome ou SMILES, 1.812 duplicadas por forma parental) | `python mods/instantaneo.py --ligantes-origem <arquivo>` |
+| `input/alvos.txt`, `input/sintomas.txt` | **são seus**: o pipeline não os deduz | copie de `exemplos/` e edite |
+| `input/evidencias_chembl.csv` | 60 MB de bioatividade medida | `--evidencias-origem <arquivo>` |
+
+`input/procedencia.json` **é** versionado: ele guarda origem, data, MD5 e
+contagens de cada instantâneo. Os dados saem do git; o registro deles fica.
+
+Depois:
+
+```bash
+python main.py              # as três etapas
+streamlit run painel.py     # a interface
+```
+
+Sem o modelo, a etapa 1 **degrada**: ela roda só com a evidência medida e diz
+o que falta, em vez de falhar.
+
+### Levar para outra máquina
+
+```bash
+python mods/empacotar.py --saida ../druglikeness-pacote.zip
+python mods/empacotar.py --saida ... --enxuto   # só o código, sem os dados
+```
+
+**O padrão é tudo.** Se o dado existe nesta máquina, ele vai no pacote: o
+código, os testes, os pesos do modelo, a base de ligantes, a evidência medida
+do ChEMBL, as suas listas de alvos e sintomas, e o **acervo do openFDA
+inteiro** — o índice que a etapa 2 lê e as partições que o originaram. São
+alguns GB, e é o preço de a outra máquina **reproduzir** o resultado em vez de
+só rodar o pipeline.
+
+Por que o acervo tem de ir: sem ele a outra máquina cai na rede, com outro teto
+de taxa e **outra data de carga** do openFDA. O manifesto registraria outra
+versão de serviço — ou seja, outra execução. Reproduzir exige a mesma carga.
+
+Duas coisas ficam fora, e nenhuma por tamanho:
+
+- **`tsv/`** — as saídas são o resultado de uma execução *desta* máquina;
+  levá-las faria a outra parecer ter rodado o pipeline.
+- **`json/cache_rede/`** — o cache é indexado por versão de serviço, e servir
+  cache velho do outro lado daria resposta de uma versão que não é a de lá. É
+  correção, não economia.
+
+`--enxuto` faz o pacote pequeno, por pedido explícito, e aí o que ficou fora é
+registrado em `PACOTE.json` com o comando que o traz.
+
+Em qualquer dos dois, `LEIA-ME-PRIMEIRO.md` diz como instalar, e **a suíte
+verde do outro lado é o que prova que o pacote chegou inteiro** — é a primeira
+coisa que o arquivo manda rodar.
+
+---
+
+## A árvore
+
+```
+main.py                    orquestrador das três etapas
+painel.py                  interface: operar e analisar
+input/                     o que VOCÊ fornece
+    ligantes.tsv           instantâneo convertido da base de origem
+    alvos.txt
+    sintomas.txt
+    evidencias_chembl.csv  evidência medida (fora do git: 60 MB)
+    procedencia.json       origem, data e MD5 de cada instantâneo
+mods/                      código: as etapas, as CLIs e a infraestrutura
+modelo/                    pesos .pt e target_labels.tsv (fora do git)
+json/
+    config.json            o parâmetro de cada etapa, num lugar só
+    cache_rede/<versao>/   uma subpasta por versão dos serviços
+tsv/
+    .execucao/ estado da execução que o painel disparou: rodando.pid,
+               main.log, ritmo.csv, ultimo.json
+    etapa1/    evidencias.tsv, alvos_enriquecidos.tsv, manifesto.json
+    portao/    propriedades.tsv, portao.tsv, alertas_bula.tsv,
+               alvos_anotados.tsv, manifesto.json
+    ranking/   ranking.tsv, nao_ranqueados.tsv, manifesto.json
+dados/                     dado de referência versionado, com licença própria
+exemplos/                  fixtures de validação
+tests/                     a suíte; nenhum teste usa rede
+```
+
+`input/` é o que você fornece; `tsv/` é o que a máquina gerou. A regra que
+desempata, porque ligantes e alvos também são TSV: **procedência, não
+extensão.**
+
+## Instalação
 
 ```bash
 pip install -r requirements.txt              # instala num clone limpo, sem compilador
-pip install -r requirements-opcionais.txt    # pesadas: torch, transformers, psycopg2-binary
+pip install -r requirements-opcionais.txt    # pesada: torch (evidência prevista)
 ```
 
-Os dois arquivos são separados porque o pip **instala toda linha que encontrar**,
-comentada como "opcional" ou não. Com `psycopg2` (sem `-binary`) no
-`requirements.txt`, o primeiro comando do README falhava num clone limpo por
-falta do `pg_config`; e `torch` + `transformers` somam alguns GB que nem o
-painel nem os testes precisam. O que cada opcional liga está dito no próprio
-`requirements-opcionais.txt`, e o código avisa na hora qual instalar:
+Os dois arquivos são separados porque o pip **instala toda linha que
+encontrar**, comentada como "opcional" ou não.
 
-| opcional | liga |
-|---|---|
-| `torch` | evidência **prevista** (PP4CKD). Sem ele a etapa 1 roda em modo degradado, só com evidência medida |
-| `transformers` | `mods/ranking_embeddings.py` (ChemBERTa) |
-| `psycopg2-binary` | fonte DrugCentral do `ranking_multibase.py`, que degrada sozinha sem ela |
+Sem `torch`, ou sem os pesos em `modelo/`, a etapa 1 roda em **modo
+degradado**: só com evidência medida, e dizendo isso. É o `main.py` que
+garante isso — ele confere os caminhos do modelo antes de rodar e, se os
+arquivos não estiverem lá, retira as duas chaves da linha de comando e avisa
+o que fazer para trazê-los. Chamando a CLI da etapa 1 à mão com um
+`--checkpoint` que não existe, você recebe erro, não modo degradado.
 
----
+## Primeiro passo: o instantâneo
 
-## Uso rápido
+O pipeline **não lê nada de outro projeto em tempo de execução**. O que vem de
+fora entra uma vez, como instantâneo datado, com origem e MD5 gravados em
+`input/procedencia.json`:
 
 ```bash
-python main.py
+python mods/instantaneo.py \
+    --ligantes-origem CAMINHO/atividades_compostos.csv \
+    --evidencias-origem CAMINHO/evidencias_chembl.csv \
+    --modelo-origem CAMINHO/models
 ```
 
-Na primeira vez, se `config.txt` não existir, o `main.py` cria um modelo comentado e para — edite-o e rode de novo.
+Isso não é zelo. A base de compostos de origem pode estar sendo **escrita por
+uma execução em curso** — o `_parcial` no nome dela é literal. Lida em tempo de
+execução, a lista de ligantes mudaria debaixo do pipeline, e duas etapas da
+mesma execução poderiam ver conjuntos diferentes. Linha truncada é **contada e
+nomeada** (código 3), nunca somada ao bolo de "sem SMILES utilizável".
 
-### O que o `main.py` faz em cada execução
+### Alvos e sintomas são seus
 
-1. Lê `config.txt`.
-2. Cria a pasta `results/` se não existir.
-3. Para cada etapa ativada: **verifica se as dependências dela estão instaladas e instala automaticamente as que faltarem**, depois roda o script correspondente em `mods/` como subprocesso.
-4. Se uma etapa obrigatória (1 ou 2) falhar, o pipeline para ali. Falhas nas etapas de validação/checagem (3 a 6) só emitem aviso, já que o ranking principal já foi gerado.
-
-### `config.txt`
-
-```ini
-# Sintoma(s)/condição a pesquisar nas bases de referência (em inglês).
-# Pode ser mais de um, separado por vírgula.
-sintomas = neuropathic pain, peripheral neuropathy
-
-# Pasta onde todos os resultados são salvos
-results_dir = results
-
-# --- farmaco_completo.py (input.txt -> farmaco.csv) ---
-farmaco_input = input.txt
-farmaco_output = farmaco.csv
-pred_type = admet
-batch_size = 5
-
-# --- ranking_multibase.py (sintoma -> ranking.csv) ---
-ranking_output = ranking.csv
-top_por_fonte = 10
-no_admet = false
-pular_revisao_referencias = false
-
-# --- validar_enriquecimento.py ---
-n_decoys = 50
-
-# --- ranking_embeddings.py (opcional -- requer transformers+torch, pesado) ---
-modelo_embeddings = seyonec/ChemBERTa-zinc-base-v1
-similaridade_embeddings = centroide
-peso_embedding = 0.5
-peso_admet_embeddings = 0.5
-
-# --- checar_alertas_adversos.py (opcional -- checa bula por efeitos adversos) ---
-# Um ou mais termos, separados por vírgula. Qualquer um que aparecer nas
-# seções de advertência da bula já sinaliza o composto.
-termos_alerta = neuropathy, neuritis, nerve damage
-penalidade_alerta = 0.5
-
-# --- Quais etapas rodar (main.py) ---
-rodar_farmaco = true
-rodar_ranking = true
-rodar_comparacao_metodos = false
-rodar_validacao_enriquecimento = false
-rodar_embeddings = false
-rodar_alertas_adversos = false
-```
-
-Linhas começando com `#` são comentários. Argumentos passados por linha de comando (quando você roda um script de `mods/` diretamente) sempre têm prioridade sobre o `config.txt`.
-
-### As 6 etapas orquestradas
-
-| # | Script | O que faz | Controlado por | Dependências verificadas |
-|---|---|---|---|---|
-| 1 | `mods/farmaco_completo.py` | `input.txt` → `results/farmaco.csv` | `rodar_farmaco` | rdkit, requests |
-| 2 | `mods/ranking_multibase.py` | sintoma(s) → `results/ranking.csv` (+ revisão interativa) | `rodar_ranking` | rdkit, requests (+ psycopg2 opcional) |
-| 3 | `mods/comparar_metodos_ranking.py` | validação vs. TOPSIS clássico/QED/Tanimoto | `rodar_comparacao_metodos` | rdkit, numpy, scipy |
-| 4 | `mods/validar_enriquecimento.py` | validação leave-one-out + decoys | `rodar_validacao_enriquecimento` | numpy, scipy, requests |
-| 5 | `mods/ranking_embeddings.py` | ranking alternativo via ChemBERTa | `rodar_embeddings` | numpy, **torch, transformers** |
-| 6 | `mods/checar_alertas_adversos.py` | sinaliza compostos que causam (em vez de tratar) o sintoma-alvo | `rodar_alertas_adversos` | requests |
-
----
-
-## 1. `mods/farmaco_completo.py`
-
-Une o cálculo de descritores de drogabilidade com a consulta ADMET em um único fluxo.
-
-### Formato do `input.txt`
-
-**Formato recomendado — TSV com cabeçalho iniciado por `#`:**
-
-```
-#nome	smiles	inchikey	inchikey_parental	fonte_smiles	conferencia	chembl_id
-Cardamomin	COc1cc(O)cc(O)c1C(=O)/C=C/c1ccccc1	NYSZJNUIVUBQMM-BQYQJAHWSA-N	NYSZJNUIVUBQMM-BQYQJAHWSA-N	NPASS	mesma molécula	CHEMBL378104
-```
-
-Só `nome` e `smiles` são obrigatórios; as outras colunas são preservadas e
-seguem para o `farmaco.csv`. Veja `input.exemplo.tsv` (200 compostos reais).
-
-**Formatos simples** (uma molécula por linha, sem cabeçalho) continuam valendo:
-
-```
-CC(=O)Oc1ccccc1C(=O)O
-Aspirina	CC(=O)Oc1ccccc1C(=O)O
-Aspirina;CC(=O)Oc1ccccc1C(=O)O
-Aspirina,CC(=O)Oc1ccccc1C(=O)O
-```
-
-> **Use TAB, não vírgula, para nome de produto natural.** O separador é
-> procurado nesta ordem: TAB, `;`, `,` — e, para `;` e `,`, a divisão é feita
-> a partir da **direita**, já que o SMILES é sempre o último campo. Isso é
-> obrigatório porque nome de produto natural quase sempre tem vírgula
-> (`1,2,3,4,6-pentagaloilglucose`, `3,3'-diindolilmetano`): numa base real,
-> 42,8% dos nomes. Dividir pela *primeira* vírgula truncava o nome e
-> corrompia o SMILES, que o RDKit então rejeitava — invalidando o composto
-> em silêncio.
-
-### Trazendo compostos de um pipeline de prospecção
-
-`mods/importar_prospector.py` converte a tabela de compostos de um pipeline
-de prospecção de plantas (`resultados/atividades_compostos_parcial.csv`) para
-o formato acima:
+O instantâneo traz os ligantes e a evidência medida. **`input/alvos.txt` e
+`input/sintomas.txt` são escolha sua** — é o que define a pergunta —, e nenhuma
+ferramenta os cria. Para começar, copie um exemplo versionado:
 
 ```bash
-python mods/importar_prospector.py \
-    --origem ~/prospector/pipeline_prospeccao_v4/resultados/atividades_compostos_parcial.csv \
-    --saida input.txt
-
-# amostra de teste, metade com evidência ChEMBL (útil para validação)
-python mods/importar_prospector.py --origem ... --saida input.exemplo.tsv \
-    --limite 200 --preferir-com-chembl
+cp exemplos/alvos.dor_neuropatica.txt input/alvos.txt
+cp exemplos/sintomas.dor_neuropatica.txt input/sintomas.txt
 ```
 
-Ele replica o tratamento químico da prospecção, de forma independente (os dois
-projetos são repositórios separados — nada do código de lá é importado):
-
-- **SMILES:** escolhe o da primeira fonte cujo SMILES o RDKit consegue ler, na
-  ordem **NPASS > COCONUT > LOTUS > PubChem**, e grava a forma canônica.
-- **Conferência:** preserva o veredito da comparação entre as bases
-  (`mesma molécula`, `estereoquímica diferente: …`, `estruturas diferentes: …`).
-  Compostos divergentes entram **marcados, não descartados** — a decisão é do
-  pesquisador.
-- **Identidade:** recalcula dois InChIKeys — `inchikey` da molécula como está e
-  `inchikey_parental` depois de *Cleanup → maior fragmento orgânico →
-  neutralização*. **A chave parental é a correta para cruzar as duas bases**,
-  porque reconhece que sal e base livre são o mesmo composto, e a deduplicação
-  é feita por ela. Exemplo real: a neferina tem dois `[NH+]` no SMILES, então
-  seu `inchikey` sai `MIBATSHDJRIUJK-ROJLCIKYSA-P`, enquanto o `-…-N` que as
-  bases declaram só aparece na forma parental.
-- Divergência entre o InChIKey declarado e o recalculado também é reportada em
-  `conferencia`, sem descartar a linha.
-
-> **Procedência dos dados:** `input.exemplo.tsv` traz estruturas públicas de
-> NPASS, COCONUT, LOTUS e PubChem, trazidas pela prospecção. Ao publicar
-> resultados, cite as bases de origem.
-
-### O que ele calcula
-
-- **Descritores locais (RDKit):** peso molecular, doadores/aceptores de ligação H, TPSA, ligações rotacionáveis, refratividade molar, átomos pesados.
-- **Regras de drogabilidade:** Regra dos 5 de Lipinski (parcial, sem LogP) e Regra de Veber.
-- **ADMET (Deep-PK):** propriedades gerais, absorção, distribuição, metabolismo, excreção e toxicidade.
-
-### Resiliência
-
-- Salva progresso incrementalmente (`<output>.deeppk_raw.csv` + checkpoint) — pode ser interrompido e retomado.
-- Se uma molécula específica for rejeitada pela API do Deep-PK, o script **isola e pula só ela**.
-
-> **Observação de execuções reais:** cerca de 30-35% dos compostos submetidos podem ficar sem nenhum dado ADMET (rejeitados pela API).
-
----
-
-## 2. `mods/ranking_multibase.py`
-
-Ranqueia os compostos de um `farmaco.csv` por semelhança ao perfil químico de drogas já usadas para tratar um sintoma/condição.
-
-> **As buscas nas 4 bases são em inglês** e por correspondência literal de texto.
-
-### Como funciona
-
-**Etapa 1 — Buscar drogas de referência em 4 bases (gratuitas, sem chave):**
-
-| Fonte | O que traz | Critério de corte (top N) |
-|---|---|---|
-| **Open Targets** | Drogas conhecidas + fase clínica | Maior fase clínica |
-| **ChEMBL** | Indicações por ID EFO/MONDO ou texto | Maior fase clínica da indicação |
-| **DrugCentral** | Indicações já aprovadas (via Postgres público) | Correspondência exata ao termo, depois nº de produtos aprovados |
-| **openFDA** | Menções em bula (`indications_and_usage`) | Nº de rótulos de bula diferentes que mencionam a condição |
-
-**Etapa 2 — Mesclar as 4 listas:** deduplicação por **ID ChEMBL**, com fallback para nome normalizado nas fontes que não fornecem ID.
-
-> **Correção aplicada:** a mesma droga podia aparecer duas vezes quando encontrada **com** ID ChEMBL numa fonte e **sem** ID em outra. Um índice nome→chave agora funde as duas entradas independente da ordem em que as fontes chegam — confirmado corrigindo um caso real (Pregabalina, Duloxetina, Tapentadol, Capsaicina apareciam duplicadas).
-
-**Etapa 3 — Garantir o SMILES** de cada droga de referência: DrugCentral → ChEMBL pelo ID → PubChem pelo nome.
-
-**Revisão interativa** (a menos que `--pular-revisao-referencias`): mostra a lista numerada de drogas de referência e pergunta quais remover antes de prosseguir. Funciona normalmente mesmo via `main.py`.
-
-**Etapa 4 — Calcular os descritores** dessas drogas via `processar_lista_druglikeness()`.
-
-**Etapa 5 — (opcional) ADMET das drogas de referência** via Deep-PK.
-
-**Etapa 6 — Calcular os pesos** por característica (numéricas: consistência; booleanas/categóricas: frequência da moda).
-
-**Etapa 7 — Pontuar e ranquear:** soma `peso × similaridade` por característica, normaliza para 0–100.
-
-> Este é o único método de ranking do script (`perfil`). Um método "TOPSIS híbrido" foi explorado e removido do projeto por instabilidade; a comparação com TOPSIS de verdade é coberta pelo `comparar_metodos_ranking.py`.
-
-### Arquivos de saída
-
-- **`ranking.csv`**, **`ranking.pesos.json`**, **`ranking.referencia.csv`** (com a coluna `Fontes`).
-
----
-
-## 3. `mods/comparar_metodos_ranking.py` — validação contra âncoras da literatura
-
-| Método | Papel |
-|---|---|
-| `perfil` | O método usado no ranking principal |
-| `topsis_classico` | **Comparador direto** — TOPSIS de manual |
-| `qed` | **Checagem de coerência** — drug-likeness geral |
-| `tanimoto_max` | **Checagem de coerência** — proximidade estrutural às referências |
-
-**Resultado de uma execução real:** correlações moderadas e significativas com os três (ρ 0,28–0,48, p<0,05).
-
----
-
-## 4. `mods/validar_enriquecimento.py` — leave-one-out com decoys
-
-Remove cada droga de referência, recalcula pesos sem ela, mistura com decoys do ChEMBL, roda o ranking, mede o percentil de topo.
-
-**Resultado de uma execução real (N=25):** percentil médio 77%, mediano 90%. Enrichment Factor de 8,0× (top 1%) a 4,8× (top 5%) acima do acaso.
-
----
-
-## 5. `mods/ranking_embeddings.py` — ranking alternativo via embeddings aprendidos
-
-Desativado por padrão (`rodar_embeddings = false`, requer `transformers`+`torch`). Usa ChemBERTa para gerar embeddings, mede proximidade e reordena por ADMET.
-
-**Resultado de uma execução real:** executado com sucesso; o top-14 produzido diverge do método `perfil`.
-
----
-
-## 6. `mods/checar_alertas_adversos.py` — compostos que causam (em vez de tratar) o sintoma-alvo
-
-### O problema que motivou esse script
-
-O método `perfil` mede semelhança físico-química/ADMET, não mecanismo de ação. Numa execução real, o ranking pra "dor neuropática" trouxe no top 10 **Ciprofloxacino** (tarja preta da FDA para neuropatia periférica), **Linezolida**, **Etionamida**, **Cloranfenicol** e **Etambutol** — drogas famosas por **causar** neuropatia como efeito adverso, não por tratá-la. Drogas que tratam dor neuropática e drogas que a causam como toxicidade podem convergir no mesmo espaço físico-químico (ambas precisam penetrar tecido neural), sem nenhuma relação farmacológica real entre elas.
-
-### Como funciona
-
-```
-python mods/checar_alertas_adversos.py --ranking results/ranking.csv --termos "neuropathy,neuritis" --output results/ranking.alertas.csv
-```
-
-1. Pra cada composto do ranking, busca a bula no openFDA (por nome genérico, princípio ativo ou comercial).
-2. Procura o(s) termo(s) de alerta **somente** em `boxed_warning`, `warnings`, `warnings_and_cautions` e `adverse_reactions` — **nunca** em `indications_and_usage` (testado explicitamente: uma droga que *trata* o sintoma não é confundida com uma que o *causa*).
-3. Aplica uma penalidade multiplicativa (`penalidade_alerta`, padrão 0.5) na pontuação dos sinalizados, e gera um ranking ajustado.
-
-### Múltiplos termos de alerta
-
-`termos_alerta` (ou `--termos`) aceita vários termos separados por vírgula — qualquer um que aparecer já sinaliza o composto:
-
-```
-termos_alerta = neuropathy, neuritis, nerve damage, peripheral nerve
-```
-
-O CSV de saída (`Trecho_Alerta`) sempre mostra qual termo específico bateu e o trecho exato da bula, mesmo usando vários termos.
-
-### Por que a penalidade é parcial, não uma remoção
-
-Busca em texto livre não entende negação — uma bula que diz "não há relatos de neuropatia" ainda bateria no termo. Por isso os compostos sinalizados continuam visíveis no CSV (não somem silenciosamente), com o trecho da bula exposto para revisão humana antes de descartar qualquer composto.
-
-### Colunas de saída (`ranking.alertas.csv`)
-
-`Ranking_Ajustado`, `Ranking` (original), `Nome`, `SMILES`, `Pontuacao_Final` (original), `Pontuacao_Ajustada`, `Alerta_Adverso` (SIM/nao), `Campo_Alerta`, `Trecho_Alerta`.
-
----
-
-## 7. `mods/calibrar_deeppk.py` — parada, não recomendada
-
-Compara predições Deep-PK contra texto farmacocinético experimental do PubChem. **Decisão do projeto: não seguir com essa abordagem.** Continua no repositório por referência, mas não é chamada pelo `main.py`.
-
----
-
-## 8. `mods/prever_alvos.py` — compostos × alvos (qualquer organismo)
-
-Responde à pergunta central do repositório: **dada uma lista de compostos e uma
-lista de alvos, quais compostos têm chance de atuar sobre esses alvos?**
-
-A lista de alvos é **entrada**, não dedução. Quem a fornece (ou a enriquece a
-partir da doença) é o pesquisador.
-
-Usa os pesos pré-treinados do **PP4CKD** ([Zenodo
-10.5281/zenodo.23147411](https://zenodo.org/records/23147411), pesos CC-BY-4.0,
-código Apache-2.0): uma MLP que recebe o fingerprint de uma molécula e devolve
-uma probabilidade para cada um dos 7.676 alvos do ChEMBL 36.
-
-```
-SMILES -> ECFP4 (Morgan r=2, 4096 bits) -> Linear(4096,1000) -> ReLU
-       -> Linear(1000,500) -> ReLU -> Linear(500,7676) -> sigmoide
-```
-
-### Alvos não humanos são de primeira classe
-
-Dos 7.676 alvos, **4.140 são de *Homo sapiens* e 3.536 não são** — 666 de
-camundongo, 646 de rato, e centenas de patógeno, distribuídos por 1.084
-organismos. O modelo traz até alvos de **organismo inteiro** (ensaio
-fenotípico, não proteína): `CHEMBL360` = *M. tuberculosis* com 11.049 moléculas
-ativas no treino.
-
-Isso serve a dois usos diferentes:
-
-| uso | o alvo é | exemplo |
-|---|---|---|
-| **afirmativo** | do patógeno | doença infecciosa/parasitária: `CHEMBL360`, `CHEMBL364` (*P. falciparum*), `CHEMBL368` (*T. cruzi*) |
-| **negativo** | atividade indesejada | excluir do ranking o composto que é antibacteriano, não analgésico |
-
-O uso negativo foi **medido** no conjunto-controle deste repositório (6 fármacos
-que tratam dor neuropática contra 6 que a causam):
-
-| escore | AUC |
-|---|---|
-| só alvos humanos de dor | 0,750 |
-| `p_humano × (1 − p_bacteriano)` | **0,806** |
-| só `CHEMBL360` separando antibacteriano de analgésico | **1,000** |
-
-Com o alvo bacteriano no cálculo, o ciprofloxacino cai do 4º para o 7º lugar.
-
-### Como pedir os alvos
-
-Um por linha. `#` comenta a linha inteira ou o fim dela. `| organismo` fixa o
-organismo **daquela linha**:
-
-```
-CHEMBL360                      # M. tuberculosis, célula inteira
-CHEMBL1849                     # InhA de Mtb
-DNA gyrase | Escherichia coli  # nome + organismo, para não pegar o ortólogo errado
-dihydrofolate reductase | tuberculose
-```
-
-Ou restrinja tudo com `--organismo` (repetível, aceita vírgula). Apelidos
-(`humano`, `rato`, `camundongo`, `tuberculose`, `malaria`, `chagas`…) e trechos
-do nome científico funcionam — `--organismo Plasmodium` alcança
-`Plasmodium falciparum (isolate 3D7)`, porque as bases guardam cepa e isolado
-dentro do nome do organismo.
-
-**Pedir por ID ChEMBL vence o filtro de organismo.** Se você escreveu
-`CHEMBL304`, você quer o transportador de noradrenalina **de rato** — o script
-avisa e mantém.
-
-### Descobrindo a grafia (sem rodar previsão)
-
-Sem isto não há como escrever uma lista de alvos não humanos, porque a grafia
-tem de ser a do ChEMBL:
+O `main.py` confere esses caminhos **antes** de rodar qualquer etapa, e diz
+quais faltam. Sem essa conferência, a etapa 1 leria os 107 mil ligantes antes
+de abrir o arquivo de alvos, e o "arquivo não encontrado" chegaria depois de
+minutos de RDKit.
+
+A conversão recalcula dois InChIKeys: o da molécula como está e o da **forma
+parental** (*Cleanup → maior fragmento orgânico → neutralização*). A parental é
+a identidade: é ela que reconhece que sal e base livre são o mesmo composto, e
+é por ela que a deduplicação acontece.
+
+> **O `.pt` e o `target_labels.tsv` têm de ser do mesmo PP4CKD.** A coluna *i*
+> de um não é o alvo *i* do outro, e pontuar assim atribuiria a probabilidade
+> de um alvo ao nome de outro. Por isso o instantâneo copia os dois juntos, e a
+> etapa 1 **recusa** um par cuja largura de saída do checkpoint não seja o
+> número de rótulos.
+
+## Rodar
 
 ```bash
-python mods/prever_alvos.py --rotulos target_labels.tsv --listar-organismos
-python mods/prever_alvos.py --rotulos target_labels.tsv --listar-organismos Plasmodium
-python mods/prever_alvos.py --rotulos target_labels.tsv \
-    --buscar-alvo gyrase --organismo Staphylococcus
+python main.py                       # as três etapas, da primeira à última
+python main.py --retomar             # pula etapa cuja saída já existe
+python main.py --a-partir-de portao  # começa numa etapa
+python main.py --somente ranking     # roda só uma
+python main.py --sem-instalar        # confere o ambiente e não instala nada
 ```
 
-### Uso
+### A partida confere o ambiente
 
-```bash
-python mods/prever_alvos.py \
-    --entrada input.exemplo.tsv \
-    --modelos ~/modelos_baixados/pp4ckd/models \
-    --rotulos ~/modelos_baixados/pp4ckd/target_labels.tsv \
-    --alvos alvos.txt \
-    --organismo humano \
-    --saida results/alvos_preditos.tsv
-```
+Antes de qualquer etapa, o orquestrador verifica as dependências e **instala o
+que falta** — pelo `pip` do interpretador corrente (`sys.executable -m pip`,
+nunca o `pip` do PATH, que pode ser de outro ambiente), usando a linha do
+`requirements.txt` e não só o nome do pacote: instalar `numpy` onde o arquivo
+pede `numpy>=2` satisfaria o nome e não a restrição.
 
-Saída (TSV): `nome`, `inchikey_parental`, `chembl_id_composto`,
-`alvo_chembl_id`, `alvo`, `organismo`, `tipo_alvo`, `moleculas_treino`,
-`probabilidade`, `procedencia`.
+Ele **diz antes de instalar**, e depois **confere de novo** — instalou e o
+pacote continua ausente é falha, não sucesso. Se o ambiente continuar
+incompleto, para com código 2: nenhuma etapa roda com biblioteca faltando,
+porque ela quebraria no meio, depois de horas.
 
-### Duas colunas que existem por um motivo
+Duas coisas que ele **não** faz:
 
-**`moleculas_treino`** — quantas moléculas ativas treinaram aquele alvo. Alvo
-não humano é bem mais esparso: mediana de **26** moléculas ativas contra 67 dos
-humanos, 67% abaixo de 50, e 798 alvos abaixo de 10. Sem essa coluna você não
-distingue p=0,89 sustentado por 3.493 exemplos de p=0,89 sustentado por 10. O
-caso real: os três alvos mais prováveis do ciprofloxacino no modelo inteiro são
-organismos com 10, 11 e 12 moléculas de treino, enquanto a DNA girase (596
-ativos, o alvo de verdade) fica mais abaixo. `--minimo-treino N` (padrão 50)
-avisa — **sem remover** — quando um alvo pedido está abaixo do limiar.
+- **não instala as opcionais.** `torch` são alguns GB, e o pipeline *degrada*
+  sem ele: a etapa 1 roda só com evidência medida e a fase 3 deixa o canal
+  negativo `indeterminado`, nunca 0. O que a partida faz é dizer o que a falta
+  **desliga** — baixar GB sem pedir seria decidir por você num ponto em que
+  você tem alternativa;
+- **não mexe no que já está instalado.** Sem `--upgrade`: a tarefa é suprir o
+  que falta, não atualizar o que funciona.
 
-**`tipo_alvo`** — `SINGLE PROTEIN` é ligação a uma proteína; `ORGANISM` e
-`CELL-LINE` são ensaio fenotípico de célula inteira. São afirmações diferentes e
-não devem ser lidas como a mesma coisa.
+`--sem-instalar` é para ambiente compartilhado, automação ou máquina sem rede:
+confere, diz o que falta, e para. O painel também **não instala** — mostra o
+estado na barra lateral e o comando, porque instalar por clique mexeria no
+ambiente de quem abriu a aba.
 
-### Procedência: predito nunca se mistura com medido
+**Nada é implícito.** Sem `--retomar`, tudo roda — pular etapa cuja saída
+existe é economia legítima, mas feita por omissão ela entrega resultado velho
+como novo, e num pipeline cuja execução real são ~23 milhões de pares ninguém
+notaria.
 
-```
-predito (PP4CKD ECFP4 ecfp4_fold_4.pt)   previsão de modelo, hipótese a testar
-medido (ChEMBL pchembl=7.2)              bioatividade experimental
-```
+E `--retomar` **confere a entrada**, não só a existência da saída: ele lê
+`versoes.ligantes_md5` do manifesto daquela etapa e compara com o arquivo que
+a configuração aponta. Se não bate, a entrada mudou desde que aquela etapa
+rodou, e ele **refaz** a etapa — aproveitar a saída misturaria duas execuções
+numa, e abortar mandaria você recomeçar ~23 milhões de pares por algo que o
+orquestrador pode refazer. Se o manifesto não registra o MD5, a conferência
+sai `indeterminado` e a etapa roda de novo.
 
-Uma previsão de 0,93 não tem o mesmo peso que um ensaio, e as duas nunca saem
-na mesma coluna sem distinção. A coluna `procedencia` nomeia o checkpoint usado,
-para que o resultado seja reproduzível.
-
-### Limites conhecidos
-
-- **Pró-fármaco.** O modelo é baseado em ligante: julga a estrutura que recebe.
-  A etionamida pontua 0,80 em *M. tuberculosis* (fenótipo) e **0,0017 em InhA**
-  (a proteína), porque só inibe a InhA depois de ativada pela EthA — a
-  molécula-mãe não se liga.
-- **Molécula pequena e polar.** Gabapentina e pregabalina pontuam baixo nos
-  alvos de dor (0,0001 e 0,02): são análogos de aminoácido, e o alvo delas
-  (α2δ-1) tem só 562 ativos no treino — a sub-unidade α2δ-2 tem 30. A AUC de
-  0,750 do conjunto humano vem quase toda dessas duas falhas.
-- **Ortólogo silencioso** é tratado, não eliminado: só o filtro de organismo e a
-  coluna `organismo` evitam que `noradrenaline transporter` traga humano
-  (`CHEMBL222`), camundongo (`CHEMBL2370`) e rato (`CHEMBL304`) juntos.
-
-### Os pesos publicados estão truncados na origem
-
-O `pp4ckd_models.tar.gz` do Zenodo tem **MD5 idêntico ao publicado**
-(`f9380bb9cef3fe56d6d49d3e4a4d57ec`, 785.350.656 bytes) mas o tar termina antes
-do fim: só **22 dos ~77 modelos** saem íntegros, e `ecfp4_full_model.pt` não é
-um deles. Não é download corrompido — é o arquivo publicado.
-
-Por isso:
-
-- `--checkpoint arquivo.pt` aceita um `.pt` específico;
-- a pasta `--modelos` cai automaticamente para `<fp>_fold_N.pt`, com aviso.
-
-Um checkpoint de fold é um modelo treinado de verdade, em 9/10 dos dados —
-válido para previsão e **preferível** na validação, porque permite medir fora do
-que o modelo viu. Os resultados acima usam `ecfp4_fold_4.pt`.
-
-## 9. `mods/validar_alvos_medidos.py` — recall@10 contra alvos medidos
-
-Mede o `prever_alvos.py` contra bioatividade **medida** (não âncoras de
-literatura, não decoys): quando um composto tem atividade experimental contra um
-alvo, o modelo põe esse alvo no topo?
-
-Resultados completos em [`exemplos/validacao.alvos_medidos.md`](exemplos/validacao.alvos_medidos.md).
-Em resumo, sobre 6.000 compostos com alvo medido no ChEMBL:
-
-- **O vazamento não foi eliminado.** A divisão de folds do PP4CKD
-  (`cv_splits_10fold.npz`) não foi publicada, e o estrato abaixo do limiar de
-  treino (`pchembl < 5`) tem só 21 pares depois de remover triagem HTS. Todo
-  número é limite superior — está dito lá, não escondido.
-- **O treino do alvo domina**: recall@10 vai de 0,127 a 0,477 conforme o alvo
-  sai de <50 para ≥5.000 moléculas ativas. Fator de 3,8, e a razão de existir a
-  coluna `moleculas_treino`.
-- **Alvo não humano vai melhor**: 0,387 contra 0,209 do humano.
-- **Triagem HTS é ruído**: 0,111 contra 0,272 de ensaio dirigido; entra como
-  estrato próprio, nunca somada ao resto.
-- **A medida que corresponde ao uso real**: o alvo medido fica na posição
-  mediana **79 de 7.676** (top 1,0%); o melhor alvo de cada composto, na posição
-  3. Numa lista fornecida de 10 alvos, o verdadeiro ficaria no top-3 em ~95% dos
-  casos — teto otimista, porque alvos de uma mesma doença são correlacionados.
-
-O recall@10 cru de 0,24 **não** é comparável ao 0,856 do artigo: o regime deles
-tem ~1,3 rótulos por composto, aqui a mediana é 2 com cauda até 846 (painéis de
-triagem), e o recall@10 é limitado por construção acima de 10 rótulos.
-
-## 10. `mods/coletar_evidencias.py` — enriquecimento de alvos (Open Targets e Reactome)
-
-Com `--alvos-enriquecidos alvos_enriquecidos.tsv --rotulos target_labels.tsv`, a etapa 1 grava uma segunda saída: a lista do usuário **mais** os alvos que o Open Targets associa aos sintomas e os que o Reactome acrescenta por via. O enriquecimento só acrescenta: nenhum alvo do usuário sai, muda de ordem ou é sobrescrito.
-
-- **Sintoma -> EFO nunca é escolhido em silêncio.** Fixe com `--efo "neuropathic pain=EFO_0005762"` (repetível). Sintoma sem `--efo` não é enriquecido; a CLI lista os candidatos do Open Targets e pede a escolha.
-- **Open Targets:** alvos com escore de associação >= `--corte-associacao` (padrão **0.4**, ajustável e gravado no manifesto), UniProt -> ChEMBL (`SINGLE PROTEIN` primeiro). Para a dor neuropática (934 alvos), 0.5 deixa 30 e 0.4 deixa 44; os 14 a mais são os canais de sódio dependentes de voltagem (SCN9A/Nav1.7 entre eles) e os adrenoceptores alfa-2, alvos reconhecidos de dor neuropática. O corte escolhe pelo escore do próprio alvo: promover o que o Reactome alcançou abaixo do corte faria a `origem` depender de acaso de via, e por isso não se faz; a `observacao` apenas avisa.
-- **Colapso de família:** só dobra num representante os parálogos **ausentes do modelo**, na mesma classe de proteína do ChEMBL; o ID dobrado vai para `familia_colapsados` e a classe para `familia`. Parálogo presente no modelo continua sendo linha própria (NET e SERT, ambos em "SLC06 neurotransmitter transporter", são o mecanismo duplo da duloxetina).
-- **Reactome:** só dados de anotação (CC0): `data/mapping/UniProt/{acc}/pathways` e `data/participants/{stId}/referenceEntities`. Os arquivos de Functional Interaction não são usados (licença da Pathway Solutions, conteúdo KEGG). Vias com mais de `--teto-via` proteínas (padrão 150) são ignoradas, e o alvo expandido só entra se existir no espaço do modelo. Cada adição traz `origem = reactome`, `via_origem` (todas as vias que a trouxeram, separadas por `;`) e `alvo_semente`. Alvo que o Reactome alcança e que o Open Targets também associa ao sintoma, mas abaixo do corte, continua `reactome` e ganha o escore e uma `observacao`.
-
-**Cache de rede e repeticao.** Toda resposta de ChEMBL, Open Targets e Reactome vai para `--cache DIR` (padrao `cache_rede/` ao lado da saida), numa subpasta por versao dos servicos (`meta.dataVersion` do Open Targets, versao do ChEMBL e do Reactome); versao nova nunca le o cache velho. Erro, pagina truncada e timeout nunca sao gravados. `--manifesto manifesto.json` entra em **modo de repeticao**: sem rede, serve tudo do cache que o manifesto aponta (falta no cache e erro) e recusa rodar se mudou a versao dos servicos, o MD5 de checkpoint, rotulos, evidencias medidas, ligantes, alvos ou sintomas, ou algum parametro que muda a saida (`--corte`, `--limite`, `--corte-associacao`, `--teto-via`, `--efo`, `--sem-rede`). O novo manifesto sai ao lado da saida (`manifesto_repeticao.json` se colidir) e nunca sobrescreve o lido.
-
-**Mudanca de `--manifesto`:** antes era o caminho do manifesto a ESCREVER; agora e o manifesto a REPETIR, e o manifesto de saida fica sempre em `manifesto.json` ao lado da saida. Quem passava `--manifesto saida.json` agora recebe erro de leitura, nao uma execucao silenciosamente diferente.
-
-**Fluxo em dois passos.** A coleta de evidência **não** usa os alvos enriquecidos: a lista precisa ser revisada antes de gastar a previsão sobre todos os ligantes (210 alvos x ~109 mil ligantes são ~23 milhões de pares). A execução avisa isso ao final, e o manifesto registra `alvos_enriquecidos_usados_na_evidencia` **a partir da procedência dos alvos que a evidência realmente usou** (`origem_alvo`), não a partir de qual flag foi passada: no passo 2, em que `--alvos-enriquecidos` nem aparece, o valor é `true`, e `origem_dos_alvos_da_evidencia` mostra a contagem por origem. Passar `--alvos` e `--alvos-enriquecidos` apontando para o **mesmo arquivo** é recusado — a execução leria a lista revisada e a reescreveria por cima da sua revisão.
-
-```bash
-# 1. enriquecer (escreve alvos_enriquecidos.tsv; evidencias.tsv usa so os alvos informados)
-python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
-    --saida passo1/evidencias.tsv --rotulos target_labels.tsv \
-    --alvos-enriquecidos alvos_enriquecidos.tsv --efo "neuropathic pain=EFO_0005762"
-# 2. revise/edite alvos_enriquecidos.tsv e colete a evidencia com ele
-python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos_enriquecidos.tsv --sintomas sintomas.txt \
-    --saida evidencias.tsv --checkpoint ecfp4.pt --rotulos target_labels.tsv
-```
-
-**Quanto cada filtro corta, medido** (sementes CHEMBL222/NET, CHEMBL228/SERT, CHEMBL233/MOR, CHEMBL4794/TRPV1; modelo PP4CKD; Reactome e ChEMBL consultados em 2026-11-25):
-
-| etapa | proteínas |
-|---|---|
-| nas vias das 4 sementes, sem filtro | 573 (+4 sementes) |
-| após o teto de 150 por via (descarta "G alpha (i) signalling events", 317, e "Peptide ligand-binding receptors", 200) | 259 |
-| sem alvo humano no ChEMBL | -53 |
-| com alvo no ChEMBL, mas fora do espaço do modelo | -61 |
-| **entram no enriquecido** | **145** |
-
-O filtro de presença no modelo corta 114 das 259 proteínas (44%); os dois filtros juntos levam 573 a 145 (75% a menos). Os números dependem das sementes e do `target_labels.tsv`.
-
-## 11. Etapa 1 completa — painel, linha de comando e como reproduzir
-
-A etapa 1 transforma três arquivos (ligantes, alvos, sintomas) numa tabela de evidências, `evidencias.tsv`, e num `manifesto.json`. Há duas portas de entrada para a mesma lógica: o **painel** e a **linha de comando**. A CLI é a interface que o artigo cita; o painel apenas a dispara, e nada de coleta mora nele.
-
-### Pré-requisitos
-
-```bash
-pip install -r requirements.txt              # streamlit, rdkit, pandas, requests, scipy
-pip install -r requirements-opcionais.txt    # torch -- só para evidência prevista
-```
-
-- `target_labels.tsv` do PP4CKD (**obrigatório**: diz quais alvos existem no modelo e quantas moléculas treinaram cada um);
-- pesos `.pt` do PP4CKD (opcional: sem eles, e sem `torch`, não há evidência prevista);
-- `evidencias_chembl.csv` (opcional: evidência medida).
-
-> **O `.pt` e o `target_labels.tsv` têm de ser do mesmo PP4CKD.** A coleta
-> **recusa** um par cuja largura de saída do checkpoint não seja o número de
-> rótulos, nomeando as duas: a coluna *i* de um não é o alvo *i* do outro, e
-> pontuar assim atribuiria a probabilidade de um alvo ao nome de outro. Como o
-> tarball publicado está truncado e este README manda trocar o checkpoint por
-> `ecfp4_fold_4.pt`, o par divergente é o caso esperado — troque os dois juntos.
-
-### Como as entradas são lidas (regras que mudam o resultado)
-
-- **TSV não tem citação.** Aspas fazem parte do nome: `"cis" isomer of X` é lido
-  com as aspas. Com o dialeto padrão de CSV ele era lido como
-  `cis isomer of X` — o rótulo de identidade reescrito em silêncio. Em `.csv` a
-  citação continua valendo, porque é dela que a vírgula do nome depende.
-- **`alvo_chembl_id` é normalizado para maiúsculas na leitura**, num lugar só.
-  Antes, `chembl222` numa TSV dava `no_modelo = nao` no arquivo enriquecido e
-  nenhuma semente do Reactome, enquanto a previsão pontuava o alvo — as duas
-  saídas se contradiziam sobre o mesmo alvo.
-- **Alvo repetido é dobrado e relatado.** A identidade é o ID, ou
-  nome+organismo quando não há ID. Numa tabela de uma linha por evidência, o
-  mesmo alvo pedido duas vezes (por ID numa linha e por nome noutra) dobrava
-  cada ensaio medido dele, e a linha repetida era indistinguível de um segundo
-  ensaio. Ligantes já eram deduplicados pela forma parental.
-- **Todo alvo sai com `origem_alvo`** (`usuario` por padrão). A coluna `origem`
-  do `alvos_enriquecidos.tsv` é aceita com esse nome, então realimentar aquele
-  arquivo preserva a procedência de cada alvo em vez de perdê-la.
-- **Alvo por nome casa com organismo EXATO.** `Homo` ou `sapiens` não casam
-  mais `Homo sapiens` por trecho, e um nome que casa com mais de um alvo do
-  modelo é **ambíguo**: nenhum é escolhido, e o caso é relatado (o painel
-  mostra a lista). Escolher o primeiro era a última porta pela qual um
-  ortólogo entrava em silêncio.
-
-### Códigos de saída da CLI
-
-| código | significado |
+| código de saída | significa |
 |---|---|
 | 0 | execução completa |
-| 3 | execução **parcial**: a saída existe, mas linhas de entrada foram descartadas ou houve falha de item. O manifesto registra `execucao_parcial: true` e `falhas_de_item` |
+| 3 | **parcial**: a saída existe, mas linhas de entrada foram descartadas |
 | 1 | nenhuma entrada utilizável (nada é escrito) |
 | 2 | erro (nada é publicado; as saídas anteriores ficam intactas) |
 
-O código 3 existe porque automação não lê o `stderr`: antes, uma coleta que
-descartou linhas saía com 0 e era indistinguível de uma completa.
+O `main.py` devolve o **pior** código entre as etapas que rodou. O 3 existe
+porque automação não lê o `stderr`.
 
-### Painel
+## O painel
 
 ```bash
-export PP4CKD_ROTULOS=/caminho/target_labels.tsv     # padrão da barra lateral
-export PP4CKD_PESOS=/caminho/ecfp4_fold_4.pt         # opcional
-export EVIDENCIAS_CHEMBL=/caminho/evidencias_chembl.csv   # opcional
 streamlit run painel.py
 ```
 
-1. **Entradas.** Envie ligantes, alvos e sintomas. A validação roda no upload, antes de qualquer execução, e mostra o que vai dar errado: alvo por nome sem organismo, SMILES ilegível, alvo fora do modelo, alvo com menos de 50 moléculas de treino.
-2. **Enriquecer alvos** (opcional, botão próprio). "Buscar EFO dos sintomas" lista as alternativas do Open Targets e **você escolhe**; sem escolha o sintoma não é enriquecido. A lista proposta aparece editável. **Os alvos enriquecidos não são usados na coleta até você clicar em "Usar esta lista na coleta".** Os botões são separados de propósito: uma execução real deu 235 alvos contra 108.935 ligantes, cerca de 23 milhões de pares, e o painel mostra essa conta antes da coleta.
-3. **Coletar evidências.** Roda em segundo plano (um enriquecimento sem cache leva 23 a 25 min); o painel mostra o tempo decorrido e o relatório que a CLI escreve. A CLI não informa percentual, então a barra de tempo é estimativa, não progresso. O resultado traz tabela filtrável e botões para baixar `evidencias.tsv` e `manifesto.json`.
+Duas abas, e a separação é deliberada:
 
-   **O resultado é lido da pasta nomeada pelas entradas que estão na tela** —
-   os três arquivos enviados, a lista de alvos usada, o corte, o limite e as
-   fontes de evidência —, do mesmo jeito que a lista enriquecida. Resultado de
-   outra execução nunca aparece sob "Resultado" como se fosse o atual, e uma
-   coleta cancelada ou que falhou não mostra a tabela da anterior (a execução
-   nova limpa a saída daquela chave antes de começar). O painel ainda diz de
-   que execução o resultado é (data do manifesto), avisa quando o manifesto
-   está ausente e avisa quando a execução foi **parcial**. A tabela da tela
-   mostra no máximo 5.000 linhas, lidas em fluxo; o arquivo inteiro vem pelo
-   botão de download, que só abre o arquivo quando você clica.
+- **Operar** escreve. As três entradas (upload grava em `input/` e **diz o que
+  substituiu**, com o MD5 de antes e de depois), a revisão da lista de alvos
+  enriquecidos, os parâmetros de cada etapa (cada número com a medição que o
+  escolheu ao lado, vinda do `_nota_*` do `config.json`), e o disparo: quais
+  etapas, com ou sem `--retomar`.
+- **Analisar** **só lê**. As tabelas publicadas em `tsv/` — ranking com filtro
+  por faixa e por alvo, não ranqueados com o motivo, portão, propriedades,
+  alertas de bula com o trecho literal, alvos anotados com expressão, e as
+  evidências da etapa 1 — e o **manifesto da etapa** de cada uma. Tabela sem manifesto aparece com um
+  aviso de que não é citável; ela não é escondida.
 
-**Modo degradado.** Sem os pesos, o painel roda só com evidência medida e diz isso na tela; sem pesos nem `evidencias_chembl.csv` ele só enriquece. O enriquecimento não usa pesos.
+Isso evita o acidente de mexer num parâmetro enquanto se interpreta um
+resultado e depois não saber qual número gerou o quê.
 
-O painel não tem modo de repetição: para repetir uma execução use a CLI (abaixo).
+**O painel não decide nada.** Marcar, reprovar, ordenar e enriquecer ficam nas
+etapas; a sequência das etapas fica no `main.py`, de onde o painel a lê. Ele
+também não reimplementa o orquestrador: o botão "Rodar" lança
+`python main.py` como processo separado.
 
-### Linha de comando
+**A execução sobrevive ao fechamento da aba.** O processo sai do grupo do
+Streamlit, e o painel o reencontra pelo `tsv/.execucao/rodando.pid`, que guarda
+o PID e o instante de início. Reabrir o painel (ou abrir numa segunda aba)
+mostra a execução em curso, com o log e o **ritmo observado** — taxa medida,
+não barra de progresso: o total depende de quantos pares sobrevivem a cada
+filtro, e uma barra assim seria invenção apresentada como medida.
 
-Um passo (coleta sobre os alvos informados):
+Enquanto uma etapa roda, a tabela dela ainda não existe (a publicação é
+atômica). O que o painel mostra é uma **cópia do temporário**, sempre sem a
+última linha, que pode estar cortada no meio de um campo.
 
-```bash
-python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
-    --saida evidencias.tsv --checkpoint ecfp4_fold_4.pt --rotulos target_labels.tsv \
-    --evidencias-chembl evidencias_chembl.csv
-```
+Para parar uma execução, use o botão **Encerrar** da aba Operar: ele manda
+`SIGTERM`, e a etapa publica por troca de nome, então o resultado anterior fica
+intacto. Ao terminar — por conta própria ou encerrada —, o painel **colhe o
+processo** e mostra o código de saída (0 completa, 3 parcial, 1 nada
+aproveitável, 2 erro).
 
-Dois passos, com enriquecimento (a revisão da lista fica entre eles):
+Duas abas não lançam duas execuções: a tranca `tsv/.execucao/rodando.pid` é
+criada com exclusividade antes do processo existir, e a segunda aba encontra a
+primeira e recusa. **Não apague essa tranca com uma execução de pé** — é o
+caminho para ter dois `main.py` escrevendo as mesmas saídas. Se o painel
+insistir que há execução quando não há (um PID reciclado pelo sistema), o
+arquivo expira em 24 h; apagá-lo à mão só é seguro com o pipeline parado.
 
-```bash
-# 1. enriquecer; evidencias.tsv deste passo usa so os alvos informados
-python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos.tsv --sintomas sintomas.txt \
-    --saida passo1/evidencias.tsv --rotulos target_labels.tsv \
-    --alvos-enriquecidos alvos_enriquecidos.tsv --efo "neuropathic pain=EFO_0005762"
-# 2. revise alvos_enriquecidos.tsv e colete com ele
-python mods/coletar_evidencias.py --ligantes ligantes.tsv --alvos alvos_enriquecidos.tsv \
-    --sintomas sintomas.txt --saida evidencias.tsv --checkpoint ecfp4_fold_4.pt \
-    --rotulos target_labels.tsv --evidencias-chembl evidencias_chembl.csv
-```
 
-Também se pode fazer tudo numa chamada só, passando `--alvos-enriquecidos` junto com `--checkpoint`: a execução grava a lista enriquecida e avisa que a coleta **não** a usou (o manifesto registra `alvos_enriquecidos_usados_na_evidencia: false`, porque todos os alvos lidos têm `origem_alvo = usuario`).
+## A configuração
 
-**As três saídas são publicadas juntas.** Tabela, lista enriquecida e manifesto
-são escritas em temporários e só então trocadas pelos arquivos de destino. Uma
-falha no meio não publica nada e deixa intactos o `evidencias.tsv`, o
-`alvos_enriquecidos.tsv` revisado à mão e o `manifesto.json` anteriores — e
-nunca sobra tabela nova sem manifesto, que é o que a torna citável.
+`json/config.json` tem uma seção por etapa, e cada chave é o nome da flag da
+CLI daquela etapa. **Chave desconhecida é erro (código 2)**, nunca ignorada em
+silêncio: uma política que o pesquisador acredita estar valendo e não está é
+pior que uma mensagem de erro. Chave ausente não entra na linha de comando — a
+CLI aplica o próprio padrão, que é onde os padrões moram.
 
-### As 26 colunas de `evidencias.tsv`
+Uma chave que comece com `_` é comentário. É assim que o arquivo carrega, ao
+lado de cada número, a medição que o escolheu.
 
-Uma linha é **uma evidência** sobre um par ligante/alvo — medida ou prevista.
-Um par com três ensaios medidos e uma previsão são quatro linhas. É esta tabela
-que uma seção de métodos cita, então cada coluna está definida aqui.
+**CPU é o padrão em todas as etapas.** Medido na etapa 2: 36 de 312 colunas
+diferem entre duas execuções de GPU, e 0 de 312 entre duas de CPU.
 
-**A regra que não pode ser ignorada:** `pchembl` é a **única** coluna
-comparável entre linhas. `valor` + `unidade` **nunca** se comparam entre
-unidades (120 nM e 78% não se ordenam), e `valor` de uma linha prevista é
-probabilidade, não potência. Ordenar a tabela por `valor` mistura grandezas
-diferentes; ordenar por `pchembl` (filtrando `tipo_evidencia = medido`) não.
+## As três etapas
 
-*Identidade*
+### Etapa 1 — coletar (`mods/coletar_evidencias.py`)
 
-| coluna | o que é |
-|---|---|
-| `ligante` | nome como veio da entrada |
-| `ligante_inchikey_parental` | InChIKey da forma parental (sal e base livre são o mesmo composto). É a chave de junção |
-| `ligante_chembl_id` | ID ChEMBL do ligante, quando há. Vazio quando a correspondência não é de identidade |
-| `correspondencia_ligante` | `exata`, `estereoisomero` ou `desconhecida`. **`estereoisomero` é outro composto**: a atividade medida nele não é a do ligante. A linha fica (a fase 2 decide), mas filtrável sem ler prosa. Linha prevista deixa vazio |
-| `alvo_chembl_id`, `alvo`, `organismo`, `tipo_alvo` | o alvo. `tipo_alvo` `SINGLE PROTEIN` é ligação a uma proteína; `ORGANISM` e `CELL-LINE` são ensaio fenotípico — afirmações diferentes |
-| `origem_alvo` | de onde veio o alvo: `usuario`, `open_targets` ou `reactome`. É o que permite remover a expansão inteira filtrando uma coluna |
+Transforma ligantes, alvos e sintomas em `evidencias.tsv`. Uma linha é **uma
+evidência** sobre um par ligante/alvo: um par com três ensaios medidos e uma
+previsão são quatro linhas.
 
-*Evidência*
+A regra que não pode ser ignorada: **`pchembl` é a única coluna de evidência
+medida.** Previsto nunca se mistura com medido.
 
-| coluna | o que é |
-|---|---|
-| `tipo_evidencia` | `medido` ou `predito`. **Nunca se misturam numa célula** |
-| `fonte` | `ChEMBL` (medido) ou `PP4CKD` (predito) |
-| `atividade_relatada` | texto de exibição (`IC50 = 120 nM`, `p = 0.93 (ECFP4)`). Para ler, não para calcular |
-| `medida` | `IC50`, `Ki`, `Potency`… no medido; `probabilidade` no predito |
-| `relacao` | `=`, `>`, `<`. Um `>` é **limite**, não medida: entra marcado |
-| `valor`, `unidade` | número e unidade como a fonte os traz (ponto decimal). **Não comparáveis entre unidades** |
-| `pchembl` | −log10 da potência molar, **a única coluna comparável entre linhas**. Vazia quando a fonte não a traz; nunca calculada nem preenchida com outra coisa. Sempre vazia no predito |
+Opcionalmente enriquece a lista de alvos (Open Targets com escore ≥ 0,4;
+Reactome por via, com teto de 150 proteínas). Sintoma → EFO **nunca é escolhido
+em silêncio**: sem `--efo`, o sintoma não é enriquecido e a CLI pede a escolha.
 
-*Lastro (por que acreditar na linha)*
+O alvo que o enriquecimento acrescenta e que está **fora do espaço do modelo**
+(os 7.676 alvos do PP4CKD) **entra na lista**, marcado `no_modelo = não`. Ele
+recebe evidência **medida** — que ranqueia em `1b`, acima de qualquer previsão
+— e **não** recebe prevista: o preditor não tem saída para ele, e a coluna
+`observacao` da linha diz isso, para que zero previsões não seja lido como
+"sem atividade". Quanto do espectro fica fora do modelo sai medido no
+manifesto (`contagens.teto_do_modelo`; veja *Limitações conhecidas*).
 
-| coluna | o que é |
-|---|---|
-| `tipo_ensaio` | código do ChEMBL: `B` ligação, `F` funcional, `A` ADME |
-| `ensaio_descricao` | descrição do ensaio, como o ChEMBL a publica |
-| `triagem_hts` | `sim`/`nao`. Varredura HTS de painel em vez de ensaio dirigido (heurística `PUBCHEM_BIOASSAY`/`qHTS`). Coluna de primeira classe porque foi medida: recall@10 0,111 em HTS contra 0,272 em ensaio dirigido — **somar os dois estraga a leitura** |
-| `confianca_ensaio` | `confidence_score` do ensaio. Vazia nesta etapa: o `evidencias_chembl.csv` não a traz |
-| `n_moleculas_treino` | moléculas ativas que treinaram aquele alvo (só no predito). p = 0,9 com 8 exemplos não vale p = 0,9 com 4.000 |
-| `documento`, `pmid`, `ano` | o documento de onde o ensaio veio. Linha sem rastro até o documento não serve para publicação |
-| `procedencia` | carimbo completo numa string: `medido (ChEMBL, evidencias_chembl.csv)` ou `predito (PP4CKD ECFP4 ecfp4_fold_4.pt)`, com o checkpoint nomeado. Marca também `estereoisomero da molecula ensaiada <ID>` |
+Entrar na lista **não é ser ranqueado**: a fase 3 separa procedência por
+sub-faixa, e alvo do enriquecimento só alcança `1b`, `2b` ou `3` — nunca as
+faixas do alvo que você declarou. É isso que torna seguro coletar largo.
 
-**Formato.** TSV, cabeçalho iniciado por `#`, ponto decimal em toda coluna de
-máquina (a vírgula só aparece no texto de `atividade_relatada`), e escape
-reversível estilo TSV do MySQL (`\\` `\t` `\n` `\r`) — então tabulação e quebra
-de linha dentro de uma descrição de ensaio não quebram a tabela.
+### Etapa 2 — o portão (`mods/aplicar_portao.py`)
 
-### O conjunto-controle versionado: `dados/evidencias_controle.tsv`
+O nome descreve a posição na linha, não a severidade. **Por padrão só duas
+coisas reprovam**: SMILES que o RDKit não lê (não há molécula para avaliar) e
+alerta forte de bula (0 de 6 falsos positivos medidos no controle).
 
-49 linhas de evidência **medida** sobre os 12 fármacos do conjunto-controle de
-dor neuropática (`exemplos/controle.dor_neuropatica.tsv`) e os 9 alvos de
-`exemplos/alvos.dor_neuropatica.txt`. Está no repositório para que os critérios
-de aceite da etapa 1 sejam verificáveis **sem rede e sem o
-`evidencias_chembl.csv` de 60 MB** — é o que `tests/test_controle.py` afirma
-(critério 2: a amitriptilina tem linhas `medido` para o transportador de
-noradrenalina, CHEMBL222, com documento e `pchembl`).
+Isso não é timidez — é o que a medição manda. No conjunto-controle de 12
+fármacos, cada critério plausível de exclusão apaga os próprios positivos de
+referência: PAINS reprovaria a **amitriptilina**; BRENK, **65% da base**;
+expressão abaixo de 1 TPM, **SERT (0,454) e NET** — os alvos da duloxetina e da
+amitriptilina. Com `--reprovar alerta_estrutural`, o controle de 12 perde 8 — e
+continua aprovando o ciprofloxacino, que *causa* a condição.
 
-Foi gerado pela própria CLI documentada acima:
+Três regras atravessam a etapa:
 
-```bash
-python mods/coletar_evidencias.py \
-    --ligantes exemplos/controle.dor_neuropatica.tsv \
-    --alvos exemplos/alvos.dor_neuropatica.txt \
-    --sintomas exemplos/sintomas.dor_neuropatica.txt \
-    --saida dados/evidencias_controle.tsv \
-    --rotulos ~/modelos_baixados/pp4ckd/target_labels.tsv \
-    --evidencias-chembl ~/prospector/pipeline_prospeccao_v4/resultados/evidencias_chembl.csv \
-    --sem-rede
-```
+1. **`indeterminado` nunca tira um ligante**, com política nenhuma. Ausência de
+   dado não é evidência de problema.
+2. **Critério que a execução não pediu sai `indeterminado`, nunca `passa`.**
+   "Não perguntei" não é a mesma afirmação que "sem alerta".
+3. **Nada desaparece em silêncio.** Reprovado continua na tabela, com o
+   critério e o valor que decidiram.
 
-A fonte é o `evidencias_chembl.csv` do pipeline de prospecção (bioatividade
-baixada do ChEMBL), e **não** a API ao vivo. Cobertura medida nessa fonte:
-amitriptilina 175 linhas, ciprofloxacino 179, capsaicina 105, gabapentina 22,
-pregabalina 15; duloxetina, carbamazepina e linezolida têm **zero** — não estão
-no arquivo, que cobre os compostos garimpados pela prospecção. É por isso que o
-critério de aceite 2 do desenho fala de amitriptilina, e não de duloxetina.
-Só 49 das linhas da fonte casam com os 9 alvos pedidos.
+### Fase 3 — ranquear (`mods/ranquear.py`)
 
-> **Licença:** por derivar do ChEMBL, este arquivo é **CC BY-SA 3.0**
-> (`dados/LICENSE`), não MIT. O mesmo vale para as fixtures derivadas do ChEMBL
-> em `tests/dados` (`tests/dados/LICENSE`).
+A ordem vem de uma chave lexicográfica — **classe de evidência, procedência do
+alvo, valor** — sem nenhuma constante arbitrada:
 
-### Pesos do PP4CKD: o tarball do Zenodo está truncado na origem
+| faixa | quem cai nela | o que ordena dentro |
+|---|---|---|
+| **1a** | medida em alvo **seu** | `max pchembl` |
+| **1b** | medida em alvo do enriquecimento | `max pchembl` |
+| **2a** | só prevista, alvo **seu** | `max p × (1 − p_negativo)` |
+| **2b** | só prevista, alvo do enriquecimento | idem |
+| **3** | nenhuma evidência em alvo afirmativo | **não ranqueia** |
 
-O `pp4ckd_models.tar.gz` publicado no Zenodo tem MD5 igual ao checksum publicado (`f9380bb9cef3fe56d6d49d3e4a4d57ec`), mas o tar termina antes do fim: sobram íntegros 22 dos ~77 modelos, e `ecfp4_full_model.pt` não está entre eles. Não é download corrompido. **Contorno:** use `ecfp4_fold_4.pt`, um modelo real, treinado em 9/10 dos dados (detalhes na seção 8).
+O antialvo não é declarado, é **deduzido**: alvo não afirmativo ∧ organismo ≠
+*Homo sapiens* ∧ ≥ 50 moléculas de treino ∧ não é ortólogo de um alvo
+afirmativo.
 
-### O que o manifesto registra
-
-Além dos parâmetros, das versões dos serviços e dos MD5 das entradas (checkpoint,
-rótulos, evidência medida, ligantes, alvos, sintomas):
-
-- `pipeline_commit` — o commit que rodou, com sufixo **`+sujo`** quando a árvore
-  de trabalho tem modificação não commitada. Um hash limpo de código modificado
-  seria uma afirmação falsa de reprodutibilidade. `+estado_desconhecido` quando
-  o `git status` não pôde ser lido, `desconhecido` sem git.
-- `pipeline_repositorio` — de qual repositório o commit foi lido, com um aviso
-  explícito quando essa raiz não é a do pacote (pacote embutido em outro
-  repositório: o hash não identificaria o código desta etapa).
-- `python` e `rdkit` — o RDKit decide a química (InChIKey parental, fingerprint),
-  então a versão dele muda o resultado. Caminhos não são resolvidos: os MD5
-  prendem o conteúdo, que é mais forte.
-- `execucao_parcial` e `falhas_de_item` (por fonte: `previsto`,
-  `enriquecimento`, `medido`) — é o que impede uma coleta incompleta de parecer
-  completa. Uma repetição compara as falhas de item com as da execução original
-  e avisa quando diferem.
-- `origem_dos_alvos_da_evidencia` e `alvos_enriquecidos_usados_na_evidencia` —
-  derivados da procedência dos alvos lidos, não das flags passadas.
-
-### Cache e repetição
-
-Toda resposta de rede (ChEMBL, Open Targets, Reactome) é gravada em `--cache`, por versão dos serviços. `--manifesto manifesto.json` repete uma execução sem rede, servindo tudo do cache, e se recusa a rodar se uma versão, um MD5 de entrada ou um parâmetro mudou (seção 10). Duas execuções com o mesmo manifesto produzem o mesmo arquivo.
-
-### Licenças
-
-O **código** é MIT (`LICENSE`). Os **dados derivados do ChEMBL** são
-**CC BY-SA 3.0**, e isso vale onde eles estiverem versionados: `dados/`
-(`dados/LICENSE`) e as fixtures de teste derivadas do ChEMBL
-(`tests/dados/LICENSE`, que nomeia os caminhos: `evidencias_amostra.csv` e as
-respostas gravadas do ChEMBL). A cláusula share-alike vale só para esses dados
-e não contamina o código. As fixtures do Reactome (só anotação) e do Open
-Targets são CC0 e não exigem nada.
-
-### Testes
-
-```bash
-python -m pytest tests/        # nenhum teste usa a rede
-```
-
-A suíte precisa de `requirements-opcionais.txt` (traz o `torch`):
-
-```bash
-pip install -r requirements-opcionais.txt
-python -m pytest tests/
-```
-
-Sem o `torch` o `pytest` **se recusa a rodar** (código de saída 2, com a
-mensagem dizendo o que instalar), em vez de pular os testes da evidência
-prevista, incluindo o guarda de largura do checkpoint, e relatar sucesso.
-
-Cobertura do painel, dita sem enfeite:
-
-- A lógica que ele exibe (`mods/evidencias/resumo.py`) tem testes unitários (`tests/test_resumo.py`).
-- A casca Streamlit **sobe in-process** pelo `AppTest` do Streamlit em `tests/test_painel.py` (sem navegador e sem rede): erro quando falta o `target_labels.tsv`, aviso de modo degradado sem pesos, avisos de validação no upload (com o `file_uploader` substituído pelos arquivos de `tests/dados`), a lista de alvos enriquecidos ligada aos arquivos e EFO que a geraram, o resultado ligado às entradas da tela (e o de outra execução *não* aparecendo), o portão de redesenho e o descarte de edições.
-- **Não verificados:** navegador real, o widget de upload real, uma execução ao vivo (rede, pesos reais), o botão **Cancelar** e o `killpg` que ele usa (nenhum teste mata um processo de verdade, e não há fallback para `SIGKILL`), os **downloads diferidos** (a função só é chamada quando o runtime do Streamlit existe, o que o `AppTest` não exercita), e a tabela de resultado com dados reais de milhões de linhas.
-  - O que **era** não verificado e agora é: o portão de redesenho (o aviso e o botão de descarte só aparecem quando um redesenho foi de fato suprimido) e o descarte das edições. O descarte deixou de depender de remover o estado do widget do `session_state` — que o Streamlit reenvia no rerun e que nunca foi verificado — e passou a criar uma **geração nova** do editor: outro widget, com estado vazio por construção.
+`nao_ranqueados.tsv` **não tem coluna `posicao`** de propósito: uma coluna
+vazia convidaria a ordenar aquela tabela como se fosse ranking.
 
 ---
 
-## Dicas de busca por sintoma/condição
+## O acervo do openFDA
 
-- Use sempre o **nome em inglês**.
-- Para condições autoimunes pós-infecciosas, busque pelo **nome da síndrome resultante**, não pelo patógeno.
-- Sintomas gerais costumam trazer mais dados que condições raras específicas.
-- **Ative `rodar_alertas_adversos` sempre que o sintoma-alvo também for um efeito adverso conhecido de outras drogas** (dor, neuropatia, convulsão, arritmia etc.) — é exatamente esse tipo de sintoma que corre risco de trazer "causadores" no topo do ranking em vez de "tratadores".
+`alerta_bula` é um dos **dois únicos critérios que reprovam** no portão. Pela
+rede ele é limitado pela taxa do serviço público: 108.935 ligantes × 3
+requisições a 240/min dariam ~23 h, e por isso `--limite-bula` existe com
+padrão 500 — o que faz o critério sair `indeterminado` para **99,5% da base**.
+
+Com o acervo baixado, a consulta é local e **não há taxa**:
+
+```bash
+# ~1,7 GB em 14 partições, mais ~2 GB de índice. Retoma: interromper é seguro.
+python mods/openfda_massa.py --baixar --indexar --saida dados/openfda
+
+# ou, num comando só, antes de rodar o pipeline:
+python main.py --baixar-acervo
+```
+
+Depois, aponte a configuração para ele — `portao.acervo_bula` em
+`json/config.json` — e o teto de taxa deixa de valer. Vazio, o pipeline usa a
+rede com `--limite-bula`.
+
+### Noutra máquina: verifica sempre, baixa se você pedir
+
+Se a configuração aponta um acervo que **não existe**, o orquestrador diz isso
+**antes de qualquer etapa**, com o comando que resolve. Não depois de horas,
+quando a etapa 2 começa.
+
+O download **não** é automático, e a razão é a mesma do `torch`:
+são ~3,7 GB e ~20 min, existe alternativa (a rede, com o teto), e **para uma
+base de produto natural o acervo compra pouco** — medido, 58 de 60 ligantes de
+exemplo não têm bula nenhuma. Baixar GB como efeito colateral de rodar o
+pipeline seria decidir por você num ponto em que você tem escolha. `--baixar-
+acervo` existe para quando a escolha é sua.
+
+**Como isto funciona sem reescrever o critério.** O acervo responde as *mesmas
+URLs* que `mods/portao/bula.py` monta. O módulo da bula não muda uma linha: ele
+recebe outro `obter_json`, e toda a lógica medida continua valendo — a janela
+de 50 bulas por data decrescente, a consulta dirigida sobre o acervo inteiro, e
+o desconto da indicação, que é o que leva o controle de 12 fármacos a **0 de 6
+falsos positivos** no grupo que trata.
+
+Três recusas deliberadas:
+
+- partição truncada é **refeita** na retomada, não aceita — aceitá-la daria um
+  acervo incompleto apresentado como completo, e `indeterminado` virando "sem
+  alerta" para o ligante cuja bula estava naquela partição;
+- URL de outro endpoint levanta erro que a **nomeia** — responder vazio faria
+  uma consulta nova sair "sem alerta" calada;
+- a busca por termo é por **palavra inteira**, como na rede.
+
+`--acervo-bula` com `--sem-rede` é **erro**, não escolha silenciosa: o acervo
+responde as consultas, e `--sem-rede` diz para não consultar. A versão do
+acervo (a data da carga do openFDA) entra no manifesto e nas chaves da
+repetição — duas execuções com acervos de datas diferentes não são a mesma
+execução.
+
+### O acervo remove o teto de taxa — não o de cobertura
+
+**Medido com o acervo real** (export de 2026-11-27, 265.130 bulas), sobre os
+60 ligantes de `exemplos/ligantes.exemplo.tsv`:
+
+| veredito de `alerta_bula` | ligantes |
+|---|---|
+| `indeterminado` — **sem bula nenhuma no openFDA** | 58 |
+| `passa` — tem bula, nenhum termo | 2 |
+| `marca` / `reprova` | 0 |
+
+Só *Schisandrin B* e *Baicalin* têm rotulagem. Os outros 58 são produtos
+naturais, e o openFDA é **rotulagem de fármaco dos EUA**: o documento não
+existe.
+
+Então o acervo entrega o que prometia — o critério pode rodar sobre os 107.123
+ligantes, sem taxa — e **não** faz `alerta_bula` passar a agir sobre uma base
+de produto natural, porque ali o limite não é quantas consultas cabem, é
+quantos compostos têm bula. `indeterminado` por falta de documento é a resposta
+**certa**: ausência de documento não é ausência de risco.
+
+Onde o acervo muda o resultado é na parte da base que **tem** rotulagem — e a
+validação contra a API confirma que ali ele responde igual: `ciprofloxacin`
+118 de 166 bulas em seção forte, `capsaicin` 211 bulas com a indicação
+descontando o alerta, `duloxetine` 126 ocorrências fortes e ainda assim
+`passa`, porque é indicada para a condição.
+
+**O que o acervo NÃO resolve:** a negação em texto livre. Uma bula que diga
+"não há relatos de neuropatia" ainda casa o termo. É por isso que a etapa 2
+expõe o **trecho literal**, com a seção e as duas contagens (a da janela e a do
+acervo inteiro), em vez de só um sinalizador.
 
 ---
+
+## Windows
+
+O pipeline roda em Windows. Esta seção separa **o que foi verificado** do que
+não foi — a distinção importa, porque um "é compatível" sem qualificação não
+vale nada.
+
+```
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python -m pytest -q
+```
+
+### O defeito grave que a auditoria encontrou
+
+No Windows, **`os.kill(pid, 0)` não consulta: ele chama `TerminateProcess`.**
+O painel pergunta "esta execução está viva?" a cada 2 segundos, pelo fragmento
+de acompanhamento — no Windows isso **mataria a execução do pipeline**. A
+consulta agora é `OpenProcess` + `GetExitCodeProcess`, e só ela
+(`mods/painel/execucao._vivo_nt`).
+
+### O que foi corrigido, com teste
+
+| risco | o que acontecia | agora |
+|---|---|---|
+| vivacidade do processo | `os.kill` matava a execução | `OpenProcess` + `GetExitCodeProcess` |
+| destacar o processo | `start_new_session` é `setsid`, não existe | `CREATE_NEW_PROCESS_GROUP \| DETACHED_PROCESS` |
+| encerrar | `SIGTERM` virava kill por acidente de portabilidade | `TerminateProcess` pelo caminho explícito |
+| **tabela aberta no Excel** | `os.replace` levanta `PermissionError`, e no meio do laço deixava **tabela sem manifesto** | os destinos são conferidos **todos antes** de trocar qualquer um; nada é publicado, e a mensagem nomeia o arquivo e a causa |
+| URI do SQLite | `C:\x\y.sqlite` não é URI válida | `Path.as_uri()` |
+| nome vindo do openFDA | `drug/label (part 1 of 14)` escapava da pasta | nome vem da URL, higienizado |
+| fim de linha | CRLF deixaria `\r` no último campo | escritor e leitor usam `newline="\n"`; a entrada do usuário é lida com `csv`/`newline=""` e `utf-8-sig`, que come o BOM do Notepad |
+| página de código | `print` sem encoding declarado | toda leitura de texto declara `encoding="utf-8"` |
+| `python` do PATH | podia ser outro ambiente | `sys.executable` |
+
+E quatro guardas sobre os nomes de arquivo, porque o pacote descompacta no
+Windows: nenhum caminho passa de 200 caracteres (260 menos 60 de reserva para
+a raiz de descompactação), nenhum nome tem `< > : " | ? *`, nenhum é nome
+reservado (`CON`, `NUL`, `COM1`…), e nenhum colide por caixa.
+
+### O que NÃO foi verificado, e por quê
+
+Os testes de `tests/test_windows.py` exercitam o **caminho** do Windows nesta
+máquina Linux, por substituição. Eles pegam erro de lógica e de API — foi assim
+que o `os.kill` apareceu — e **não substituem rodar a suíte num Windows de
+verdade**. Fica sem verificação: o comportamento real do sistema de arquivos
+sob travamento, a página de código do console, e a instalação do RDKit e do
+PyTorch pelo pip naquele sistema.
+
+Se você rodar a suíte num Windows e algo falhar, a falha é informação sobre
+esta lista — não sobre o seu ambiente.
+
+### Uma recomendação concreta
+
+Deixe `--workers 0` (o padrão). Ele vai para o `DataLoader` do ADMET-AI, e no
+Windows o início de processo é por `spawn`, que reimporta o módulo — com 0 não
+há processo filho nenhum e a questão não existe.
+
+---
+
+## Testes
+
+```bash
+python -m pytest -q
+```
+
+Nenhum usa rede — a fixture `sem_rede` bloqueia socket de internet e falha o
+teste que tentar. E **nenhum depende do checkpoint real nem do
+`target_labels.tsv`**, que não estão no repositório: os rótulos são sintéticos
+e as probabilidades do controle são uma fixture gravada. Consequência
+registrada em `tests/dados/LICENSE`: essa fixture fixa a **aritmética**, não o
+modelo.
+
+`tests/test_ranque_auc.py` prende os números que decidiram o desenho — 0,750
+sem canal negativo, 0,806 com ele, e 0,583 da contagem de promiscuidade que foi
+**descartada** — para que o desenho rejeitado não volte.
+
+`tests/test_sem_fluxo_antigo.py` é a guarda da reestruturação: nenhum arquivo
+da árvore pode mencionar os módulos do pipeline anterior, e nada que rode pode
+apontar para a pasta de outro projeto.
 
 ## Limitações conhecidas
 
-- **DrugCentral** depende de conexão direta ao Postgres público; requer `psycopg2`. Se a tabela `product` não existir nesse dump, cai automaticamente para um critério de corte mais simples.
-- **openFDA** não fornece SMILES nem ID ChEMBL — usa o fallback do PubChem, e os nomes costumam vir como sal.
-- Compostos biológicos, extratos vegetais/homeopáticos e sais inorgânicos simples frequentemente não têm SMILES único válido e são descartados com aviso.
-- A API do Deep-PK pode rejeitar moléculas específicas; o script pula automaticamente. Em execuções reais, isso afetou ~30-35% dos candidatos.
-- **O método de ranking não é QSAR** no sentido formal (OECD, 2004) — é um ranking por similaridade a um perfil de referência combinado com decisão multicritério, que incorpora predições de modelos QSAR/QSPR de terceiros (Deep-PK) como parte de suas variáveis de entrada.
-- A fórmula de pesos e a similaridade gaussiana não têm precedente direto na literatura — são adaptações do projeto. A gaussiana centrada na média é conceitualmente próxima de uma função de desejabilidade "alvo é o melhor" (Derringer & Suich, 1980).
-- **A checagem de alertas adversos (`checar_alertas_adversos.py`) não entende negação em texto livre** — trechos sinalizados precisam de revisão humana antes de descartar um composto; por isso a penalidade é parcial por padrão, não uma exclusão.
-- **A validação por decoys não testa especificidade entre classes farmacológicas** — mostra que drogas de referência conhecidas superam controles negativos aleatórios, mas não testa diretamente se compostos de uma classe não relacionada estariam sendo indevidamente favorecidos. A checagem de alertas adversos (etapa 6) é um primeiro passo nessa direção, mas específico a efeitos já documentados em bula, não uma solução geral.
-- **Calibração do Deep-PK e comparação formal com outras ferramentas ADMET continuam sem execução.**
+- **O ganho do canal negativo NÃO foi confirmado fora do conjunto que o
+  originou.** Medido sobre 222 compostos independentes (156 `trata` / 66
+  `causa`): AUC **0,484** com canal e **0,484** sem — nível de azar. O 0,806 do
+  controle de 12 era número de **treino**: a regra foi escolhida por maximizar
+  a AUC naquele conjunto, entre cinco candidatas.
+  - **O diagnóstico, que importa mais que o número:** a mediana de
+    `p_afirmativo` naquele conjunto é 0,0012 (`trata`) e 0,0016 (`causa`) —
+    produtos naturais não atingem os alvos das drogas de referência
+    sintéticas, então não havia sinal para ordenar e 0,48 mede ruído. Com o
+    corte padrão, só **19 dos 222** recebem evidência, e os outros 203 vão para
+    `nao_ranqueados.tsv` como faixa 3 — a resposta **certa**.
+  - **O que generalizou:** o **QED fica em 0,384, abaixo do azar**, ordenando
+    os causadores à frente em dados independentes. É a premissa que motivou
+    ranquear por faixa de evidência em vez de por semelhança química.
+- **O enriquecimento por grafo não melhora o ranqueamento no corte padrão.**
+  AUC 0,6146 usando só os alvos pedidos contra 0,5145 usando os 274 do
+  enriquecimento. O grau no grafo é **detector de hub, não de relevância**: o
+  topo é Calmodulina-1 (17 sementes) e quatro subunidades de CaMKII (14). Por
+  isso `via_origem` e `alvo_semente` são rastro de auditoria e não entram em
+  comparação de ranqueamento.
+- **O gargalo não é o desenho do escore, é n.** Com 19 a 70 compostos
+  ranqueáveis, a divisão em metades já põe 9 e 13 de cada lado.
+- **A checagem de bula não entende negação em texto livre.** Uma bula que diz
+  "não há relatos de neuropatia" ainda casa o termo. É por isso que a etapa 2
+  expõe o **trecho literal** em vez de só um sinalizador: o trecho sinalizado
+  precisa de revisão humana.
+- **A checagem de bula tem dois tetos, e o acervo só remove um.** Pela rede, o
+  teto é de **taxa**: `--limite-bula` (padrão 500) sobre 108.935 ligantes faz
+  o critério que mais reprova sair `indeterminado` para 99,5% da base. Com
+  `--acervo-bula` esse teto deixa de existir. O que **fica** é o teto de
+  **cobertura**: medido com o acervo real, 58 dos 60 ligantes de exemplo não
+  têm bula nenhuma no openFDA — são produtos naturais, e o openFDA é rotulagem
+  de fármaco dos EUA. Para uma base assim, `alerta_bula` continua
+  majoritariamente `indeterminado`, e isso é **correto**: ausência de documento
+  não é ausência de risco. Veja *O acervo remove o teto de taxa — não o de
+  cobertura*.
+- **O percentil de toxicidade não está validado neste conjunto** — é por isso
+  que `toxicidade` só marca, nunca reprova, por padrão.
+- **A direção farmacológica do alvo (silenciar vs modular) não entra em nada**,
+  e não pode: `pchembl` colapsa EC50, Ki, IC50 e AC50 numa coluna só, e o canal
+  previsto é P(ativo), sem direção.
+- **A faixa permeável não foi medida.** Hoje a faixa é estrita: medido sempre
+  antes de previsto. Deixar uma previsão muito forte subir de faixa exigiria um
+  limiar que n = 12 não calibra.
+- **O espectro de alvos tem um teto que nenhum corte ajusta:** o espaço do
+  modelo. Alvo fora dos 7.676 do PP4CKD **entra na lista**, marcado
+  `no_modelo = não`, e recebe evidência **medida** (ChEMBL) — que ranqueia nas
+  faixas `1a`/`1b`, acima de qualquer previsão. O que ele não recebe é
+  evidência **prevista**: o preditor não o pontua, e zero previsões para ele
+  significa "não foi pontuado", não "sem atividade".
+
+  Antes, o alvo que o Reactome alcançava e estava fora do modelo era
+  **descartado** — era a maior perda do enriquecimento, e corrigia-se uma
+  assimetria ao remover o descarte: declarar protegia e enriquecer não (alvo do
+  usuário fora do modelo ficava, alvo do Open Targets fora do modelo ficava, e
+  só o do Reactome saía).
+
+  **O teto agora é medido a cada execução**, na chave
+  `contagens.teto_do_modelo` do `manifesto.json` da etapa 1:
+
+  | chave | o que diz |
+  |---|---|
+  | `alvos_fora_do_modelo` | quantos alvos o modelo não cobre |
+  | `alvos_fora_com_evidencia_medida` | desses, quantos ranquearam por medida — **não custaram nada** |
+  | `alvos_fora_sem_evidencia_medida` | desses, quantos ficaram sem evidência nenhuma — **é o que retreinar o preditor recuperaria** |
+  | `pares_previstos_perdidos` | a mesma perda em pares ligante × alvo |
+  | `dobrados_por_familia` | alvos dobrados no representante da classe, que de outro modo desapareceriam da conta |
+  | `alvos_ambiguos` | nome que casa com mais de um alvo do modelo: **indecidível sem o ID**, e não prova de que o modelo não cobre o alvo |
+  | `alvos_marca_ausente` | alvos cuja situação **não se sabe**: a lista não trazia a coluna `no_modelo` e a execução rodou sem o modelo em mãos (`--rotulos`). Não é zero nem "dentro" — é indeterminado, e aparece como tal |
+  | `alvos_marca_divergente` | a lista dizia uma coisa e os rótulos em mãos dizem outra. Quando os rótulos estão presentes **eles decidem** (são *este* modelo; a marca registra o que algum modelo anterior cobria), e a divergência fica contada |
+
+  Quem decide dentro/fora é `casar_alvos` — a **mesma** função que decide o que
+  o preditor pontua —, então um alvo declarado por `alvo + organismo` sem ID é
+  resolvido como o preditor o resolve. E `alvos_fora_com_evidencia_medida` só
+  conta medida com `pchembl` finito: uma triagem qHTS ou um limite `>` não
+  ranqueia, e contá-la como recuperada esconderia uma perda real.
+
+  Para o teto sair medido, a etapa 1 precisa de `--rotulos`. Sem ele, os alvos
+  caem em `alvos_marca_ausente` e o número não é uma medida.
+
+  **O teto é medido sobre a lista que a evidência usou (`--alvos`).** Na
+  execução que *faz* o enriquecimento, essa lista é a sua — pré-enriquecimento
+  —, então o teto dela não vê o que o enriquecimento acrescentou. Por isso o
+  manifesto traz também `contagens.teto_da_lista_enriquecida`, medido sobre a
+  lista que aquela execução escreveu, e `contagens.reactome_fora_do_modelo_entraram`,
+  que é quantos alvos fora do modelo o Reactome trouxe.
+
+  É esse número — medido na sua execução, não citado de uma execução antiga —
+  que diz se retreinar compra alguma coisa. Sem ele, retreinar é opinião.
+
+  **Medido em 2026-11-27** (Open Targets 26.09, ChEMBL 37, Reactome 98), para
+  `neuropathic pain` = `EFO_0005762` com os 10 alvos de
+  `exemplos/alvos.dor_neuropatica.txt`:
+
+  | | alvos | no modelo | fora do modelo |
+  |---|---|---|---|
+  | você declarou | 9 | 9 | 0 |
+  | Open Targets acrescentou | 22 | 20 | 2 |
+  | Reactome acrescentou | 423 | 243 | **180** |
+  | **total** | **454** | **272** | **182** |
+
+  Os **180 alvos do Reactome fora do modelo** são exatamente os que o fluxo
+  anterior **descartava** — 40% do que o Reactome traz. Eles entram marcados,
+  recebem evidência medida e não recebem prevista; a perda de pares previstos
+  é 182 × (nº de ligantes).
+
+  **Os números antigos (259 proteínas, 61 fora do modelo) não se reproduzem, e
+  não é defeito:** foram medidos contra Open Targets 24.09 e ChEMBL 35. Open
+  Targets, ChEMBL e Reactome são atualizados, e os escores de associação e as
+  vias mudam com eles. É precisamente por isso que o teto virou **instrumento**
+  em vez de número citado — e por que a versão de cada serviço vai no
+  manifesto.
+
+## Licenças
+
+Código sob MIT (`LICENSE`). Dado derivado do ChEMBL é **share-alike** e tem
+licença própria ao lado, em `dados/LICENSE` e `tests/dados/LICENSE`. Ao
+publicar resultados, cite as bases de origem.

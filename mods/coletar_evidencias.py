@@ -33,11 +33,8 @@ e era o que sobrava quando a escrita do manifesto falhava depois da troca.
 """
 
 import argparse
-import hashlib
 import importlib.util
-import os
 import pickle
-import subprocess
 import sys
 from datetime import datetime, timezone
 from functools import partial
@@ -47,14 +44,16 @@ from pathlib import Path
 # caminho para que `mods.evidencias.*` resolva (com `python -m` ja resolve).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from mods.evidencias import atomico
+from mods.evidencias import atomico, procedencia
 from mods.evidencias.cache import FaltaNoCache, VersaoIndeterminada
 from mods.evidencias.entrada import (
     ORIGENS_DE_ENRIQUECIMENTO, ler_alvos, ler_ligantes, ler_sintomas)
 from mods.evidencias.esquema import EscritorEvidencias
+from mods.evidencias.enriquecimento import reactome_fora_do_modelo
 from mods.evidencias.manifesto import (
     hashes_de_entrada_ausentes, ler_manifesto, texto_do_manifesto,
     verificar_manifesto)
+from mods.evidencias.resumo import teto_do_modelo
 
 # Codigos de saida (ver docstring do modulo).
 SAIDA_OK = 0
@@ -63,69 +62,15 @@ SAIDA_ERRO = 2
 SAIDA_PARCIAL = 3
 
 
-def _git(args: list[str], cwd: Path) -> str | None:
-    try:
-        r = subprocess.run(["git", *args], capture_output=True, text=True,
-                           timeout=10, cwd=cwd)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return r.stdout.strip() if r.returncode == 0 else None
-
-
-def _commit_do_pipeline() -> str:
-    """Hash do commit atual; 'desconhecido' sem git (ex.: pacote sem .git).
-
-    Duas coisas que um hash sozinho esconderia:
-    * arvore suja -- o sufixo '+sujo' diz que o codigo que rodou NAO e o do
-      commit, e um hash limpo de uma arvore modificada e uma afirmacao falsa
-      de reprodutibilidade;
-    * pacote embutido em outro repositorio -- o hash seria o do repositorio de
-      fora. Vem acompanhado do caminho da raiz (`pipeline_repositorio`) e do
-      aviso quando essa raiz nao e a do proprio pacote.
-    """
-    pasta = Path(__file__).resolve().parent
-    commit = _git(["rev-parse", "HEAD"], pasta)
-    if not commit:
-        return "desconhecido"
-    sujo = _git(["status", "--porcelain"], pasta)
-    if sujo is None:
-        return commit + "+estado_desconhecido"
-    return commit + ("+sujo" if sujo else "")
-
-
-def _repositorio_do_pipeline() -> dict:
-    """Onde o commit foi lido, para que um pacote embutido fique visivel."""
-    pasta = Path(__file__).resolve().parent
-    raiz = _git(["rev-parse", "--show-toplevel"], pasta)
-    esperada = pasta.parent  # a raiz do proprio druglikeness
-    dados = {"pipeline_repositorio": raiz or "nenhum"}
-    if raiz and Path(raiz).resolve() != esperada.resolve():
-        dados["pipeline_repositorio_aviso"] = (
-            f"o commit e do repositorio {raiz}, que nao e a raiz do pacote "
-            f"({esperada}): o pacote esta embutido em outro repositorio e o "
-            "hash nao identifica o codigo desta etapa")
-    return dados
-
-
-def _versoes_do_ambiente() -> dict:
-    """Python e RDKit: o manifesto e a citacao, e o RDKit decide a quimica
-    (InChIKey parental, fingerprint). Caminho nao resolvido nao e problema --
-    os MD5 prendem o conteudo, que e mais forte."""
-    versoes = {"python": sys.version.split()[0]}
-    try:
-        import rdkit
-        versoes["rdkit"] = getattr(rdkit, "__version__", "desconhecida")
-    except ImportError:
-        versoes["rdkit"] = "ausente"
-    return versoes
-
-
-def _md5(caminho: str) -> str:
-    h = hashlib.md5(usedforsecurity=False)
-    with open(caminho, "rb") as f:
-        for bloco in iter(lambda: f.read(1 << 20), b""):
-            h.update(bloco)
-    return h.hexdigest()
+# Procedencia (commit, repositorio, versoes, MD5) e compartilhada com a etapa
+# 2: duas etapas da mesma analise nao podem registrar quem rodou de formas
+# diferentes. Os aliases abaixo existem porque este modulo ja expunha esses
+# nomes.
+_git = procedencia._git
+_commit_do_pipeline = procedencia.commit_do_pipeline
+_repositorio_do_pipeline = procedencia.repositorio_do_pipeline
+_versoes_do_ambiente = procedencia.versoes_do_ambiente
+_md5 = procedencia.md5
 
 
 def _relatar(nome: str, problemas) -> None:
@@ -327,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
                   f"pip install {' '.join(faltam)}", file=sys.stderr)
             return SAIDA_ERRO
         try:
-            from mods.prever_alvos import carregar_rotulos
+            from mods.modelo import carregar_rotulos
             rotulos = carregar_rotulos(args.rotulos)
         except (OSError, RuntimeError, ValueError) as e:
             print(f"[erro] rotulos: {e}", file=sys.stderr)
@@ -351,13 +296,14 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, RuntimeError, ValueError, VersaoIndeterminada) as e:
         print(f"[erro] cache de rede: {e}", file=sys.stderr)
         return SAIDA_ERRO
-    def md5_ou_none(caminho):
-        # Arquivo ilegivel aqui nao e o erro a relatar: a etapa que o usa o faz.
-        try:
-            return _md5(os.path.expanduser(caminho)) if caminho else None
-        except OSError:
-            return None
-    md5s = {"checkpoint_md5": md5_ou_none(args.checkpoint),
+    md5_ou_none = procedencia.md5_ou_none
+    # O dispositivo entra no manifesto porque a GPU nao reproduz (36 de 312
+    # colunas diferem entre duas execucoes de GPU, 0 de 312 na CPU). Esta
+    # etapa roda a previsao sempre na CPU, e o manifesto PROVA qual foi -- sem
+    # isso, duas tabelas diferentes seriam indistinguiveis, e o modo de
+    # repeticao nao detectaria a diferenca.
+    md5s = {"dispositivo": "cpu",
+            "checkpoint_md5": md5_ou_none(args.checkpoint),
             "rotulos_md5": md5_ou_none(args.rotulos),
             "evidencias_chembl_md5": md5_ou_none(args.evidencias_chembl),
             "ligantes_md5": md5_ou_none(args.ligantes),
@@ -403,6 +349,10 @@ def main(argv: list[str] | None = None) -> int:
     # nunca se publica uma tabela sem o manifesto que a torna citavel.
     pendentes: list[tuple[Path, Path]] = []
     publicados: list[Path] = []
+    # Quais alvos receberam evidencia MEDIDA. So os IDs, nunca as linhas: numa
+    # execucao real sao ~23 milhoes de linhas, e o teto do modelo precisa
+    # apenas de "este alvo recebeu medida, sim ou nao".
+    alvos_com_medida: set[str] = set()
     etapa = "evidencia prevista"
     try:
         tabela = atomico.temporario(saida)
@@ -428,6 +378,9 @@ def main(argv: list[str] | None = None) -> int:
                         contagens=contagens_medido):
                     escritor.escrever(linha)
                     n_linhas += 1
+                    ident = str(linha.get("alvo_chembl_id") or "").strip()
+                    if ident:
+                        alvos_com_medida.add(ident)
             # as demais fontes de evidencia entram nas proximas tarefas
 
         for problema in contagens_modelo.get("problemas", []):
@@ -513,11 +466,38 @@ def main(argv: list[str] | None = None) -> int:
                        "origem_dos_alvos_da_evidencia": origens_dos_alvos,
                        "alvos_enriquecidos_usados_na_evidencia": enriquecido_usado,
                        "alvos_enriquecidos_reactome": contagens_enriquecimento.get("reactome", 0),
-                       "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0)}),
+                       "medido_linhas_emitidas": contagens_medido.get("linhas_emitidas", 0),
+                       # Quanto do espectro de alvos o modelo atual NAO cobre:
+                       # e o numero que justifica -- ou dispensa -- retreinar o
+                       # preditor, medido a cada execucao em vez de citado de
+                       # uma execucao antiga. A lista e a que a EVIDENCIA usou.
+                       "teto_do_modelo": teto_do_modelo(
+                           alvos, alvos_com_medida, n_ligantes=len(ligantes),
+                           rotulos=rotulos,
+                           dobrados=contagens_enriquecimento.get(
+                               "dobrados_por_familia", 0)),
+                       # E o teto da lista que ESTA execucao escreveu, quando
+                       # ela enriqueceu: na execucao que faz o enriquecimento,
+                       # o teto acima mede a lista PRE-enriquecimento, e quem
+                       # citasse so aquele numero concluiria que o teto e zero.
+                       "teto_da_lista_enriquecida": teto_do_modelo(
+                           linhas_enriquecidas, alvos_com_medida,
+                           n_ligantes=len(ligantes), rotulos=rotulos,
+                           dobrados=contagens_enriquecimento.get(
+                               "dobrados_por_familia", 0))
+                       if linhas_enriquecidas else None,
+                       "reactome_fora_do_modelo_entraram":
+                           reactome_fora_do_modelo(contagens_enriquecimento),
+                       "dobrados_por_familia_fora_do_modelo":
+                           contagens_enriquecimento.get(
+                               "dobrados_fora_do_modelo", [])}),
             encoding="utf-8")
 
         # So aqui algum arquivo do usuario e substituido, e todos de uma vez.
         etapa = "publicacao"
+        # Confere TODOS os destinos antes de trocar QUALQUER um: um
+        # travamento no meio do laco deixaria tabela sem manifesto.
+        atomico.conferir_publicavel([d for _, d in pendentes])
         for arquivo, destino in pendentes:
             atomico.publicar(arquivo, destino)
             publicados.append(destino)

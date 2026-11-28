@@ -417,3 +417,49 @@ def test_falha_de_item_real_entra_no_manifesto(tmp_path, monkeypatch, capsys):
     assert m["contagens"]["execucao_parcial"] is True
     err = capsys.readouterr().err
     assert "[aviso] evidencia medida" in err and "CHEMBL999" in err
+
+
+# ===========================================================================
+# Correcao I8: repetir um manifesto de outro commit do pipeline
+# ===========================================================================
+def test_repetir_manifesto_de_outro_commit_avisa():
+    """A decisao 2 mudou a lista de alvos com os MESMOS parametros: mesmo
+    arquivo, mesmo MD5, mesma versao de servico, tudo servido do cache -- e a
+    saida difere. A repeticao existe para RECUSAR execucao que divergiria, e
+    esta divergencia passava sem ninguem notar."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"pipeline_commit": "a" * 40, "chembl": "35"},
+                "parametros": {"corte": 0.1}}
+    atual = {"versoes": {"pipeline_commit": "b" * 40, "chembl": "35"},
+             "parametros": {"corte": 0.1}}
+    problemas = verificar_manifesto(anterior, atual)
+    assert any("pipeline_commit" in p for p in problemas), problemas
+
+
+def test_repetir_no_mesmo_commit_nao_avisa():
+    from mods.evidencias.manifesto import verificar_manifesto
+    igual = {"versoes": {"pipeline_commit": "a" * 40}, "parametros": {}}
+    assert verificar_manifesto(igual, dict(igual)) == []
+
+
+def test_manifesto_sem_pipeline_commit_nao_inventa_divergencia():
+    """So o que o anterior registrou e comparado -- a regra que a funcao ja
+    tinha. Manifesto antigo sem a chave nao vira erro."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"chembl": "35"}, "parametros": {}}
+    atual = {"versoes": {"pipeline_commit": "b" * 40, "chembl": "35"},
+             "parametros": {}}
+    assert verificar_manifesto(anterior, atual) == []
+
+
+def test_commit_desconhecido_nao_e_divergencia():
+    """Copia sem git, ou git ausente: o commit atual sai `None`. Tratar isso
+    como divergencia trancaria a repeticao em toda arvore sem historico.
+    Ausencia nunca vira veredito -- a mesma regra do resto do pipeline."""
+    from mods.evidencias.manifesto import verificar_manifesto
+    anterior = {"versoes": {"pipeline_commit": "a" * 40}, "parametros": {}}
+    atual = {"versoes": {"pipeline_commit": None}, "parametros": {}}
+    assert verificar_manifesto(anterior, atual) == []
+    assert verificar_manifesto(
+        {"versoes": {"pipeline_commit": None}, "parametros": {}},
+        {"versoes": {"pipeline_commit": "b" * 40}, "parametros": {}}) == []

@@ -1,17 +1,17 @@
 # recall@10 contra alvos medidos
 
-Medida de `mods/prever_alvos.py` com `mods/validar_alvos_medidos.py`, sobre
+Medida de `mods/modelo.py` com `mods/validar_modelo.py`, sobre
 13.914 compostos do pipeline de prospecção que têm bioatividade medida no
 ChEMBL (amostra de 6.000 previstos). Checkpoint `ecfp4_fold_4.pt`, ECFP4.
 
 Reproduzir:
 
 ```bash
-python mods/validar_alvos_medidos.py \
+python mods/validar_modelo.py \
     --evidencias ~/prospector/.../evidencias_chembl.csv \
     --compostos  ~/prospector/.../atividades_compostos_parcial.csv \
-    --rotulos    ~/modelos_baixados/pp4ckd/target_labels.tsv \
-    --checkpoint ~/modelos_baixados/pp4ckd/models/ecfp4_fold_4.pt
+    --rotulos    modelo//target_labels.tsv \
+    --checkpoint modelo//models/ecfp4_fold_4.pt
 ```
 
 ## O vazamento NÃO foi eliminado — todo número aqui é limite superior
@@ -67,7 +67,7 @@ ChEMBL do que as moléculas de uma divisão aleatória do próprio ChEMBL.
 
 **O treino do alvo domina tudo**: 0,127 → 0,147 → 0,303 → 0,477 conforme o
 alvo sai de <50 para ≥5.000 moléculas ativas. É um fator de 3,8. É por isso que
-`prever_alvos.py` emite a coluna `moleculas_treino` e avisa abaixo de 50 —
+`modelo.py` emite a coluna `moleculas_treino` e avisa abaixo de 50 —
 sem ela, p = 0,9 num alvo de 8 ativos é indistinguível de p = 0,9 num alvo de
 4.000.
 

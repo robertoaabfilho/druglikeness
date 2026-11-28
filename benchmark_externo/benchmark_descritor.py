@@ -48,7 +48,7 @@ from rdkit.Chem import (Crippen, Descriptors, QED, rdFingerprintGenerator,
                         rdMolDescriptors, DataStructs)
 RDLogger.DisableLog("rdApp.*")
 
-from mods import prever_alvos as pa
+from mods import modelo as pa
 import metricas_vs as mv
 
 

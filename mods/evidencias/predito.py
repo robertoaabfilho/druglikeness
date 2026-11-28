@@ -29,8 +29,9 @@ Regras
 
 from typing import Iterator
 
+from mods.evidencias import esquema
 from mods.evidencias.esquema import formatar_atividade
-from mods.prever_alvos import carregar_modelo, fingerprint_de
+from mods.modelo import carregar_modelo, fingerprint_de
 
 LOTE = 256
 
@@ -116,8 +117,14 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
         return
     indices = [i for i, _ in pares]
     origens = {i: (a.get("origem_alvo") or "") for i, a in pares}
+    # CPU EXPLICITA. Sem o argumento, `carregar_modelo` escolhe `cuda` quando
+    # ha GPU -- e a GPU nao reproduz: medido na etapa 2, 36 de 312 colunas
+    # diferem entre duas execucoes de GPU e 0 de 312 entre duas de CPU. Esta
+    # etapa grava a evidencia PREVISTA que todo o resto consome, e nao tem
+    # flag de dispositivo para o usuario escolher; o padrao reprodutivel e o
+    # unico defensavel aqui.
     rede, cfg, dispositivo, nome_ckpt = carregar_modelo(
-        None, "ECFP4", checkpoint=checkpoint)
+        None, "ECFP4", dispositivo="cpu", checkpoint=checkpoint)
     n_saida = rede[-1].out_features
     if n_saida != len(rotulos):
         # Larguras diferentes nao sao "alguns alvos a menos": a coluna i de um
@@ -160,7 +167,7 @@ def linhas_preditas(ligantes: list[dict], alvos: list[dict], *, checkpoint: str,
                     "organismo": r["organismo"],
                     "tipo_alvo": r["tipo"],
                     "origem_alvo": origens[i],
-                    "tipo_evidencia": "predito",
+                    "tipo_evidencia": esquema.TIPO_PREDITO,
                     "fonte": "PP4CKD",
                     "atividade_relatada": formatar_atividade(
                         "p", "=", round(p, 2), "(ECFP4)"),

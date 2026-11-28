@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 from mods.evidencias.chembl import ListaTruncada, RespostaInesperada
+from mods.evidencias import esquema
 from mods.evidencias.esquema import formatar_atividade
 
 # Falhas de uma consulta isolada: registradas e puladas, nunca abortam a carga.
@@ -241,7 +242,7 @@ def linhas_medidas(caminho_csv: str, ligantes: list[dict], alvos: list[dict], *,
                 "organismo": alvo["organismo"],
                 "tipo_alvo": alvo["tipo_alvo"],
                 "origem_alvo": alvo["origem_alvo"],
-                "tipo_evidencia": "medido",
+                "tipo_evidencia": esquema.TIPO_MEDIDO,
                 "fonte": "ChEMBL",
                 "atividade_relatada": formatar_atividade(
                     medida, relacao, valor, unidade),

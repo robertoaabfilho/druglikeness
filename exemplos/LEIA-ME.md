@@ -1,6 +1,6 @@
 # Fixtures de validação
 
-Material usado para medir o `mods/prever_alvos.py`. Os números citados na
+Material usado para medir o `mods/modelo.py`. Os números citados na
 seção 8 do README saem daqui, e podem ser reproduzidos.
 
 | arquivo | o que é |
@@ -18,18 +18,18 @@ medir os dois caminhos — humano e não humano — com o mesmo conjunto.
 
 ```bash
 # alvos humanos
-python mods/prever_alvos.py \
+python mods/modelo.py \
     --entrada exemplos/controle.dor_neuropatica.tsv \
-    --checkpoint ~/modelos_baixados/pp4ckd/models/ecfp4_fold_4.pt \
-    --rotulos ~/modelos_baixados/pp4ckd/target_labels.tsv \
+    --checkpoint modelo//models/ecfp4_fold_4.pt \
+    --rotulos modelo//target_labels.tsv \
     --alvos exemplos/alvos.dor_neuropatica.txt --organismo humano \
     --saida results/pred_humano.tsv
 
 # alvos de patógeno
-python mods/prever_alvos.py \
+python mods/modelo.py \
     --entrada exemplos/controle.dor_neuropatica.tsv \
-    --checkpoint ~/modelos_baixados/pp4ckd/models/ecfp4_fold_4.pt \
-    --rotulos ~/modelos_baixados/pp4ckd/target_labels.tsv \
+    --checkpoint modelo//models/ecfp4_fold_4.pt \
+    --rotulos modelo//target_labels.tsv \
     --alvos exemplos/alvos.patogeno.txt \
     --saida results/pred_patogeno.tsv
 ```

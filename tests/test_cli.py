@@ -81,29 +81,42 @@ ARGS = ["--ligantes", "tests/dados/ligantes_minimo.tsv",
 
 
 def test_commit_e_hash_de_40_hex_em_execucao_normal(tmp_path):
+    """Num checkout de git, o manifesto carrega o commit.
+
+    Fora de um checkout -- e o PACOTE para outra maquina e exatamente isso --
+    nao ha commit a registrar, e `desconhecido` e a resposta honesta. Exigir o
+    hash ali faria a suite do pacote falhar, e e a suite verde que prova que o
+    pacote chegou inteiro."""
     import re
+    import subprocess
     main(ARGS + ["--saida", str(tmp_path / "e.tsv")])
     versoes = ler_manifesto(tmp_path / "manifesto.json")["versoes"]
+    em_git = subprocess.run(["git", "rev-parse", "--git-dir"],
+                            capture_output=True).returncode == 0
+    if not em_git:
+        assert versoes["pipeline_commit"] == "desconhecido"
+        return
     # Arvore suja ganha sufixo: hash limpo de codigo modificado seria uma
     # afirmacao falsa de reprodutibilidade.
     assert re.fullmatch(r"[0-9a-f]{40}(\+sujo)?", versoes["pipeline_commit"])
-    assert versoes["pipeline_repositorio"].endswith("druglikeness")
+    assert versoes["pipeline_repositorio"]
 
 
 def test_arvore_suja_e_marcada_e_o_repositorio_de_fora_fica_visivel(monkeypatch):
     from pathlib import Path
-    import mods.coletar_evidencias as cli
+    # A procedencia e compartilhada entre as etapas (mods/evidencias/procedencia.py).
+    import mods.evidencias.procedencia as cli
     respostas = {}
     monkeypatch.setattr(cli, "_git", lambda args, cwd: respostas.get(args[0]))
     respostas = {"rev-parse": "a" * 40, "status": ""}
-    assert cli._commit_do_pipeline() == "a" * 40
+    assert cli.commit_do_pipeline() == "a" * 40
     respostas = {"rev-parse": "a" * 40, "status": " M mods/evidencias/entrada.py"}
-    assert cli._commit_do_pipeline() == "a" * 40 + "+sujo"
+    assert cli.commit_do_pipeline() == "a" * 40 + "+sujo"
     respostas = {"rev-parse": "a" * 40, "status": None}
-    assert cli._commit_do_pipeline() == "a" * 40 + "+estado_desconhecido"
+    assert cli.commit_do_pipeline() == "a" * 40 + "+estado_desconhecido"
     # Pacote embutido: o commit e de outro repositorio, e isso tem de aparecer.
     respostas = {"rev-parse": str(Path("/outro/repo"))}
-    dados = cli._repositorio_do_pipeline()
+    dados = cli.repositorio_do_pipeline()
     assert dados["pipeline_repositorio"] == "/outro/repo"
     assert "embutido em outro repositorio" in dados["pipeline_repositorio_aviso"]
 
@@ -498,3 +511,96 @@ def test_largura_do_checkpoint_divergente_falha_limpo(tmp_path, modelo_falso,
     assert "espacos de alvos diferentes" in err and "Traceback" not in err
     assert saida.read_bytes() == b"#antigo\nprecioso\n"
     assert not (tmp_path / "manifesto.json").exists()
+
+
+def test_o_manifesto_da_etapa_1_registra_o_dispositivo(tmp_path):
+    """A fase 3 avisa quando o dispositivo muda; a etapa 1 nao registrava
+    nenhum. Era a unica etapa que podia pegar a GPU em silencio E a unica cujo
+    manifesto nao podia dizer que pegou -- nem o modo de repeticao detectaria.
+    Agora ela e CPU por construcao, e o manifesto prova qual foi."""
+    import json
+    saida = tmp_path / "e.tsv"
+    codigo = main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+                   "--alvos", "tests/dados/alvos_minimo.tsv",
+                   "--sintomas", "exemplos/sintomas.dor_neuropatica.txt",
+                   "--saida", str(saida), "--sem-rede"])
+    assert codigo in (0, 3)
+    manifesto = json.loads(
+        (tmp_path / "manifesto.json").read_text(encoding="utf-8"))
+    assert manifesto["versoes"]["dispositivo"] == "cpu"
+
+
+# ===========================================================================
+# Espectro de alvos, decisao 3: o teto do modelo no manifesto
+# ===========================================================================
+def test_o_manifesto_carrega_o_teto_do_modelo(tmp_path):
+    """Sem este numero, retreinar o preditor e opiniao. Ele sai medido a cada
+    execucao, nao citado de uma execucao antiga."""
+    saida = tmp_path / "evidencias.tsv"
+    main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+          "--alvos", "tests/dados/alvos_minimo.tsv",
+          "--sintomas", "tests/dados/sintomas.txt",
+          "--saida", str(saida), "--sem-rede"])
+    teto = ler_manifesto(tmp_path / "manifesto.json")["contagens"]["teto_do_modelo"]
+    for chave in ("alvos_total", "alvos_no_modelo", "alvos_fora_do_modelo",
+                  "alvos_marca_ausente", "alvos_fora_com_evidencia_medida",
+                  "alvos_fora_sem_evidencia_medida", "dobrados_por_familia",
+                  "pares_previstos_possiveis", "pares_previstos_perdidos"):
+        assert chave in teto, chave
+
+
+def test_o_teto_soma_com_a_contagem_de_alvos(tmp_path):
+    """O teto nao pode contar outra lista de alvos que a que a execucao usou."""
+    saida = tmp_path / "evidencias.tsv"
+    main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+          "--alvos", "tests/dados/alvos_minimo.tsv",
+          "--sintomas", "tests/dados/sintomas.txt",
+          "--saida", str(saida), "--sem-rede"])
+    c = ler_manifesto(tmp_path / "manifesto.json")["contagens"]
+    assert c["teto_do_modelo"]["alvos_total"] == c["alvos"]
+    # tres estados, nao dois: dentro, fora e marca ausente (lista de IDs sem a
+    # coluna `no_modelo`, rodada sem o modelo em maos)
+    assert (c["teto_do_modelo"]["alvos_no_modelo"]
+            + c["teto_do_modelo"]["alvos_fora_do_modelo"]
+            + c["teto_do_modelo"]["alvos_marca_ausente"]) == c["alvos"]
+
+
+def test_o_manifesto_permite_notar_que_a_regra_mudou(tmp_path):
+    """Os mesmos parametros passam a dar outra lista de alvos depois da
+    decisao 2. `pipeline_commit` e `teto_do_modelo` sao o que distingue um
+    manifesto de antes da mudanca de um de depois -- sem isso, duas execucoes
+    "identicas" com listas diferentes seriam indistinguiveis."""
+    saida = tmp_path / "evidencias.tsv"
+    main(["--ligantes", "tests/dados/ligantes_minimo.tsv",
+          "--alvos", "tests/dados/alvos_minimo.tsv",
+          "--sintomas", "tests/dados/sintomas.txt",
+          "--saida", str(saida), "--sem-rede"])
+    m = ler_manifesto(tmp_path / "manifesto.json")
+    assert m["versoes"]["pipeline_commit"]
+    assert "teto_do_modelo" in m["contagens"]
+
+
+def test_a_chave_que_mede_a_decisao_2_nao_e_sempre_zero(tmp_path, monkeypatch):
+    """I2: `reactome_fora_do_modelo_entraram` lia um contador aninhado e dava 0
+    em toda execucao real -- indistinguivel de "a mudanca nao fez nada"."""
+    from mods.evidencias.enriquecimento import reactome_fora_do_modelo
+    assert reactome_fora_do_modelo(
+        {"reactome_modelo": {"fora_do_modelo": 5}}) == 5
+    import inspect
+
+    from mods import coletar_evidencias
+    fonte = inspect.getsource(coletar_evidencias)
+    assert 'contagens_enriquecimento.get("fora_do_modelo"' not in fonte
+    assert "reactome_fora_do_modelo(contagens_enriquecimento)" in fonte
+
+
+def test_o_teto_da_lista_enriquecida_sai_quando_ela_e_escrita(tmp_path):
+    """I3 e I7: na execucao que FAZ o enriquecimento, o teto sobre `--alvos`
+    mede a lista PRE-enriquecimento -- zero alvos fora do modelo, zero
+    dobrados. Quem seguir o README citaria esse numero e concluiria que o teto
+    e zero. O segundo teto mede a lista que a execucao acabou de escrever."""
+    import inspect
+
+    from mods import coletar_evidencias
+    fonte = inspect.getsource(coletar_evidencias)
+    assert "teto_da_lista_enriquecida" in fonte

@@ -41,10 +41,28 @@ def test_requirements_e_instalavel_como_esta():
     assert "psycopg2" not in nomes
     assert not ({"torch", "transformers"} & nomes)
 
-def test_opcionais_tem_arquivo_proprio_com_a_variante_binaria():
+def test_opcionais_lista_so_o_que_a_arvore_realmente_usa():
+    """`torch` liga a evidencia PREVISTA e tem consumidor. `transformers` e
+    `psycopg2-binary` nao tem nenhum aqui -- lista-los faria alguem baixar
+    alguns GB para nada. E `psycopg2` puro nunca entra: ele exige pg_config e
+    quebra num clone limpo; se um dia voltar, volta como -binary."""
     _, nomes = _requisitos("requirements-opcionais.txt")
-    assert {"torch", "transformers", "psycopg2-binary"} <= nomes
+    assert "torch" in nomes
     assert "psycopg2" not in nomes
+    assert "psycopg2-binary" not in nomes
+    assert "transformers" not in nomes
+
+
+def test_nenhuma_opcional_listada_fica_sem_consumidor():
+    """A guarda geral: cada pacote opcional tem de aparecer em algum .py."""
+    import pathlib as _p
+    _, nomes = _requisitos("requirements-opcionais.txt")
+    fontes = " ".join(
+        c.read_text(encoding="utf-8")
+        for c in (RAIZ / "mods").rglob("*.py"))
+    for pacote in nomes:
+        modulo = pacote.replace("-binary", "").replace("-", "_")
+        assert modulo in fontes, f"{pacote} nao tem consumidor em mods/"
 
 def test_readme_ensina_a_instalar_as_opcionais():
     texto = (RAIZ / "README.md").read_text(encoding="utf-8")
@@ -69,3 +87,28 @@ def test_todo_dado_do_chembl_versionado_tem_licenca_ao_lado():
     """Qualquer pasta nova com derivado do ChEMBL precisa de LICENSE propria."""
     for pasta in (RAIZ / "dados", RAIZ / "tests" / "dados"):
         assert (pasta / "LICENSE").is_file(), pasta
+
+
+def test_dado_do_prospector_em_dados_nao_e_atribuido_ao_chembl():
+    """`dados/LICENSE` dizia que TODO arquivo daquela pasta deriva do ChEMBL.
+    O conjunto de validacao nao deriva: ele vem do Duke (USDA, dominio
+    publico) e de SMILES de NPASS/COCONUT/LOTUS/PubChem, via prospeccao.
+    Atribuir a fonte errada e erro de licenciamento, nao de estilo."""
+    texto = " ".join((RAIZ / "dados" / "LICENSE").read_text(
+        encoding="utf-8").split())
+    assert "validacao_neuro_prospector.tsv" in texto
+    assert "Duke" in texto
+    assert "NPASS" in texto and "COCONUT" in texto and "LOTUS" in texto
+    # e o escopo do share-alike do ChEMBL fica nomeado, nao implicito
+    assert "evidencias_controle.tsv" in texto
+
+
+def test_conjunto_de_validacao_tem_leia_me_ao_lado():
+    leia_me = RAIZ / "dados" / "validacao_neuro_prospector.LEIA-ME.md"
+    assert leia_me.is_file()
+    texto = leia_me.read_text(encoding="utf-8")
+    # o que torna o conjunto reproduzivel sem o script: a regra de selecao
+    assert "atividades_duke" in texto
+    assert "Neurotoxic" in texto and "Analgesic" in texto
+    assert "eac618972d4900e0bd684597b49f654c" in texto      # MD5 da origem
+    assert "Capsaicin" in texto                              # a contaminacao

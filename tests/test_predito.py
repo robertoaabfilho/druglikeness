@@ -185,3 +185,28 @@ def test_alvo_pedido_por_id_e_por_nome_e_aviso_nao_problema(rotulos_falsos):
                          {"alvo": r["nome"], "organismo": r["organismo"]}],
                         rotulos_falsos, problemas, avisos)
     assert len(pares) == 1 and not problemas and avisos
+
+
+def test_a_previsao_roda_na_cpu_e_nao_na_gpu_quando_ha_uma(modelo_falso,
+                                                           rotulos_falsos,
+                                                           monkeypatch):
+    """A etapa 1 nao tem flag de dispositivo, e `carregar_modelo` sem
+    dispositivo escolhe `cuda` quando ha GPU. Medido na etapa 2: 36 de 312
+    colunas diferem entre duas execucoes de GPU, e 0 de 312 entre duas de CPU.
+    A etapa que grava a evidencia prevista nao pode ser a nao reprodutivel."""
+    import mods.evidencias.predito as mod
+    vistos = {}
+    original = mod.carregar_modelo
+
+    def espiao(diretorio, fp="ECFP4", dispositivo=None, checkpoint=None):
+        vistos["dispositivo"] = dispositivo
+        return original(diretorio, fp, dispositivo=dispositivo,
+                        checkpoint=checkpoint)
+
+    monkeypatch.setattr(mod, "carregar_modelo", espiao)
+    list(mod.linhas_preditas(
+        [{"inchikey_parental": "AAA", "smiles": "CN1C=NC2=C1C(=O)N(C)C(=O)N2C",
+          "nome": "Cafeina"}],
+        [{"alvo_chembl_id": "CHEMBL100", "origem_alvo": "usuario"}],
+        checkpoint=modelo_falso, rotulos=rotulos_falsos, corte=0.0))
+    assert vistos["dispositivo"] == "cpu"

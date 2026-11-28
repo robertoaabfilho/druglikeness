@@ -14,8 +14,11 @@ Regras
 * Teto por via (padrao 150 proteinas): vias maiores sao concentradores
   genericos ("G alpha (i) signalling events", 317 proteinas) e sao descartadas
   inteiras; as especificas ficam.
-* Um alvo expandido so entra se existir no espaco do modelo
-  (`alvos_expandidos_no_modelo`); sem isso o preditor nao o pontua.
+* Um alvo expandido entra mesmo FORA do espaco do modelo, marcado
+  `no_modelo = False` (`alvos_expandidos_no_modelo`). O preditor nao o pontua
+  -- e e isso que a marca diz --, mas ele recebe evidencia MEDIDA do ChEMBL, e
+  medida ranqueia acima de qualquer previsao. Antes ele era descartado, e era
+  a maior perda do enriquecimento.
 * Toda adicao sai com `origem = reactome`, `via_origem` (TODAS as vias que a
   trouxeram, separadas por ';', como `familia_colapsados`) e `alvo_semente`
   (idem). Uma proteina trazida por tres vias nao se confunde com a marginal.
@@ -25,6 +28,7 @@ Regras
 
 from typing import Callable
 
+from mods.evidencias.esquema import acrescentar_observacao
 from mods.evidencias.chembl import (
     ListaTruncada, RespostaInesperada, alvos_por_uniprot, erro_de_item)
 
@@ -137,12 +141,32 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
                                ja_presentes: set[str] = frozenset(),
                                relatorio: dict | None = None,
                                organismo: str = ORGANISMO) -> list[dict]:
-    """Segundo filtro da expansao: so entra o que existe no espaco do modelo.
-    `ja_presentes` sao ChEMBL IDs que a lista ja tem (usuario, Open Targets):
-    nao se repetem. `relatorio` recebe a contagem de cada corte."""
+    """Segundo filtro da expansao: resolve cada proteina num alvo do ChEMBL.
+
+    **Alvo fora do espaco do modelo ENTRA, marcado `no_modelo = False`**, em
+    vez de ser descartado -- essa era a maior perda do enriquecimento, e o
+    motivo do descarte nao se sustenta. Alvo fora do modelo nao recebe
+    evidencia PREVISTA (`casar_alvos` o omite, corretamente), mas recebe
+    evidencia MEDIDA, porque `medido.py` usa os rotulos so para dar NOME ao
+    alvo. E medida ranqueia em `1a`/`1b`, ACIMA de qualquer previsao:
+    descartar esses alvos jogava fora a classe de evidencia mais forte do
+    pipeline. O custo e mais consulta ao ChEMBL, e tempo nao e restricao.
+
+    Corrige tambem uma assimetria: declarar protegia e enriquecer nao. Alvo do
+    usuario fora do modelo ficava, alvo do Open Targets fora do modelo ficava,
+    e so o do Reactome saia.
+
+    O que CONTINUA filtrando: proteina sem alvo no ChEMBL (sem ID nao se liga
+    a evidencia medida nem ao rotulo do modelo), alvo que a lista ja tem
+    (`ja_presentes`: usuario, Open Targets) e segunda proteina que cai no
+    mesmo alvo (grupo, complexo), que vira rastro na linha que ja existe.
+
+    `relatorio` recebe a contagem de cada caso. `fora_do_modelo` passa a
+    significar **entraram marcados**, nao "foram descartados"; `entraram` e o
+    total que saiu desta funcao."""
     rel = relatorio if relatorio is not None else {}
     for k in ("proteinas", "sem_alvo_chembl", "fora_do_modelo", "ja_na_lista",
-              "no_modelo"):
+              "no_modelo", "entraram"):
         rel.setdefault(k, 0)
     rel.setdefault("problemas", [])
     modelo = {r["chembl_id"]: r for r in rotulos}
@@ -163,9 +187,6 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
             continue
         alvo = alvos[0]
         chembl_id = alvo["target_chembl_id"]
-        if chembl_id not in modelo:
-            rel["fora_do_modelo"] += 1
-            continue
         if chembl_id in ja_presentes:
             rel["ja_na_lista"] += 1
             continue
@@ -177,12 +198,26 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
                 for v in e[campo].split(";"):
                     _juntar(por_id[chembl_id], campo, v)
             continue
-        rel["no_modelo"] += 1
-        saida.append({**e, "alvo_chembl_id": chembl_id,
-                      "alvo": alvo.get("pref_name") or "",
-                      "organismo": alvo.get("organism") or organismo,
-                      "tipo_alvo": alvo.get("target_type") or "",
-                      "no_modelo": True,
-                      "n_moleculas_treino": modelo[chembl_id]["n_ativos"]})
+        rotulo = modelo.get(chembl_id)
+        rel["no_modelo" if rotulo else "fora_do_modelo"] += 1
+        rel["entraram"] += 1
+        linha = {**e, "alvo_chembl_id": chembl_id,
+                 "alvo": alvo.get("pref_name") or "",
+                 "organismo": alvo.get("organism") or organismo,
+                 "tipo_alvo": alvo.get("target_type") or "",
+                 "no_modelo": bool(rotulo),
+                 # Vazio, nao zero: zero diria "treinado com zero moleculas".
+                 # A distincao importa para o canal negativo, que exige >= 50.
+                 "n_moleculas_treino": rotulo["n_ativos"] if rotulo else ""}
+        if not rotulo:
+            # Sem isto escrito na linha, zero previsoes para este alvo
+            # pareceria "sem atividade" em vez de "nao foi pontuado".
+            linha["observacao"] = acrescentar_observacao(
+                e.get("observacao"),
+                "fora do espaco do modelo: NAO recebe evidencia prevista; "
+                "recebe evidencia medida (ChEMBL), que ranqueia acima de "
+                "qualquer previsao")
+        saida.append(linha)
         por_id[chembl_id] = saida[-1]
     return saida
+

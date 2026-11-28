@@ -16,10 +16,10 @@ import json
 from pathlib import Path
 
 from mods.evidencias.entrada import Problema
-from mods.evidencias.esquema import desescapar
+from mods.evidencias.esquema import TIPO_MEDIDO, desescapar
 from mods.evidencias.open_targets import COLUNAS_ENRIQUECIDOS
 from mods.evidencias.predito import casar_alvos
-from mods.importar_prospector import molecula
+from mods.quimica import molecula
 
 # Abaixo disto a previsao e fragil (README, validacao: recall@10 0,127 com <50
 # ativos contra 0,477 com >=5000).
@@ -78,6 +78,154 @@ def resumo_alvos(alvos: list[dict], rotulos: list[dict],
 def pares_previstos(n_ligantes: int, n_alvos_no_modelo: int) -> int:
     """Pares ligante x alvo que a evidencia prevista vai pontuar."""
     return n_ligantes * n_alvos_no_modelo
+
+
+def _estado_no_modelo(alvo: dict, rotulos: list[dict] | None) -> str:
+    """`"dentro"`, `"fora"`, `"ambiguo"` ou `"ausente"` para um alvo da lista.
+
+    **Quem decide sao os ROTULOS, quando estao em maos.** A pergunta que o teto
+    responde e "o que ESTE modelo nao cobre", e os rotulos em maos sao este
+    modelo; a marca `no_modelo` registra o que algum modelo ANTERIOR cobria. Com
+    a marca vencendo, o manifesto afirmava `pares_previstos_possiveis` que a
+    execucao provadamente nao entrega -- a mesma mentira por omissao, no outro
+    sentido. A divergencia entre marca e rotulos e informacao, e sai contada em
+    `alvos_marca_divergente`.
+
+    O casamento e por `casar_alvos`, o MESMO que decide o que o preditor
+    pontua. Comparar string de ID dava "fora do modelo" para todo alvo
+    declarado por `alvo + organismo` sem ID -- um modo de entrada documentado
+    --, e o erro ia na direcao que argumenta A FAVOR de retreinar.
+
+    `"ambiguo"` e nome que casa com mais de um rotulo: indecidivel sem o ID, e
+    **nao** prova de que o modelo nao cobre o alvo. Colapsa-lo em `"fora"`
+    inflava a perda.
+
+    Sem rotulos (execucao sem `--rotulos`) a marca e tudo o que ha, e ai ela
+    decide; sem marca e sem rotulos o estado e `"ausente"`, e o teto nao finge
+    saber."""
+    if rotulos is None:
+        return _marca(alvo) or "ausente"
+    duvidas: list[str] = []
+    indices = [i for i, _ in casar_alvos([alvo], rotulos, duvidas)]
+    if duvidas:
+        return "ambiguo"
+    return "dentro" if indices else "fora"
+
+
+def _marca(alvo: dict) -> str:
+    """`"dentro"`, `"fora"` ou `""` (ausente), a partir da coluna `no_modelo`.
+
+    A marca vem do TSV (`sim`/`nao`) ou da memoria (True/False). `input/
+    alvos.txt` e uma lista de IDs e NAO tem a coluna: ausencia nao e "esta no
+    modelo", e tomar a ausencia como "dentro" fazia o teto sair zero sempre."""
+    valor = alvo.get("no_modelo")
+    if isinstance(valor, bool):
+        return "dentro" if valor else "fora"
+    texto = str(valor or "").strip().lower()
+    if texto in ("sim", "true", "1"):
+        return "dentro"
+    if texto in ("nao", "não", "false", "0"):
+        return "fora"
+    return ""
+
+
+def _alvos_com_medida(evidencia) -> set[str]:
+    """Os alvos que receberam evidencia medida **que ranqueia**.
+
+    So conta medida com `pchembl` finito. Medida sem `pchembl` -- uma triagem
+    qHTS, um limite `>` -- NAO ranqueia: `faixa.classificar` a manda para a
+    faixa 3 com `medida_sem_pchembl`. Contar esse alvo como recuperado dizia
+    que ele "nao custou nada" quando ele e uma perda real, que o preditor
+    cobriria.
+
+    `evidencia` e um conjunto de IDs (o que a etapa 1 junta enquanto escreve:
+    sao ~23 milhoes de linhas numa execucao real, e guardar as linhas para
+    contar alvos nao caberia) ou a lista de linhas, que e o que os testes e um
+    leitor de tabela tem em maos."""
+    if isinstance(evidencia, (set, frozenset)):
+        return {str(i).strip() for i in evidencia if str(i).strip()}
+    saida = set()
+    for linha in evidencia or []:
+        if str(linha.get("tipo_evidencia") or "").strip() != TIPO_MEDIDO:
+            continue
+        if not _finito(linha.get("pchembl")):
+            continue
+        ident = str(linha.get("alvo_chembl_id") or "").strip()
+        if ident:
+            saida.add(ident)
+    return saida
+
+
+def _finito(valor) -> bool:
+    try:
+        numero = float(str(valor).strip())
+    except (TypeError, ValueError):
+        return False
+    return numero == numero and numero not in (float("inf"), float("-inf"))
+
+
+def teto_do_modelo(alvos: list[dict], evidencia, *, n_ligantes: int,
+                   rotulos: list[dict] | None = None,
+                   dobrados: int = 0) -> dict:
+    """Quanto do espectro de alvos o modelo atual NAO cobre.
+
+    E o numero que justifica -- ou dispensa -- retreinar o preditor. Sem ele,
+    retreinar e opiniao; com ele, e uma conta.
+
+    A separacao que decide e `alvos_fora_com_evidencia_medida` contra
+    `alvos_fora_sem_evidencia_medida`:
+
+    * alvo fora do modelo **com** evidencia medida nao custou nada ao
+      pipeline. Ele ranqueia na faixa `1b`, acima de qualquer previsao, e
+      retreinar o modelo nao melhoraria o lugar dele.
+    * alvo fora do modelo **sem** evidencia medida e exatamente o que
+      retreinar recuperaria: hoje ele entra na lista e nao recebe evidencia
+      nenhuma.
+
+    `pares_previstos_perdidos` e a mesma grandeza em pares, que e o que se
+    compara entre execucoes de tamanhos diferentes.
+
+    `dobrados_por_familia` conta os alvos que `colapsar_familia` dobrou no
+    representante da classe. Eles nao estao na lista, e sem esta contagem
+    desapareceriam do teto -- o criterio daquele colapso e `no_modelo is
+    False`, a mesma premissa que a decisao 2 derruba, e esconde-los aqui
+    deixaria o numero menor do que e."""
+    estados = [_estado_no_modelo(a, rotulos) for a in alvos]
+    divergentes = sum(1 for a, e in zip(alvos, estados)
+                      if rotulos is not None and _marca(a)
+                      and _marca(a) != e)
+    fora = [a for a, e in zip(alvos, estados) if e == "fora"]
+    com_medida = _alvos_com_medida(evidencia)
+    fora_com = [a for a in fora
+                if str(a.get("alvo_chembl_id") or "").strip() in com_medida]
+    # Os dobrados vem do enriquecimento, nao da lista: na execucao que FAZ o
+    # colapso a lista `--alvos` nao tem a coluna `familia_colapsados`, e contar
+    # por ela dava 0 exatamente onde importava. Numa execucao que CONSOME uma
+    # lista enriquecida, a coluna existe e as duas fontes se somam sem
+    # duplicar, porque so uma delas tem valor por execucao.
+    dobrados_na_lista = sum(
+        len([c for c in str(a.get("familia_colapsados") or "").split(";") if c])
+        for a in alvos)
+    dobrados = max(int(dobrados or 0), dobrados_na_lista)
+    return {
+        "alvos_total": len(alvos),
+        "alvos_no_modelo": estados.count("dentro"),
+        "alvos_fora_do_modelo": len(fora),
+        "alvos_ambiguos": estados.count("ambiguo"),
+        "alvos_marca_ausente": estados.count("ausente"),
+        # A marca da lista contra os rotulos em maos: a lista pode ter sido
+        # escrita por outra execucao, com outro modelo. A divergencia e
+        # informacao, nao erro.
+        "alvos_marca_divergente": divergentes,
+        "alvos_fora_com_evidencia_medida": len(fora_com),
+        "alvos_fora_sem_evidencia_medida": len(fora) - len(fora_com),
+        "dobrados_por_familia": dobrados,
+        # O que o espaco do modelo PERMITE, nao o que a execucao fez: sem
+        # checkpoint nenhum par e pontuado e este numero continua positivo.
+        "pares_previstos_possiveis": pares_previstos(n_ligantes,
+                                                     estados.count("dentro")),
+        "pares_previstos_perdidos": pares_previstos(n_ligantes, len(fora)),
+    }
 
 
 def montar_comando(modo: str, *, python: str, ligantes: str, alvos: str,

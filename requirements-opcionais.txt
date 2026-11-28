@@ -1,17 +1,17 @@
-# Dependencias opcionais: pesadas (alguns GB) ou que precisam de biblioteca do
-# sistema. Nenhuma e necessaria para `pytest`, para o painel ou para a coleta
-# de evidencia MEDIDA; cada uma liga uma funcionalidade e o codigo diz, na
-# hora, qual instalar.
+# Dependencia opcional: pesada (alguns GB). Nao e necessaria para `pytest`,
+# para o painel nem para a coleta de evidencia MEDIDA; o codigo diz, na hora,
+# que ela falta e o que isso desliga.
 #
 #   pip install -r requirements-opcionais.txt
 #
-# torch: evidencia PREVISTA (PP4CKD), em mods/evidencias/predito.py e
-#   mods/prever_alvos.py. Sem ele a etapa 1 roda em modo degradado (so
-#   evidencia medida) e a CLI recusa --checkpoint com a mensagem de instalacao.
+# torch: evidencia PREVISTA (PP4CKD), em mods/modelo.py e
+#   mods/evidencias/predito.py. Sem ele a etapa 1 roda em modo degradado (so
+#   evidencia medida) e diz isso; a fase 3 nao calcula o canal negativo, e a
+#   coluna sai `indeterminado`, nunca 0 -- zero afirmaria "nenhuma atividade
+#   indesejada".
 torch
-# transformers: ranking por embeddings ChemBERTa (mods/ranking_embeddings.py).
-transformers
-# psycopg2-binary: fonte DrugCentral do mods/ranking_multibase.py, que degrada
-#   sozinho sem ela. A variante -binary traz o libpq compilado; `psycopg2` puro
-#   exige pg_config no sistema e falha num clone limpo.
-psycopg2-binary
+
+# Este arquivo e separado do requirements.txt porque o pip instala toda linha
+# que encontrar, comentada como "opcional" ou nao. Nada de `psycopg2` puro
+# aqui: ele exige pg_config no sistema e quebraria um clone limpo; se um dia
+# voltar a ser preciso, volta como `psycopg2-binary`.

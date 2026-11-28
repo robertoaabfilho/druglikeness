@@ -25,7 +25,7 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import rdFingerprintGenerator, DataStructs
 RDLogger.DisableLog("rdApp.*")
 
-from mods import prever_alvos as pa
+from mods import modelo as pa
 
 
 def ler_controle(caminho):

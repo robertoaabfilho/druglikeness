@@ -1,0 +1,6 @@
+target_idx	chembl_id	pref_name	organism	target_type	active_molecules
+0	CHEMBL228	Serotonin transporter	Homo sapiens	SINGLE PROTEIN	900
+1	CHEMBL360	Mycobacterium tuberculosis	Mycobacterium tuberculosis	ORGANISM	11049
+2	CHEMBL5555	Dihydrofolate reductase	Plasmodium falciparum	SINGLE PROTEIN	12
+3	CHEMBL222	Noradrenaline transporter	Homo sapiens	SINGLE PROTEIN	1000
+4	CHEMBL304	Noradrenaline transporter	Rattus norvegicus	SINGLE PROTEIN	500

@@ -27,6 +27,16 @@ original volta exato, inclusive se ele ja continha "\\t" literal.
 import re
 from pathlib import Path
 
+# O vocabulario de `tipo_evidencia`, numa fonte so. Ele era literal em cada
+# modulo, e a fase 3 escreveu "previsto" onde a etapa 1 escreve "predito": o
+# caminho previsto inteiro ficou morto em producao -- nenhuma linha prevista
+# era reconhecida, as faixas previstas eram inalcancaveis, e compostos com
+# previsao saiam publicados como "sem evidencia". Uma letra, invisivel para a
+# suite porque as fixtures repetiam o token errado.
+TIPO_MEDIDO = "medido"
+TIPO_PREDITO = "predito"
+TIPOS_DE_EVIDENCIA = (TIPO_MEDIDO, TIPO_PREDITO)
+
 COLUNAS_EVIDENCIA = [
     "ligante", "ligante_inchikey_parental", "ligante_chembl_id",
     "correspondencia_ligante", "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "origem_alvo",
@@ -108,3 +118,10 @@ def ler_evidencias(caminho):
                     f"linha {numero} de {caminho}: {len(campos)} campos "
                     f"encontrados, {len(colunas)} esperados")
             yield {c: desescapar(v) for c, v in zip(colunas, campos)}
+
+
+def acrescentar_observacao(atual, texto: str) -> str:
+    """Acrescenta sem apagar o que ja estava: a observacao e acumulativa, e e
+    nela que o rastro de cada decisao sobre o alvo fica."""
+    atual = (atual or "").strip()
+    return f"{atual}; {texto}" if atual else texto

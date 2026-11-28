@@ -28,18 +28,25 @@ from typing import Callable
 from mods.evidencias.atomico import escrever_texto
 from mods.evidencias.chembl import (
     ListaTruncada, RespostaInesperada, alvos_por_uniprot, erro_de_item)
-from mods.evidencias.esquema import escapar
+from mods.evidencias.esquema import acrescentar_observacao, escapar
 
 URL = "https://api.platform.opentargets.org/api/v4/graphql"
 ORGANISMO = "Homo sapiens"
 PAGINA = 100
 
 COLUNAS_ENRIQUECIDOS = [
-    "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "gene", "origem",
-    "efo_id", "sintoma", "escore_associacao", "familia", "familia_colapsados",
-    "via_origem", "alvo_semente", "n_moleculas_treino", "no_modelo",
-    "observacao",
+    "alvo_chembl_id", "alvo", "organismo", "tipo_alvo", "gene", "ensembl",
+    "origem", "efo_id", "sintoma", "escore_associacao", "escore_rna_expression",
+    "familia", "familia_colapsados", "via_origem", "alvo_semente",
+    "n_moleculas_treino", "no_modelo", "observacao",
 ]
+# `ensembl` e `escore_rna_expression` ja vinham na resposta do Open Targets e
+# eram descartados na escrita. Ficam na saida porque a etapa 2 precisa dos
+# dois: o Ensembl e a chave da expressao por tecido (`baselineExpression`), e
+# `rna_expression` e o escore de expressao DIFERENCIAL da associacao -- a
+# contribuicao do Expression Atlas, que indexa os experimentos do GEO. Buscar
+# o Ensembl de novo na etapa 2 custaria uma requisicao por alvo para um dado
+# que esta etapa ja tinha em maos.
 
 _BUSCA = """query Busca($q: String!) {
   search(queryString: $q, entityNames: ["disease"], page: {index: 0, size: 10}) {
@@ -131,7 +138,9 @@ def alvos_do_chembl(candidatos: list[dict], rotulos: list[dict], *,
     for c in candidatos:
         linha = {**c, "origem": "open_targets", "alvo_chembl_id": "",
                  "alvo": "", "organismo": organismo, "tipo_alvo": "",
-                 "no_modelo": False, "n_moleculas_treino": "", "observacao": ""}
+                 "no_modelo": False, "n_moleculas_treino": "", "observacao": "",
+                 "escore_rna_expression": (c.get("datatypes") or {}).get(
+                     "rna_expression", "")}
         saida.append(linha)
         if not c.get("uniprot"):
             linha["observacao"] = "sem UniProt Swiss-Prot no Open Targets"
@@ -152,16 +161,29 @@ def alvos_do_chembl(candidatos: list[dict], rotulos: list[dict], *,
                      alvo=alvo.get("pref_name") or "",
                      tipo_alvo=alvo.get("target_type") or "")
         if alvo.get("target_type") != "SINGLE PROTEIN":
-            linha["observacao"] = (f"{c['uniprot']} sem alvo SINGLE PROTEIN; "
-                                   f"usado {alvo.get('target_type')}")
+            linha["observacao"] = acrescentar_observacao(
+                linha.get("observacao"),
+                f"{c['uniprot']} sem alvo SINGLE PROTEIN; "
+                f"usado {alvo.get('target_type')}")
         modelo = no_modelo.get(linha["alvo_chembl_id"])
         if modelo:
             linha["no_modelo"] = True
             linha["n_moleculas_treino"] = modelo["n_ativos"]
+        else:
+            # Alvo fora do espaco do modelo nao recebe evidencia prevista,
+            # venha do Reactome ou de aqui. Sem isto escrito na linha, zero
+            # previsoes para ele continua parecendo "sem atividade" -- que e
+            # exatamente o que a marca existe para evitar.
+            linha["observacao"] = acrescentar_observacao(
+                linha.get("observacao"),
+                "fora do espaco do modelo: NAO recebe evidencia prevista; "
+                "recebe evidencia medida (ChEMBL), que ranqueia acima de "
+                "qualquer previsao")
     return saida
 
 
-def colapsar_familia(alvos: list[dict]) -> list[dict]:
+def colapsar_familia(alvos: list[dict],
+                     relatorio: dict | None = None) -> list[dict]:
     """Dobra, em cada classe de proteina do ChEMBL, os alvos AUSENTES do modelo
     (`no_modelo` False) no de maior escore que fica. Quem esta no modelo, quem
     e do usuario e quem nao tem classe nunca e dobrado. O dobrado sai da lista;
@@ -171,6 +193,9 @@ def colapsar_familia(alvos: list[dict]) -> list[dict]:
     for a in alvos:
         if a.get("classe"):
             por_classe.setdefault(a["classe"], []).append(a)
+    rel = relatorio if relatorio is not None else {}
+    rel.setdefault("dobrados_por_familia", 0)
+    rel.setdefault("dobrados_fora_do_modelo", [])
     dobrados: set[int] = set()
     for classe, membros in por_classe.items():
         ordem = sorted(membros, key=lambda m: -(m.get("score") or 0))
@@ -186,6 +211,14 @@ def colapsar_familia(alvos: list[dict]) -> list[dict]:
         representante["familia_colapsados"] = ";".join(
             m["alvo_chembl_id"] for m in ausentes)
         dobrados.update(id(m) for m in ausentes)
+        # O que dobrou tem de ficar CONTADO: ele sai da lista, e sem a
+        # contagem desapareceria do teto do modelo -- o numero que justifica
+        # retreinar o preditor. Os IDs dos que estavam fora do modelo saem
+        # separados porque sao a classe que a evidencia medida ainda alcanca.
+        rel["dobrados_por_familia"] += len(ausentes)
+        rel["dobrados_fora_do_modelo"].extend(
+            m["alvo_chembl_id"] for m in ausentes
+            if m.get("no_modelo") is False)
     return [a for a in alvos if id(a) not in dobrados]
 
 
