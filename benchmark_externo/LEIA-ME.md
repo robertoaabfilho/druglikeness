@@ -181,3 +181,107 @@ python3 benchmark_litpcba.py       # ~15 min em 4 CPUs
 ```
 
 Caminhos de pesos, rótulos e dataset estão no topo de cada script.
+
+---
+
+# Adendo — trocar o PP4CKD por outro modelo aberto?
+
+Medido em 2026-11-28. Pergunta: vale substituir o PP4CKD pelo
+`chembl_multitask_model` oficial do EMBL-EBI
+(<https://github.com/chembl/chembl_multitask_model>, MIT, ONNX)?
+
+## Cobertura de alvo: a troca apaga o canal negativo
+
+O painel oficial é `SINGLE PROTEIN` por construção.
+
+| conjunto de alvos | PP4CKD (7.676) | ChEMBL mt36 (786) |
+|---|---|---|
+| LIT-PCBA | 15/15 | 14/15 (falta KAT2A) |
+| dor neuropática | 9/9 | **6/9** (falta α2δ-2, NMDA1, NMDA2B) |
+| patógeno | 5/5 | **1/5** |
+
+`CHEMBL360` (*M. tuberculosis*, célula inteira) **não existe** no painel do
+ChEMBL. É de onde vem o único resultado do projeto com p sólido (AUC 1,000,
+p = 0,0011) e é o alicerce do canal negativo, que é definido sobre alvo não
+humano. **Substituir apaga os dois.**
+
+## Desempenho: o modelo oficial fica no azar neste benchmark
+
+LIT-PCBA, 14 alvos comuns. PP4CKD no conjunto completo; ChEMBL mt36 na
+subamostra de 60.000 inativos (mostrado equivalente). `benchmark_multitask.py`,
+`resultado_multitask.tsv`.
+
+| alvo | PP4CKD AUROC | PP4CKD EF1% | mt36 AUROC | mt36 EF1% | 1-NN EF1% |
+|---|---:|---:|---:|---:|---:|
+| ADRB2 | 0,654 | 11,76 | 0,704 | 0,00 | 35,30 |
+| ALDH1 | 0,724 | 8,46 | 0,489 | 0,98 | 6,50 |
+| ESR1_ago | 0,681 | 15,37 | 0,533 | 0,00 | 0,00 |
+| ESR1_ant | 0,496 | 2,97 | 0,564 | 0,99 | 26,74 |
+| FEN1 | 0,621 | 7,05 | 0,439 | 2,71 | 45,78 |
+| GBA | 0,678 | 20,48 | 0,517 | 1,81 | 58,40 |
+| IDH1 | 0,582 | 5,13 | 0,637 | 2,57 | 38,49 |
+| MAPK1 | 0,649 | 5,85 | 0,463 | 0,97 | 11,04 |
+| MTORC1 | 0,559 | 1,03 | 0,482 | 3,09 | 21,63 |
+| OPRK1 | 0,952 | 70,84 | 0,651 | 0,00 | 66,69 |
+| PKM2 | 0,794 | 25,45 | 0,553 | 1,83 | 36,47 |
+| PPARG | 0,643 | 14,92 | 0,647 | 3,73 | 37,31 |
+| TP53 | 0,504 | 1,28 | 0,388 | 0,00 | 39,68 |
+| VDR | 0,620 | 3,28 | 0,512 | 1,70 | 34,15 |
+| **média** | **0,654** | **13,85** | **0,541** | **1,46** | **32,73** |
+| **mediana** | 0,646 | 7,75 | 0,525 | 1,34 | 35,89 |
+
+O PP4CKD ganha em **13 de 14** alvos. O mt36 tem EF1% ≤ 1 (azar ou pior) em
+**7 de 14** e AUROC abaixo de 0,5 em **5 de 14**.
+
+**Controle positivo: o uso do ONNX está correto.** Duloxetina dá p = 0,685 em
+SERT e 0,703 em NET contra 0,032 no VDR (não-alvo); imatinibe 0,334 em ABL1,
+estradiol 0,540 em ESR1, morfina 0,411 em OPRK1 — todos do lado certo. O
+modelo funciona; ele fica no azar *neste benchmark*.
+
+## Por que: o limiar do rótulo de treino, não a linhagem do modelo
+
+| | PP4CKD | ChEMBL multitask |
+|---|---|---|
+| limiar de "ativo" | ≤ 10 µM **ou** inibição ≥ 50% | quinase ≤ 30 nM · GPCR/NR ≤ 100 nM · canal iônico ≤ 10 µM · resto ≤ 1 µM |
+
+Os ativos do LIT-PCBA são confirmações de HTS dose-resposta do PubChem, na
+faixa de µM. A definição de ativo do painel do ChEMBL exclui essa faixa quase
+inteira; a do PP4CKD a inclui. `OPRK1` ilustra: GPCR com corte de 100 nM no
+mt36 e EF1% = 0,00, contra 70,84 do PP4CKD.
+
+**Consequência para o projeto:** o corpus de ligantes é de produtos naturais
+(NPASS/COCONUT/LOTUS), cuja potência típica é de µM — o mesmo regime do
+LIT-PCBA e o mesmo regime em que o mt36 falha. O limiar frouxo do PP4CKD é a
+escolha **certa** para este uso. A procedência melhor do modelo oficial não
+compensa um modelo cujo rótulo de treino não cobre a faixa de potência que
+você tria.
+
+## Recomendação
+
+**Acrescentar como segunda opinião, não substituir.** Onde os dois cobrem o
+alvo, concordância entre modelos independentes é o argumento de procedência
+que o PP4CKD não tem sozinho (tarball truncado, folds não publicados, sem
+revisão por pares) — e o `CHEMBL360` continua existindo. A costura é contida:
+`mods/modelo.py` expõe quatro pontos de entrada (`carregar_modelo`,
+`fingerprint_de`, `carregar_rotulos`, mais os auxiliares de organismo) e é
+importado por quatro módulos de produção.
+
+Nenhum dos dois conserta as duas falhas reais, que exigem consertos diferentes:
+
+* **espaço de rótulos fixo** → modelo condicionado em sequência (ConPLex,
+  SPRINT). É a única troca que compra capacidade nova; o teto já está medido
+  no seu manifesto (61 de 259 proteínas do enriquecimento fora do modelo, 44%).
+* **direção do efeito** → exige rótulo de direção, não preditor de ligação
+  melhor. A metade barata é o *direction of effect* do Open Targets (8 fontes
+  de evidência), que diz qual direção se quer — hoje não codificada em
+  lugar nenhum do pipeline.
+
+## Correção a um alerta anterior deste documento
+
+A ressalva de que `mods/ranque/negativo.py::agregar` poderia receber logit em
+vez de probabilidade **não se aplica**: `mods/ranquear.py:389` faz
+`torch.sigmoid(rede(...))` antes de agregar. O que permanece é um risco de
+documentação: `construir_rede` termina em `Linear` e devolve logit, enquanto o
+docstring do módulo desenha "→ sigmoide". Quem reusar `construir_rede` fora do
+`ranquear.py` erra — foi o que aconteceu no primeiro arame deste benchmark, e
+custou uma AUC de 0,750 virar 0,444.

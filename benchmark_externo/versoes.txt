@@ -3,3 +3,4 @@ torch 2.15.0+cpu
 rdkit 2026.09.2
 numpy 2.5.3
 scipy 1.18.1
+onnxruntime 1.29.0
