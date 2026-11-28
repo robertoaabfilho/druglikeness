@@ -656,3 +656,222 @@ estruturalmente distantes do que já se conhecia em 2020. O campo publica
 majoritariamente análogos. Isso limita por cima quanto reposicionamento há
 para achar em alvo bem estudado — e é argumento a favor de apontar o pipeline
 a alvos menos explorados, onde a fração nova é maior.
+
+---
+
+# Adendo 6 — o mesmo holdout temporal em 145 alvos: o intervalo fecha, e para baixo
+
+O Adendo 5 chegou a AUROC 0,7077 no estrato de novidade com **29 ativos**, e eu
+disse na hora que o intervalo de confiança [0,601, 0,814] era largo demais para
+decidir nada. Este adendo repete a receita idêntica em escala.
+
+## Desenho
+
+Igual ao Adendo 5, só maior. Mesmo modelo de era anterior
+(`chembl_28_multitask.onnx`, 616 alvos, treino até 2020), mesmos decoys (os
+ativos do LIT-PCBA sem medida no alvo), mesmo corte de novidade (Tanimoto
+ECFP4 máximo aos ativos de referência < 0,25), mesma divisão temporal
+(referência ≤ 2020, teste ≥ 2022).
+
+Duas decisões de amostragem, declaradas antes de rodar:
+
+- **Amostra aleatória de 150 entre os 322 alvos elegíveis** (≥ 50 ativos
+  pós-2022), semente 20261128 — não os 150 maiores. Tomar os maiores
+  enviesaria para alvo muito estudado e repetiria o defeito do Adendo 5, em que
+  o agregado inteiro vinha do receptor mu.
+- **Guarda de tamanho**: alvo com mais de 15 mil atividades é pulado. Na
+  prática nenhum foi (0 pulados), porque a amostra aleatória não cai nos
+  gigantes.
+
+Sondagem prévia (`sondar_alvos.py`, uma requisição por alvo): dos 616 do
+painel, **361 têm ≥ 30 ativos pós-2022**, somando 122.118 ativos recentes.
+Coletados 145 alvos com dado suficiente nos dois lados do corte.
+
+## O resultado principal
+
+| | Adendo 5 (3 alvos) | Adendo 6 (145 alvos) |
+|---|---|---|
+| ativos no estrato de novidade | 29 | **1.769** |
+| AUROC | 0,7077 | **0,6322** |
+| IC95% | [0,601, 0,814] | **[0,618, 0,646]** |
+| erro padrão | 0,0544 | 0,0071 |
+| z | 3,82 | 18,50 |
+| p (uma cauda) | 6,8e-05 | 9,8e-77 |
+
+O intervalo encolheu de 21 pontos para 2,8, e o ponto caiu para perto do piso
+do intervalo antigo. **0,7077 era otimismo de n pequeno. O número é 0,632.**
+
+Segue acima do azar com folga enorme, e segue valendo o contraste do Adendo 3 —
+no mesmo estrato o canal de similaridade fica abaixo do azar. Mas 0,63 é fraco
+em termos absolutos, e a média esconde o que importa.
+
+## Precisão no topo, medida por alvo
+
+O agregado usa posto percentual dentro de cada alvo. Com 145 alvos, o topo de
+cada um empata em 1,0 exato, e o desempate pessimista de `metricas_vs` empurra
+todo decoy empatado para a frente — o que **zera precisão@k para k < 145 por
+construção**. O `precisao@20 = 0%` que sai no agregado é limite pessimista, não
+resultado; ficou rotulado assim no log para não enganar ninguém depois. A
+AUROC não é afetada (usa postos médios).
+
+A medida correta é dentro de cada alvo — e é a pergunta real: dos *k* que eu
+ensaiaria neste alvo, quantos são ativos de verdade? Somada sobre os alvos:
+
+| | análogo + novo (145 alvos) | só novidade (88 alvos) |
+|---|---|---|
+| precisão@5 | **52,6%** (23×) | **4,3%** (12×) |
+| precisão@10 | 49,6% (22×) | 3,4% (9×) |
+| precisão@20 | 45,4% (20×) | 2,8% (8×) |
+| alvos com ≥ 1 acerto no top-20 | 122/145 | **19/88** |
+| taxa-base média | 2,2% | 0,36% |
+| AUROC mediana por alvo | 0,850 | 0,638 |
+| EF1% mediana por alvo | 14,07 | **0,00** |
+
+## Como ler
+
+**No regime análogo o pipeline funciona de verdade.** Top-5 de um alvo: metade
+acerta. 20× acima da taxa-base, consistente em 145 alvos independentes, sob
+holdout temporal e com decoy bioativo (`actives-as-decoys`), que é o controle
+mais severo da literatura. Isso não é artefato.
+
+**No estrato de novidade o ganho é real mas pequeno em termos absolutos.** 4,3%
+no top-5 significa ~23 ensaios por acerto estruturalmente novo. O ganho de 12×
+é sólido; 12× sobre 0,36% ainda é 4%.
+
+**E a dispersão importa mais que a média.** Só **19 dos 88 alvos** têm algum
+acerto no top-20 — em 69 alvos, os 20 primeiros candidatos novos são todos
+falsos. A mediana de EF1% é **zero**: para metade dos alvos, o top 1% não
+contém nenhum ativo novo. O retorno não está espalhado, está concentrado em
+cerca de um quinto dos alvos.
+
+## Consequência para a decisão
+
+Se novidade estrutural é o objetivo (reposicionamento), o custo esperado é ~23
+ensaios por acerto, não 2. Duas saídas, não excludentes:
+
+1. **Usar o regime análogo para selecionar e a novidade como filtro posterior**,
+   não como critério de ranqueamento. 45% no top-20 paga a bancada; dali se
+   escolhe o mais distante estruturalmente entre os que pontuaram bem.
+2. **Prever qual alvo está no quinto bom.** Os 19 alvos que acertam não devem
+   ser sorteio — devem ter assinatura (volume de treino, diversidade dos ativos
+   de referência, classe de proteína). É mensurável com o TSV deste adendo, sem
+   rede e sem bancada. Se houver sinal, o pipeline passa a saber de antemão
+   quando não confiar na própria previsão de novidade, o que vale mais que subir
+   0,63 para 0,65.
+
+## Limitação declarada
+
+Isto mede o modelo do ChEMBL 28 sobre um painel de 616 alvos **maduros**, não o
+PP4CKD. Para o PP4CKD não existe número sem vazamento usando dado do ChEMBL
+(Adendo 5). E o painel ser de alvo maduro significa que a pergunta sobre alvo
+pouco explorado — onde a fração de novidade é maior — **este experimento não
+responde**.
+
+Arquivos: `sondar_alvos.py`, `sondagem_alvos.json`, `holdout_escalado.py`,
+`resultado_holdout_escalado.tsv` (233 linhas: 145 alvos × estrato).
+
+---
+
+# Adendo 7 — um teste de falha: 221 antibióticos contra alvos imunes
+
+Pergunta que originou isto: usar uma lista de ~200 antibióticos para buscar
+aplicação no mimetismo molecular que leva à síndrome de Guillain-Barré. É o
+adendo mais informativo do conjunto, porque mede **como o pipeline falha quando
+a pergunta está fora do alcance dele** — e porque três das minhas previsões
+sobre essa falha estavam erradas.
+
+## Por que a pergunta não é para este pipeline
+
+O mecanismo da GBS pós-*Campylobacter* é: o lipooligossacarídeo bacteriano imita
+gangliosídeos (GM1, GD1a, GQ1b) → IgG anti-gangliosídeo → ativação de
+complemento na membrana nodal. **O objeto do mimetismo é um glicolipídeo e o
+agente do dano é um anticorpo.** Nenhum dos dois é proteína com bolsão de
+ligação, e nenhuma das 616 cabeças (nem das 7.676 do PP4CKD) corresponde a
+epítopo de gangliosídeo ou a idiotipo. Não há coluna para indexar.
+
+Os nós a jusante que são proteína e têm química de molécula pequena: C5aR1
+(precedente: avacopan), fator D, FcRn, BTK, S1PR1 (fingolimod funciona na
+neurite autoimune experimental), MMP-9. Conferido no painel: **C5aR1, S1PR1,
+MMP-9, BTK, JAK1, JAK2 e TNF-α estão presentes; TLR4, que seria o sensor do
+próprio LOS e o mais próximo da mimetização, não está.**
+
+Há ainda a janela temporal: a GBS começa 1–3 semanas depois da enterite, com a
+resposta de anticorpo já montada. Erradicar a bactéria nesse ponto não desfaz
+nada. A única hipótese defensável na lista é **efeito imunomodulador fora do
+alvo antibacteriano** — minociclina e doxiciclina (inibição de MMP, supressão
+microglial, literatura em neurite autoimune experimental) e macrolídeos.
+
+## Desenho
+
+221 antibióticos da classe ATC **J01** do ChEMBL contra 600 ativos do LIT-PCBA
+amostrados como referência de "bioativo qualquer". Para cada composto:
+similaridade ao domínio (Tanimoto ECFP4 máximo aos 201.196 ativos de referência
+≤ 2020 dos 145 alvos do Adendo 6), familiaridade (`p_max`, a probabilidade
+máxima entre as 616 cabeças — o proxy de domínio que o projeto usa),
+probabilidade nas sete cabeças imunes, e descritores.
+
+## Três previsões minhas, erradas
+
+**Previ que o topo seria fluoroquinolona e tetraciclina, "aromáticos planos e
+lipofílicos".** O topo é glicopeptídeo e cefalosporina:
+quinupristina/dalfopristina 1,000, oritavancina 0,999, telavancina 0,999,
+mezlocilina 0,998, ceftobiprol 0,998, vancomicina 0,995. Ciprofloxacina sai em
+**188/221**, metronidazol em 217/221.
+
+**Previ que o ranque seria explicado por lipofilicidade.** O que explica é
+**tamanho**: Spearman de `p_max` com peso molecular **+0,407**, com logP só
++0,224. Peso médio dos 20 primeiros **770 Da**, dos 20 últimos **374 Da**.
+Molécula maior liga mais bits do ECFP4, mais bits disparam mais cabeças, `p_max`
+sobe. É artefato de contagem de bits.
+
+**Previ que a lista cairia no estrato de novidade.** Medido: 7% abaixo de 0,25
+(mediana 0,407). Mas o desenho não é comparável e eu não deveria ter
+apresentado isso como teste: aqui o Tanimoto é contra a **união** de 201.196
+referências, enquanto o Adendo 6 usa as referências **de cada alvo** (mediana
+~1.300). Contra 201 mil referências quase nada cai abaixo de 0,25. O domínio
+segue em aberto.
+
+## O que o resultado mostra de verdade, e é pior
+
+**1. O canal de familiaridade está saturado.** Mediana de `p_max` dos
+antibióticos: **0,968**. Dos 600 bioativos quaisquer: **0,968**. Idênticas. A
+biblioteca inteira ocupa 0,77–1,00. O proxy de domínio de aplicabilidade não
+distingue um glicopeptídeo de um ligante de receptor humano. Isso explica
+retroativamente por que o domínio de aplicabilidade deu ruído no Adendo 2: não
+tem variância para dar.
+
+**2. O filtro de novidade não vê o viés.** Spearman de `p_max` com similaridade
+ao domínio: **+0,051**. O viés de tamanho passa por baixo dos dois filtros do
+pipeline simultaneamente.
+
+**3. As previsões nos alvos imunes são absurdas e sistematicamente infladas.**
+Vancomicina com p = 0,92 em BTK; oritavancina 0,94; quinupristina 0,996 em
+S1PR1 e 0,95 em JAK1. Glicopeptídeo não inibe quinase — não atravessa membrana.
+E a inflação é sistemática (mediana antibiótico vs bioativo qualquer): C5aR1
+**0,48 vs 0,17**, BTK **0,21 vs 0,07**, JAK1 **0,34 vs 0,17**, JAK2 0,35 vs
+0,17. A triagem **pareceria produtiva**.
+
+**4. O ranque aponta para o lado errado.** Minociclina, o único candidato com
+literatura em neurite autoimune experimental, sai em **200/221**. Doxiciclina em
+118. Os macrolídeos sobem (azitromicina 59, claritromicina 111) por serem
+grandes, não por imunomodulação.
+
+## Veredito e o que ele corrige no pipeline
+
+Rodar essa lista produziria um top-20 plausível à vista e sem conteúdo: ordenado
+por peso molecular, inflado justamente nos alvos imunes que se escolheria, e
+invisível aos dois filtros do projeto. Não é resultado fraco — é resultado
+enganoso, que custa bancada.
+
+Duas correções que valem para **qualquer** uso do pipeline, e que só
+apareceram por causa desta pergunta:
+
+1. **Trocar o proxy de domínio.** `p_max` está saturado. Substitutos: a
+   similaridade por alvo (que o Adendo 6 já calcula) ou `p_max` normalizado pela
+   contagem de bits ligados.
+2. **Corrigir ou declarar o viés de tamanho.** Medir a correlação de cada cabeça
+   com o número de bits ligados e usá-la como linha de base a subtrair. Cabeça
+   explicada por tamanho não deveria entrar no ranque.
+
+Arquivos: `sondar_antibioticos.py`, `lista_j01.json`,
+`resultado_antibioticos.tsv` (821 linhas).

@@ -1,0 +1,1147 @@
+[
+{
+"molecule_chembl_id": "CHEMBL4",
+"pref_name": "OFLOXACIN",
+"canonical_smiles": "CC1COc2c(N3CCN(C)CC3)c(F)cc3c(=O)c(C(=O)O)cn1c23"
+},
+{
+"molecule_chembl_id": "CHEMBL5",
+"pref_name": "NALIDIXIC ACID",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2ccc(C)nc21"
+},
+{
+"molecule_chembl_id": "CHEMBL403",
+"pref_name": "SULBACTAM",
+"canonical_smiles": "CC1(C)[C@H](C(=O)O)N2C(=O)C[C@H]2S1(=O)=O"
+},
+{
+"molecule_chembl_id": "CHEMBL404",
+"pref_name": "TAZOBACTAM",
+"canonical_smiles": "C[C@]1(Cn2ccnn2)[C@H](C(=O)O)N2C(=O)C[C@H]2S1(=O)=O"
+},
+{
+"molecule_chembl_id": "CHEMBL6273",
+"pref_name": "FLEROXACIN",
+"canonical_smiles": "CN1CCN(c2c(F)cc3c(=O)c(C(=O)O)cn(CCF)c3c2F)CC1"
+},
+{
+"molecule_chembl_id": "CHEMBL8",
+"pref_name": "CIPROFLOXACIN",
+"canonical_smiles": "O=C(O)c1cn(C2CC2)c2cc(N3CCNCC3)c(F)cc2c1=O"
+},
+{
+"molecule_chembl_id": "CHEMBL9",
+"pref_name": "NORFLOXACIN",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cc(F)c(N3CCNCC3)cc21"
+},
+{
+"molecule_chembl_id": "CHEMBL21",
+"pref_name": "SULFANILAMIDE",
+"canonical_smiles": "Nc1ccc(S(N)(=O)=O)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL22",
+"pref_name": "TRIMETHOPRIM",
+"canonical_smiles": "COc1cc(Cc2cnc(N)nc2N)cc(OC)c1OC"
+},
+{
+"molecule_chembl_id": "CHEMBL29",
+"pref_name": "PENICILLIN G",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL428",
+"pref_name": "TROVAFLOXACIN",
+"canonical_smiles": "N[C@@H]1[C@H]2CN(c3nc4c(cc3F)c(=O)c(C(=O)O)cn4-c3ccc(F)cc3F)C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL31",
+"pref_name": "GATIFLOXACIN",
+"canonical_smiles": "COc1c(N2CCNC(C)C2)c(F)cc2c(=O)c(C(=O)O)cn(C3CC3)c12"
+},
+{
+"molecule_chembl_id": "CHEMBL32",
+"pref_name": "MOXIFLOXACIN",
+"canonical_smiles": "COc1c(N2C[C@@H]3CCCN[C@@H]3C2)c(F)cc2c(=O)c(C(=O)O)cn(C3CC3)c12"
+},
+{
+"molecule_chembl_id": "CHEMBL430",
+"pref_name": "GEMIFLOXACIN",
+"canonical_smiles": "CO/N=C1\\CN(c2nc3c(cc2F)c(=O)c(C(=O)O)cn3C2CC2)CC1CN"
+},
+{
+"molecule_chembl_id": "CHEMBL437",
+"pref_name": "SULFATHIAZOLE",
+"canonical_smiles": "Nc1ccc(S(=O)(=O)Nc2nccs2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL438",
+"pref_name": "SULFAMERAZINE",
+"canonical_smiles": "Cc1ccnc(NS(=O)(=O)c2ccc(N)cc2)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL439",
+"pref_name": "SULFADIAZINE",
+"canonical_smiles": "Nc1ccc(S(=O)(=O)Nc2ncccn2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL443",
+"pref_name": "SULFAMETHOXAZOLE",
+"canonical_smiles": "Cc1cc(NS(=O)(=O)c2ccc(N)cc2)no1"
+},
+{
+"molecule_chembl_id": "CHEMBL446",
+"pref_name": "SULFAMETHAZINE",
+"canonical_smiles": "Cc1cc(C)nc(NS(=O)(=O)c2ccc(N)cc2)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL453",
+"pref_name": "SULFISOXAZOLE",
+"canonical_smiles": "Cc1noc(NS(=O)(=O)c2ccc(N)cc2)c1C"
+},
+{
+"molecule_chembl_id": "CHEMBL268869",
+"pref_name": "SULFAMETHOXYPYRIDAZINE",
+"canonical_smiles": "COc1ccc(NS(=O)(=O)c2ccc(N)cc2)nn1"
+},
+{
+"molecule_chembl_id": "CHEMBL267648",
+"pref_name": "PEFLOXACIN",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cc(F)c(N3CCN(C)CC3)cc21"
+},
+{
+"molecule_chembl_id": "CHEMBL528",
+"pref_name": "CEFTIZOXIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=CCS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL529",
+"pref_name": "AZITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(O)C[C@@H](C)CN(C)[C@H](C)[C@@H](O)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL530",
+"pref_name": "AMDINOCILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](/N=C/N3CCCCCC3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL532",
+"pref_name": "ERYTHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(O)C[C@@H](C)C(=O)[C@H](C)[C@@H](O)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL277100",
+"pref_name": "TEMAFLOXACIN",
+"canonical_smiles": "CC1CN(c2cc3c(cc2F)c(=O)c(C(=O)O)cn3-c2ccc(F)cc2F)CCN1"
+},
+{
+"molecule_chembl_id": "CHEMBL273348",
+"pref_name": "TOSUFLOXACIN",
+"canonical_smiles": "NC1CCN(c2nc3c(cc2F)c(=O)c(C(=O)O)cn3-c2ccc(F)cc2F)C1"
+},
+{
+"molecule_chembl_id": "CHEMBL15413",
+"pref_name": "FLOMOXEF",
+"canonical_smiles": "CO[C@@]1(NC(=O)CSC(F)F)C(=O)N2C(C(=O)O)=C(CSc3nnnn3CCO)CO[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL561",
+"pref_name": "LOMEFLOXACIN",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cc(F)c(N3CCNC(C)C3)c(F)c21"
+},
+{
+"molecule_chembl_id": "CHEMBL572",
+"pref_name": "NITROFURANTOIN",
+"canonical_smiles": "O=C1CN(/N=C/c2ccc([N+](=O)[O-])o2)C(=O)N1"
+},
+{
+"molecule_chembl_id": "CHEMBL575",
+"pref_name": "METHICILLIN",
+"canonical_smiles": "COc1cccc(OC)c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL583",
+"pref_name": "GREPAFLOXACIN",
+"canonical_smiles": "Cc1c(F)c(N2CCNC(C)C2)cc2c1c(=O)c(C(=O)O)cn2C1CC1"
+},
+{
+"molecule_chembl_id": "CHEMBL615",
+"pref_name": "PENICILLIN V",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)COc3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL617",
+"pref_name": "CEPHALOTHIN",
+"canonical_smiles": "CC(=O)OCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)Cc3cccs3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL126",
+"pref_name": "LINEZOLID",
+"canonical_smiles": "CC(=O)NC[C@H]1CN(c2ccc(N3CCOCC3)c(F)c2)C(=O)O1"
+},
+{
+"molecule_chembl_id": "CHEMBL127",
+"pref_name": "MEROPENEM",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)O)=C(S[C@@H]3CN[C@H](C(=O)N(C)C)C3)[C@H](C)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL130",
+"pref_name": "CHLORAMPHENICOL",
+"canonical_smiles": "O=C(N[C@H](CO)[C@H](O)c1ccc([N+](=O)[O-])cc1)C(Cl)Cl"
+},
+{
+"molecule_chembl_id": "CHEMBL137",
+"pref_name": "METRONIDAZOLE",
+"canonical_smiles": "Cc1ncc([N+](=O)[O-])n1CCO"
+},
+{
+"molecule_chembl_id": "CHEMBL700",
+"pref_name": "SULFAPYRIDINE",
+"canonical_smiles": "Nc1ccc(S(=O)(=O)Nc2ccccn2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL702",
+"pref_name": "PIPERACILLIN",
+"canonical_smiles": "CCN1CCN(C(=O)N[C@@H](C(=O)N[C@@H]2C(=O)N3[C@@H]2SC(C)(C)[C@@H]3C(=O)O)c2ccccc2)C(=O)C1=O"
+},
+{
+"molecule_chembl_id": "CHEMBL30116",
+"pref_name": "PIPEMIDIC ACID",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cnc(N3CCNCC3)nc21"
+},
+{
+"molecule_chembl_id": "CHEMBL416755",
+"pref_name": "OXOLINIC ACID",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cc3c(cc21)OCO3"
+},
+{
+"molecule_chembl_id": "CHEMBL31891",
+"pref_name": "BRODIMOPRIM",
+"canonical_smiles": "COc1cc(Cc2cnc(N)nc2N)cc(OC)c1Br"
+},
+{
+"molecule_chembl_id": "CHEMBL285347",
+"pref_name": "BIAPENEM",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)[O-])=C(SC3Cn4cnc[n+]4C3)[C@H](C)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL819",
+"pref_name": "OXACILLIN",
+"canonical_smiles": "Cc1onc(-c2ccccc2)c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL826",
+"pref_name": "ENOXACIN",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cc(F)c(N3CCNCC3)nc21"
+},
+{
+"molecule_chembl_id": "CHEMBL291157",
+"pref_name": "ROSOXACIN",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2ccc(-c3ccncc3)cc21"
+},
+{
+"molecule_chembl_id": "CHEMBL158",
+"pref_name": "AZTREONAM",
+"canonical_smiles": "C[C@H]1[C@H](NC(=O)/C(=N\\OC(C)(C)C(=O)O)c2csc(N)n2)C(=O)N1S(=O)(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL44354",
+"pref_name": "CEFTAZIDIME",
+"canonical_smiles": "CC(C)(O/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[n+]3ccccc3)CS[C@H]12)c1csc(N)n1)C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL850",
+"pref_name": "SPARFLOXACIN",
+"canonical_smiles": "C[C@@H]1CN(c2c(F)c(N)c3c(=O)c(C(=O)O)cn(C4CC4)c3c2F)C[C@H](C)N1"
+},
+{
+"molecule_chembl_id": "CHEMBL262777",
+"pref_name": "VANCOMYCIN",
+"canonical_smiles": "CN[C@H](CC(C)C)C(=O)N[C@H]1C(=O)N[C@@H](CC(N)=O)C(=O)N[C@H]2C(=O)N[C@H]3C(=O)N[C@H](C(=O)N[C@H](C(=O)O)c4cc(O)cc(O)c4-c4cc3ccc4O)[C@H](O)c3ccc(c(Cl)c3)Oc3cc2cc(c3O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O[C@H]2C[C@](C)(N)[C@H](O)[C@H](C)O2)Oc2ccc(cc2Cl)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL295619",
+"pref_name": "RUFLOXACIN",
+"canonical_smiles": "CN1CCN(c2c(F)cc3c(=O)c(C(=O)O)cn4c3c2SCC4)CC1"
+},
+{
+"molecule_chembl_id": "CHEMBL891",
+"pref_name": "CLOXACILLIN",
+"canonical_smiles": "Cc1onc(-c2ccccc2Cl)c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL893",
+"pref_name": "DICLOXACILLIN",
+"canonical_smiles": "Cc1onc(-c2c(Cl)cccc2Cl)c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL161",
+"pref_name": "CEFTRIAXONE",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3nc(=O)c(O)nn3C)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL927",
+"pref_name": "CEFDINIR",
+"canonical_smiles": "C=CC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)/C(=N\\O)c3csc(N)n3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL62193",
+"pref_name": "SULFADIMETHOXINE",
+"canonical_smiles": "COc1cc(NS(=O)(=O)c2ccc(N)cc2)nc(OC)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL65794",
+"pref_name": "CEFPIROME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[n+]3cccc4c3CCC4)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL996",
+"pref_name": "CEFOXITIN",
+"canonical_smiles": "CO[C@@]1(NC(=O)Cc2cccs2)C(=O)N2C(C(=O)O)=C(COC(N)=O)CS[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL74632",
+"pref_name": "MOXALACTAM",
+"canonical_smiles": "CO[C@@]1(NC(=O)C(C(=O)O)c2ccc(O)cc2)C(=O)N2C(C(=O)O)=C(CSc3nnnn3C)CO[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL311350",
+"pref_name": "PIROMIDIC ACID",
+"canonical_smiles": "CCn1cc(C(=O)O)c(=O)c2cnc(N3CCCC3)nc21"
+},
+{
+"molecule_chembl_id": "CHEMBL316157",
+"pref_name": "CEPHALORIDINE",
+"canonical_smiles": "O=C(Cc1cccs1)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[n+]3ccccc3)CS[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1082",
+"pref_name": "AMOXICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccc(O)cc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1109",
+"pref_name": "SULFAPHENAZOLE",
+"canonical_smiles": "Nc1ccc(S(=O)(=O)Nc2ccnn2-c2ccccc2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1136",
+"pref_name": "TELITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)C(=O)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(OC)C[C@@H](C)C(=O)[C@H](C)[C@H]2N(CCCCn3cnc(-c4cccnc4)c3)C(=O)O[C@]12C"
+},
+{
+"molecule_chembl_id": "CHEMBL1146",
+"pref_name": "CEFAMANDOLE",
+"canonical_smiles": "Cn1nnnc1SCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](O)c3ccccc3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL1167",
+"pref_name": "SPECTINOMYCIN",
+"canonical_smiles": "CN[C@@H]1[C@H](O)[C@H](NC)[C@H]2O[C@@]3(O)C(=O)C[C@@H](C)O[C@H]3O[C@@H]2[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1191",
+"pref_name": "SULFAMETHIZOLE",
+"canonical_smiles": "Cc1nnc(NS(=O)(=O)c2ccc(N)cc2)s1"
+},
+{
+"molecule_chembl_id": "CHEMBL1208",
+"pref_name": "CINOXACIN",
+"canonical_smiles": "CCn1nc(C(=O)O)c(=O)c2cc3c(cc21)OCO3"
+},
+{
+"molecule_chembl_id": "CHEMBL1214",
+"pref_name": "CARBENICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)C(C(=O)O)c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL134561",
+"pref_name": "ICLAPRIM",
+"canonical_smiles": "COc1cc(Cc2cnc(N)nc2N)c2c(c1OC)OC(C1CC1)C=C2"
+},
+{
+"molecule_chembl_id": "CHEMBL1220",
+"pref_name": "TINIDAZOLE",
+"canonical_smiles": "CCS(=O)(=O)CCn1c([N+](=O)[O-])cnc1C"
+},
+{
+"molecule_chembl_id": "CHEMBL422648",
+"pref_name": "PRULIFLOXACIN",
+"canonical_smiles": "Cc1oc(=O)oc1CN1CCN(c2cc3c(cc2F)c(=O)c(C(=O)O)c2n3C(C)S2)CC1"
+},
+{
+"molecule_chembl_id": "CHEMBL1296",
+"pref_name": "CEFOTIAM",
+"canonical_smiles": "CN(C)CCn1nnnc1SCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)Cc3csc(N)n3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL1359",
+"pref_name": "ERTAPENEM",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)O)=C(S[C@@H]3CN[C@H](C(=O)Nc4cccc(C(=O)O)c4)C3)[C@H](C)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL174",
+"pref_name": "AMPICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL190561",
+"pref_name": "LEVONADIFLOXACIN",
+"canonical_smiles": "C[C@H]1CCc2c(N3CCC(O)CC3)c(F)cc3c(=O)c(C(=O)O)cn1c23"
+},
+{
+"molecule_chembl_id": "CHEMBL370252",
+"pref_name": "FLUMEQUINE",
+"canonical_smiles": "CC1CCc2cc(F)cc3c(=O)c(C(=O)O)cn1c23"
+},
+{
+"molecule_chembl_id": "CHEMBL176",
+"pref_name": "BEKANAMYCIN",
+"canonical_smiles": "NC[C@H]1O[C@H](O[C@H]2[C@H](O)[C@@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](N)[C@H]3O)[C@H](N)C[C@@H]2N)[C@H](N)[C@@H](O)[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1384",
+"pref_name": "KANAMYCIN",
+"canonical_smiles": "NC[C@H]1O[C@H](O[C@H]2[C@H](O)[C@@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](N)[C@H]3O)[C@H](N)C[C@@H]2N)[C@H](O)[C@@H](O)[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL177",
+"pref_name": "AMIKACIN",
+"canonical_smiles": "NCC[C@H](O)C(=O)N[C@@H]1C[C@H](N)[C@@H](O[C@H]2O[C@H](CN)[C@@H](O)[C@H](O)[C@H]2O)[C@H](O)[C@H]1O[C@H]1O[C@H](CO)[C@@H](O)[C@H](N)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL372795",
+"pref_name": "STREPTOMYCIN",
+"canonical_smiles": "CN[C@@H]1[C@H](O[C@H]2[C@H](O[C@H]3[C@H](O)[C@@H](O)[C@H](N=C(N)N)[C@@H](O)[C@@H]3N=C(N)N)O[C@@H](C)[C@]2(O)C=O)O[C@@H](CO)[C@H](O)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL215303",
+"pref_name": "GARENOXACIN",
+"canonical_smiles": "C[C@H]1NCc2cc(-c3ccc4c(=O)c(C(=O)O)cn(C5CC5)c4c3OC(F)F)ccc21"
+},
+{
+"molecule_chembl_id": "CHEMBL426926",
+"pref_name": "ARBEKACIN",
+"canonical_smiles": "NCC[C@H](O)C(=O)N[C@@H]1C[C@H](N)[C@@H](O[C@H]2O[C@H](CN)CC[C@H]2N)[C@H](O)[C@H]1O[C@H]1O[C@H](CO)[C@@H](O)[C@H](N)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL221886",
+"pref_name": "SISOMICIN",
+"canonical_smiles": "CN[C@@H]1[C@@H](O)[C@@H](O[C@@H]2[C@@H](O)[C@H](O[C@H]3OC(CN)=CC[C@H]3N)[C@@H](N)C[C@H]2N)OC[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1434",
+"pref_name": "MINOCYCLINE",
+"canonical_smiles": "CN(C)c1ccc(O)c2c1C[C@H]1C[C@H]3[C@H](N(C)C)C(O)=C(C(N)=O)C(=O)[C@@]3(O)C(O)=C1C2=O"
+},
+{
+"molecule_chembl_id": "CHEMBL1435",
+"pref_name": "CEFAZOLIN",
+"canonical_smiles": "Cc1nnc(SCC2=C(C(=O)O)N3C(=O)[C@@H](NC(=O)Cn4cnnn4)[C@H]3SC2)s1"
+},
+{
+"molecule_chembl_id": "CHEMBL1436",
+"pref_name": "CEFUROXIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(COC(N)=O)CS[C@H]12)c1ccco1"
+},
+{
+"molecule_chembl_id": "CHEMBL222645",
+"pref_name": "FLOXACILLIN",
+"canonical_smiles": "Cc1onc(-c2c(F)cccc2Cl)c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL186",
+"pref_name": "CEFEPIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[N+]3(C)CCCC3)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL374975",
+"pref_name": "FUSIDIC ACID",
+"canonical_smiles": "CC(=O)O[C@H]1C[C@@]2(C)[C@@H](C[C@@H](O)[C@H]3[C@@]4(C)CC[C@@H](O)[C@@H](C)[C@@H]4CC[C@@]32C)/C1=C(\\CCC=C(C)C)C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL221572",
+"pref_name": "RIBOSTAMYCIN",
+"canonical_smiles": "NC[C@H]1O[C@H](O[C@H]2[C@H](O[C@@H]3O[C@H](CO)[C@@H](O)[C@H]3O)[C@@H](O)[C@H](N)C[C@@H]2N)[C@H](N)[C@@H](O)[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL376140",
+"pref_name": "TIGECYCLINE",
+"canonical_smiles": "CN(C)c1cc(NC(=O)CNC(C)(C)C)c(O)c2c1C[C@H]1C[C@H]3[C@H](N(C)C)C(O)=C(C(N)=O)C(=O)[C@@]3(O)C(O)=C1C2=O"
+},
+{
+"molecule_chembl_id": "CHEMBL1440",
+"pref_name": "TETRACYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(N)=O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)cccc4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL224436",
+"pref_name": "JOSAMYCIN",
+"canonical_smiles": "CO[C@@H]1[C@@H](O[C@@H]2O[C@H](C)[C@@H](O[C@H]3C[C@@](C)(O)[C@@H](OC(=O)CC(C)C)[C@H](C)O3)[C@H](N(C)C)[C@H]2O)[C@@H](CC=O)C[C@@H](C)[C@@H](O)/C=C/C=C/C[C@@H](C)OC(=O)C[C@H]1OC(C)=O"
+},
+{
+"molecule_chembl_id": "CHEMBL387675",
+"pref_name": "DAPTOMYCIN",
+"canonical_smiles": "CCCCCCCCCC(=O)N[C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](CC(N)=O)C(=O)N[C@@H](CC(=O)O)C(=O)N[C@@H]1C(=O)NCC(=O)N[C@@H](CCCN)C(=O)N[C@@H](CC(=O)O)C(=O)N[C@H](C)C(=O)N[C@@H](CC(=O)O)C(=O)NCC(=O)N[C@H](CO)C(=O)N[C@@H]([C@H](C)CC(=O)O)C(=O)N[C@@H](CC(=O)c2ccccc2N)C(=O)O[C@@H]1C"
+},
+{
+"molecule_chembl_id": "CHEMBL1443",
+"pref_name": "NAFCILLIN",
+"canonical_smiles": "CCOc1ccc2ccccc2c1C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1447",
+"pref_name": "LINCOMYCIN",
+"canonical_smiles": "CCC[C@@H]1C[C@@H](C(=O)N[C@@H]([C@H]2O[C@H](SC)[C@H](O)[C@@H](O)[C@H]2O)[C@@H](C)O)N(C)C1"
+},
+{
+"molecule_chembl_id": "CHEMBL1449",
+"pref_name": "TICARCILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](C(=O)O)c3ccsc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL240163",
+"pref_name": "PAZUFLOXACIN",
+"canonical_smiles": "C[C@H]1COc2c(C3(N)CC3)c(F)cc3c(=O)c(C(=O)O)cn1c23"
+},
+{
+"molecule_chembl_id": "CHEMBL249837",
+"pref_name": "METHACYCLINE",
+"canonical_smiles": "C=C1c2cccc(O)c2C(=O)C2=C(O)[C@]3(O)C(=O)C(C(N)=O)=C(O)[C@@H](N(C)C)[C@@H]3[C@@H](O)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1517",
+"pref_name": "OXYTETRACYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(N)=O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)cccc4[C@@](C)(O)[C@H]3[C@H](O)[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1537",
+"pref_name": "AZLOCILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](NC(=O)N3CCNC3=O)c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1541",
+"pref_name": "CEFIXIME",
+"canonical_smiles": "C=CC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)/C(=N\\OCC(=O)O)c3csc(N)n3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL272080",
+"pref_name": "ISEPAMICIN",
+"canonical_smiles": "CN[C@@H]1[C@@H](O)[C@@H](O[C@@H]2[C@@H](O)[C@H](O[C@H]3O[C@H](CN)[C@@H](O)[C@H](O)[C@H]3O)[C@@H](N)C[C@H]2NC(=O)[C@@H](O)CN)OC[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL404520",
+"pref_name": "CHLORTETRACYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(N)=O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)ccc(Cl)c4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL506110",
+"pref_name": "SULTAMICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)OCOC(=O)[C@@H]1N2C(=O)C[C@H]2S(=O)(=O)C1(C)C"
+},
+{
+"molecule_chembl_id": "CHEMBL1572",
+"pref_name": "NETILMICIN",
+"canonical_smiles": "CCN[C@@H]1C[C@H](N)[C@@H](O[C@H]2OC(CN)=CC[C@H]2N)[C@H](O)[C@H]1O[C@H]1OC[C@](C)(O)[C@H](NC)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1583",
+"pref_name": "BACAMPICILLIN",
+"canonical_smiles": "CCOC(=O)OC(C)OC(=O)[C@@H]1N2C(=O)[C@@H](NC(=O)[C@H](N)c3ccccc3)[C@H]2SC1(C)C"
+},
+{
+"molecule_chembl_id": "CHEMBL1591",
+"pref_name": "DEMECLOCYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(N)=O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)ccc(Cl)c4[C@@H](O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1596",
+"pref_name": "CARBENICILLIN INDANYL",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)C(C(=O)Oc3ccc4c(c3)CCC4)c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1599",
+"pref_name": "CEPHAPIRIN",
+"canonical_smiles": "CC(=O)OCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)CSc3ccncc3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL1601",
+"pref_name": "CEFONICID",
+"canonical_smiles": "O=C(O)C1=C(CSc2nnnn2CS(=O)(=O)O)CS[C@@H]2[C@H](NC(=O)[C@H](O)c3ccccc3)C(=O)N12"
+},
+{
+"molecule_chembl_id": "CHEMBL1604",
+"pref_name": "CEPHRADINE",
+"canonical_smiles": "CC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](N)C3=CCC=CC3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL1605",
+"pref_name": "CEFTIBUTEN",
+"canonical_smiles": "Nc1nc(/C(=C/CC(=O)O)C(=O)N[C@@H]2C(=O)N3C(C(=O)O)=CCS[C@H]23)cs1"
+},
+{
+"molecule_chembl_id": "CHEMBL474579",
+"pref_name": "CEFOTETAN",
+"canonical_smiles": "CO[C@@]1(NC(=O)C2SC(=C(C(N)=O)C(=O)O)S2)C(=O)N2C(C(=O)O)=C(CSc3nnnn3C)CS[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL1609",
+"pref_name": "MANDELIC ACID",
+"canonical_smiles": "O=C(O)C(O)c1ccccc1"
+},
+{
+"molecule_chembl_id": "CHEMBL491571",
+"pref_name": "DORIPENEM",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)O)=C(S[C@@H]3CN[C@H](CNS(N)(=O)=O)C3)[C@H](C)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL444963",
+"pref_name": "MIDECAMYCIN",
+"canonical_smiles": "CCC(=O)O[C@@H]1CC(=O)O[C@H](C)C/C=C/C=C/[C@H](O)[C@H](C)C[C@H](CC=O)[C@H](O[C@@H]2O[C@H](C)[C@@H](O[C@H]3C[C@@](C)(O)[C@@H](OC(=O)CC)[C@H](C)O3)[C@H](N(C)C)[C@H]2O)[C@H]1OC"
+},
+{
+"molecule_chembl_id": "CHEMBL1644",
+"pref_name": "CEFADROXIL",
+"canonical_smiles": "CC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](N)c3ccc(O)cc3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL507870",
+"pref_name": "TELAVANCIN",
+"canonical_smiles": "CCCCCCCCCCNCCN[C@@]1(C)C[C@H](O[C@H]2[C@H](Oc3c4cc5cc3Oc3ccc(cc3Cl)[C@@H](O)[C@@H](NC(=O)[C@@H](CC(C)C)NC)C(=O)N[C@@H](CC(N)=O)C(=O)N[C@H]5C(=O)N[C@H]3C(=O)N[C@H](C(=O)N[C@H](C(=O)O)c5cc(O)c(CNCP(=O)(O)O)c(O)c5-c5cc3ccc5O)[C@H](O)c3ccc(c(Cl)c3)O4)O[C@H](CO)[C@@H](O)[C@@H]2O)O[C@@H](C)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL501122",
+"pref_name": "CEFTAROLINE FOSAMIL",
+"canonical_smiles": "CCO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(Sc3nc(-c4cc[n+](C)cc4)cs3)CS[C@H]12)c1nsc(NP(=O)(O)O)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1672",
+"pref_name": "CEFPODOXIME",
+"canonical_smiles": "COCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)/C(=N\\OC)c3csc(N)n3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL507674",
+"pref_name": "CEFOPERAZONE",
+"canonical_smiles": "CCN1CCN(C(=O)N[C@@H](C(=O)N[C@@H]2C(=O)N3C(C(=O)O)=C(CSc4nnnn4C)CS[C@H]23)c2ccc(O)cc2)C(=O)C1=O"
+},
+{
+"molecule_chembl_id": "CHEMBL485696",
+"pref_name": "SULFISOMIDINE",
+"canonical_smiles": "Cc1cc(NS(=O)(=O)c2ccc(N)cc2)nc(C)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL485940",
+"pref_name": "SULFAMETOMIDINE",
+"canonical_smiles": "COc1cc(NS(=O)(=O)c2ccc(N)cc2)nc(C)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1730",
+"pref_name": "CEFOTAXIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(COC(C)=O)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1731",
+"pref_name": "MEZLOCILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](NC(=O)N3CCN(S(C)(=O)=O)C3=O)c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL560976",
+"pref_name": "DIBEKACIN",
+"canonical_smiles": "NC[C@@H]1CC[C@@H](N)[C@@H](O[C@H]2[C@H](O)[C@@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](N)[C@H]3O)[C@H](N)C[C@@H]2N)O1"
+},
+{
+"molecule_chembl_id": "CHEMBL564085",
+"pref_name": "TROLEANDOMYCIN",
+"canonical_smiles": "CO[C@H]1C[C@H](O[C@H]2[C@H](C)[C@@H](O[C@@H]3O[C@H](C)C[C@H](N(C)C)[C@H]3OC(C)=O)[C@@H](C)C[C@@]3(CO3)C(=O)[C@H](C)[C@@H](OC(C)=O)[C@@H](C)[C@@H](C)OC(=O)[C@@H]2C)O[C@@H](C)[C@@H]1OC(C)=O"
+},
+{
+"molecule_chembl_id": "CHEMBL556262",
+"pref_name": "FAROPENEM",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)O)=C([C@H]3CCCO3)S[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1741",
+"pref_name": "CLARITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(OC)C[C@@H](C)C(=O)[C@H](C)[C@@H](O)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL582912",
+"pref_name": "CEFCAPENE",
+"canonical_smiles": "CC/C=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(COC(N)=O)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1743",
+"pref_name": "CEFDITOREN",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(/C=C\\c3scnc3C)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1747",
+"pref_name": "TOBRAMYCIN",
+"canonical_smiles": "NC[C@H]1O[C@H](O[C@H]2[C@H](O)[C@@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](N)[C@H]3O)[C@H](N)C[C@@H]2N)[C@H](N)C[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1753",
+"pref_name": "CLINDAMYCIN",
+"canonical_smiles": "CCC[C@@H]1C[C@@H](C(=O)N[C@@H]([C@H]2O[C@H](SC)[C@H](O)[C@@H](O)[C@H]2O)[C@H](C)Cl)N(C)C1"
+},
+{
+"molecule_chembl_id": "CHEMBL1757",
+"pref_name": "FOSFOMYCIN",
+"canonical_smiles": "C[C@@H]1O[C@@H]1P(=O)(O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL606258",
+"pref_name": "OLEANDOMYCIN",
+"canonical_smiles": "CO[C@H]1C[C@H](O[C@H]2[C@H](C)[C@@H](O[C@@H]3O[C@H](C)C[C@H](N(C)C)[C@H]3O)[C@@H](C)C[C@@]3(CO3)C(=O)[C@H](C)[C@@H](O)[C@@H](C)[C@@H](C)OC(=O)[C@@H]2C)O[C@@H](C)[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1091024",
+"pref_name": "MIOCAMYCIN",
+"canonical_smiles": "CCC(=O)O[C@@H]1CC(=O)O[C@H](C)C/C=C/C=C/[C@H](OC(C)=O)[C@H](C)C[C@H](CC=O)[C@H](O[C@@H]2O[C@H](C)[C@@H](O[C@H]3C[C@@](C)(OC(C)=O)[C@@H](OC(=O)CC)[C@H](C)O3)[C@H](N(C)C)[C@H]2O)[C@H]1OC"
+},
+{
+"molecule_chembl_id": "CHEMBL1095284",
+"pref_name": "CEFATRIZINE",
+"canonical_smiles": "N[C@@H](C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3c[nH]nn3)CS[C@H]12)c1ccc(O)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1200359",
+"pref_name": "SULFAMETER",
+"canonical_smiles": "COc1cnc(NS(=O)(=O)c2ccc(N)cc2)nc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1200544",
+"pref_name": "CEPHALEXIN",
+"canonical_smiles": "CC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](N)c3ccccc3)[C@H]2SC1.O"
+},
+{
+"molecule_chembl_id": "CHEMBL1200558",
+"pref_name": "BACITRACIN",
+"canonical_smiles": "CC[C@H](C)[C@H](N)C1=N[C@H](C(=O)N[C@@H](CC(C)C)C(=O)N[C@H](CCC(=O)O)C(=O)N[C@H](C(=O)N[C@H]2CCCCNC(=O)[C@H](CC(N)=O)NC(=O)[C@@H](CC(=O)O)NC(=O)[C@H](Cc3cnc[nH]3)NC(=O)[C@@H](Cc3ccccc3)NC(=O)[C@H]([C@@H](C)CC)NC(=O)[C@@H](CCCN)NC2=O)[C@@H](C)CC)CS1"
+},
+{
+"molecule_chembl_id": "CHEMBL1200610",
+"pref_name": "LORACARBEF",
+"canonical_smiles": "N[C@@H](C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(Cl)CC[C@H]12)c1ccccc1.O"
+},
+{
+"molecule_chembl_id": "CHEMBL1200699",
+"pref_name": "DOXYCYCLINE",
+"canonical_smiles": "C[C@H]1c2cccc(O)c2C(=O)C2=C(O)[C@]3(O)C(=O)C(C(N)=O)=C(O)[C@@H](N(C)C)[C@@H]3[C@@H](O)[C@@H]21.O"
+},
+{
+"molecule_chembl_id": "CHEMBL1201018",
+"pref_name": "CEFACLOR",
+"canonical_smiles": "N[C@@H](C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(Cl)CS[C@H]12)c1ccccc1.O"
+},
+{
+"molecule_chembl_id": "CHEMBL1201046",
+"pref_name": "CEFORANIDE",
+"canonical_smiles": "NCc1ccccc1CC(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3nnnn3CC(=O)O)CS[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1201116",
+"pref_name": "HETACILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](N3C(=O)[C@@H](c4ccccc4)NC3(C)C)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1201195",
+"pref_name": "CEFMETAZOLE",
+"canonical_smiles": "CO[C@@]1(NC(=O)CSCC#N)C(=O)N2C(C(=O)O)=C(CSc3nnnn3C)CS[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL1201204",
+"pref_name": "CEFPIRAMIDE",
+"canonical_smiles": "Cc1cc(O)c(C(=O)N[C@@H](C(=O)N[C@@H]2C(=O)N3C(C(=O)O)=C(CSc4nnnn4C)CS[C@H]23)c2ccc(O)cc2)cn1"
+},
+{
+"molecule_chembl_id": "CHEMBL1201224",
+"pref_name": "CEFMENOXIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3nnnn3C)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1201270",
+"pref_name": "METHENAMINE",
+"canonical_smiles": "C1N2CN3CN1CN(C2)C3"
+},
+{
+"molecule_chembl_id": "CHEMBL1213456",
+"pref_name": "NEMONOXACIN",
+"canonical_smiles": "COc1c(N2C[C@@H](C)C[C@H](N)C2)ccc2c(=O)c(C(=O)O)cn(C3CC3)c12"
+},
+{
+"molecule_chembl_id": "CHEMBL1214185",
+"pref_name": "ROXITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(O)C[C@@H](C)/C(=N\\OCOCCOC)[C@H](C)[C@@H](O)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1232510",
+"pref_name": "SOLITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@@](C)(F)C(=O)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(OC)C[C@@H](C)C(=O)[C@H](C)[C@H]2N(CCCCn3cc(-c4cccc(N)c4)nn3)C(=O)O[C@]12C"
+},
+{
+"molecule_chembl_id": "CHEMBL1236282",
+"pref_name": "THIAMPHENICOL",
+"canonical_smiles": "CS(=O)(=O)c1ccc([C@@H](O)[C@@H](CO)NC(=O)C(Cl)Cl)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1237046",
+"pref_name": "ROLITETRACYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(=O)NCN2CCCC2)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)cccc4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1237072",
+"pref_name": "DIRITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(O)C[C@@H](C)[C@@H]2N[C@@H](COCCOC)O[C@H]([C@H]2C)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1256734",
+"pref_name": "SULBENICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)C(c3ccccc3)S(=O)(=O)O)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1257051",
+"pref_name": "TEDIZOLID",
+"canonical_smiles": "Cn1nnc(-c2ccc(-c3ccc(N4C[C@H](CO)OC4=O)cc3F)cn2)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1276310",
+"pref_name": "TEMOCILLIN",
+"canonical_smiles": "CO[C@@]1(NC(=O)C(C(=O)O)c2ccsc2)C(=O)N2[C@@H](C(=O)O)C(C)(C)S[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL1276342",
+"pref_name": "CEFMINOX",
+"canonical_smiles": "CO[C@@]1(NC(=O)CSC[C@@H](N)C(=O)O)C(=O)N2C(C(=O)O)=C(CSc3nnnn3C)CS[C@@H]21"
+},
+{
+"molecule_chembl_id": "CHEMBL1276663",
+"pref_name": "CEFOZOPRAN",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[n+]3ccn4ncccc43)CS[C@H]12)c1nsc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL1318150",
+"pref_name": "ASPOXICILLIN",
+"canonical_smiles": "CNC(=O)C[C@@H](N)C(=O)N[C@@H](C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O)c1ccc(O)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1396177",
+"pref_name": "PENICILLIN V BENZATHINE",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)COc3ccccc3)C(=O)N2[C@H]1C(=O)O.CC1(C)S[C@@H]2[C@H](NC(=O)COc3ccccc3)C(=O)N2[C@H]1C(=O)O.c1ccc(CNCCNCc2ccccc2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1449676",
+"pref_name": "ORNIDAZOLE",
+"canonical_smiles": "Cc1ncc([N+](=O)[O-])n1CC(O)CCl"
+},
+{
+"molecule_chembl_id": "CHEMBL1454910",
+"pref_name": "NITROXOLINE",
+"canonical_smiles": "O=[N+]([O-])c1ccc(O)c2ncccc12"
+},
+{
+"molecule_chembl_id": "CHEMBL1476605",
+"pref_name": "CLOFOCTOL",
+"canonical_smiles": "CC(C)(C)CC(C)(C)c1ccc(O)c(Cc2ccc(Cl)cc2Cl)c1"
+},
+{
+"molecule_chembl_id": "CHEMBL1525826",
+"pref_name": "SULFALENE",
+"canonical_smiles": "COc1nccnc1NS(=O)(=O)c1ccc(N)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1614637",
+"pref_name": "PHENETHICILLIN",
+"canonical_smiles": "CC(Oc1ccccc1)C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1614658",
+"pref_name": "CARUMONAM",
+"canonical_smiles": "NC(=O)OC[C@@H]1[C@H](NC(=O)/C(=N\\OCC(=O)O)c2csc(N)n2)C(=O)N1S(=O)(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1619785",
+"pref_name": "TALAMPICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)OC1OC(=O)c2ccccc21"
+},
+{
+"molecule_chembl_id": "CHEMBL1628385",
+"pref_name": "PROCAINE BENZYLPENICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O.CCN(CC)CCOC(=O)c1ccc(N)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1650559",
+"pref_name": "PLAZOMICIN",
+"canonical_smiles": "CN[C@@H]1[C@@H](O)[C@@H](O[C@@H]2[C@@H](O)[C@H](O[C@H]3OC(CNCCO)=CC[C@H]3N)[C@@H](N)C[C@H]2NC(=O)[C@@H](O)CCN)OC[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL1650818",
+"pref_name": "AMDINOCILLIN PIVOXIL",
+"canonical_smiles": "CC(C)(C)C(=O)OCOC(=O)[C@@H]1N2C(=O)[C@@H](/N=C/N3CCCCCC3)[C@H]2SC1(C)C"
+},
+{
+"molecule_chembl_id": "CHEMBL1652606",
+"pref_name": "CEFTOBIPROLE MEDOCARIL FREE ACID",
+"canonical_smiles": "Cc1oc(=O)oc1COC(=O)N1CC[C@@H](N2CC/C(=C\\C3=C(C(=O)O)N4C(=O)[C@@H](NC(=O)/C(=N/O)c5nsc(N)n5)[C@H]4SC3)C2=O)C1"
+},
+{
+"molecule_chembl_id": "CHEMBL1688530",
+"pref_name": "ORITAVANCIN",
+"canonical_smiles": "CN[C@H](CC(C)C)C(=O)N[C@H]1C(=O)N[C@@H](CC(N)=O)C(=O)N[C@H]2C(=O)N[C@H]3C(=O)N[C@H](C(=O)N[C@H](C(=O)O)c4cc(O)cc(O)c4-c4cc3ccc4O)[C@H](O[C@H]3C[C@](C)(N)[C@@H](O)[C@H](C)O3)c3ccc(c(Cl)c3)Oc3cc2cc(c3O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O[C@H]2C[C@](C)(NCc3ccc(-c4ccc(Cl)cc4)cc3)[C@@H](O)[C@H](C)O2)Oc2ccc(cc2Cl)[C@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL1689772",
+"pref_name": "OMADACYCLINE",
+"canonical_smiles": "CN(C)c1cc(CNCC(C)(C)C)c(O)c2c1C[C@H]1C[C@H]3[C@H](N(C)C)C(O)=C(C(N)=O)C(=O)[C@@]3(O)C(O)=C1C2=O"
+},
+{
+"molecule_chembl_id": "CHEMBL1697763",
+"pref_name": "NIFURTOINOL",
+"canonical_smiles": "O=C1CN(/N=C/c2ccc([N+](=O)[O-])o2)C(=O)N1CO"
+},
+{
+"molecule_chembl_id": "CHEMBL1697829",
+"pref_name": "CEFTEZOLE",
+"canonical_smiles": "O=C(Cn1cnnn1)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3nncs3)CS[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL1908324",
+"pref_name": "METAMPICILLIN",
+"canonical_smiles": "C=N[C@@H](C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O)c1ccccc1"
+},
+{
+"molecule_chembl_id": "CHEMBL1908350",
+"pref_name": "ROKITAMYCIN",
+"canonical_smiles": "CCCC(=O)O[C@H]1[C@H](C)O[C@@H](O[C@H]2[C@H](N(C)C)[C@@H](O)[C@H](O[C@H]3[C@@H](CC=O)C[C@@H](C)[C@@H](O)/C=C/C=C/C[C@@H](C)OC(=O)C[C@@H](O)[C@@H]3OC)O[C@@H]2C)C[C@@]1(C)OC(=O)CC"
+},
+{
+"molecule_chembl_id": "CHEMBL1908372",
+"pref_name": "CEFBUPERAZONE",
+"canonical_smiles": "CCN1CCN(C(=O)N[C@@H](C(=O)N[C@]2(OC)C(=O)N3C(C(=O)O)=C(CSc4nnnn4C)CS[C@@H]32)[C@H](C)O)C(=O)C1=O"
+},
+{
+"molecule_chembl_id": "CHEMBL1951095",
+"pref_name": "ERAVACYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(N)=O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)c(NC(=O)CN5CCCC5)cc(F)c4C[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL2103764",
+"pref_name": "CEFETAMET",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(C)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL2103929",
+"pref_name": "LYMECYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(=O)NCNCCCC[C@H](N)C(=O)O)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)cccc4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL2104266",
+"pref_name": "EPICILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)C3=CCC=CC3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL2104519",
+"pref_name": "XIBORNOL",
+"canonical_smiles": "Cc1cc(O)c(C2CC3CCC2(C)C3(C)C)cc1C"
+},
+{
+"molecule_chembl_id": "CHEMBL2104921",
+"pref_name": "SULFAMAZONE",
+"canonical_smiles": "COc1ccc(NS(=O)(=O)c2ccc(NC(c3c(C)n(C)n(-c4ccccc4)c3=O)S(=O)(=O)O)cc2)nn1"
+},
+{
+"molecule_chembl_id": "CHEMBL2105399",
+"pref_name": "SULFAMOXOLE",
+"canonical_smiles": "Cc1nc(NS(=O)(=O)c2ccc(N)cc2)oc1C"
+},
+{
+"molecule_chembl_id": "CHEMBL2105499",
+"pref_name": "SULFAPERIN",
+"canonical_smiles": "Cc1cnc(NS(=O)(=O)c2ccc(N)cc2)nc1"
+},
+{
+"molecule_chembl_id": "CHEMBL2105612",
+"pref_name": "PROPICILLIN",
+"canonical_smiles": "CCC(Oc1ccccc1)C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL2105637",
+"pref_name": "DELAFLOXACIN",
+"canonical_smiles": "Nc1nc(-n2cc(C(=O)O)c(=O)c3cc(F)c(N4CC(O)C4)c(Cl)c32)c(F)cc1F"
+},
+{
+"molecule_chembl_id": "CHEMBL2105907",
+"pref_name": "AZIDOCILLIN",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N=[N+]=[N-])c3ccccc3)C(=O)N2[C@H]1C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL2105953",
+"pref_name": "CEFTERAM",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(Cn3nnc(C)n3)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL2106071",
+"pref_name": "CLOMOCYCLINE",
+"canonical_smiles": "CN(C)[C@@H]1C(O)=C(C(=O)NCO)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)ccc(Cl)c4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL2106403",
+"pref_name": "FLURITHROMYCIN",
+"canonical_smiles": "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2O)[C@](C)(O)C[C@](C)(F)C(=O)[C@H](C)[C@@H](O)[C@]1(C)O"
+},
+{
+"molecule_chembl_id": "CHEMBL2106548",
+"pref_name": "CLOMETOCILLIN",
+"canonical_smiles": "COC(C(=O)N[C@@H]1C(=O)N2[C@@H]1SC(C)(C)[C@@H]2C(=O)O)c1ccc(Cl)c(Cl)c1"
+},
+{
+"molecule_chembl_id": "CHEMBL2106988",
+"pref_name": "PENAMECILLIN",
+"canonical_smiles": "CC(=O)OCOC(=O)[C@@H]1N2C(=O)[C@@H](NC(=O)Cc3ccccc3)[C@H]2SC1(C)C"
+},
+{
+"molecule_chembl_id": "CHEMBL2107486",
+"pref_name": "TEBIPENEM PIVOXIL",
+"canonical_smiles": "C[C@@H](O)[C@H]1C(=O)N2C(C(=O)OCOC(=O)C(C)(C)C)=C(SC3CN(C4=NCCS4)C3)[C@H](C)[C@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL2107489",
+"pref_name": "SULFATHIOUREA",
+"canonical_smiles": "NC(=S)NS(=O)(=O)c1ccc(N)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL2107636",
+"pref_name": "CEFAZEDONE",
+"canonical_smiles": "Cc1nnc(SCC2=C(C(=O)O)N3C(=O)[C@@H](NC(=O)Cn4cc(Cl)c(=O)c(Cl)c4)[C@H]3SC2)s1"
+},
+{
+"molecule_chembl_id": "CHEMBL2110602",
+"pref_name": "CEPHACETRILE",
+"canonical_smiles": "CC(=O)OCC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)CC#N)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL2303613",
+"pref_name": "CEFODIZIME",
+"canonical_smiles": "CO/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)O)=C(CSc3nc(C)c(CC(=O)O)s3)CS[C@H]12)c1csc(N)n1"
+},
+{
+"molecule_chembl_id": "CHEMBL2364632",
+"pref_name": "SARECYCLINE",
+"canonical_smiles": "CON(C)Cc1ccc(O)c2c1C[C@H]1C[C@H]3[C@H](N(C)C)C(O)=C(C(N)=O)C(=O)[C@@]3(O)C(O)=C1C2=O"
+},
+{
+"molecule_chembl_id": "CHEMBL3137691",
+"pref_name": "QUINUPRISTIN/DALFOPRISTIN",
+"canonical_smiles": "CCN(CC)CCS(=O)(=O)[C@@H]1CCN2C(=O)c3coc(n3)CC(=O)C[C@H](O)/C=C(C)/C=C/CNC(=O)/C=C/[C@@H](C)[C@@H](C(C)C)OC(=O)[C@@H]12.CC[C@H]1NC(=O)[C@@H](NC(=O)c2ncccc2O)[C@@H](C)OC(=O)[C@H](c2ccccc2)NC(=O)[C@@H]2CC(=O)[C@H](CS[C@@H]3CN4CCC3CC4)CN2C(=O)[C@H](Cc2ccc(N(C)C)cc2)N(C)C(=O)[C@@H]2CCCN2C1=O"
+},
+{
+"molecule_chembl_id": "CHEMBL3182343",
+"pref_name": "PIVAMPICILLIN",
+"canonical_smiles": "CC(C)(C)C(=O)OCOC(=O)[C@@H]1N2C(=O)[C@@H](NC(=O)[C@H](N)c3ccccc3)[C@H]2SC1(C)C"
+},
+{
+"molecule_chembl_id": "CHEMBL3186538",
+"pref_name": "CEFROXADINE",
+"canonical_smiles": "COC1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](N)C3=CCC=CC3)[C@H]2SC1"
+},
+{
+"molecule_chembl_id": "CHEMBL3291398",
+"pref_name": "LEFAMULIN",
+"canonical_smiles": "C=C[C@]1(C)C[C@@H](OC(=O)CS[C@@H]2CC[C@@H](N)C[C@H]2O)[C@]2(C)[C@H](C)CC[C@]3(CCC(=O)[C@H]32)[C@@H](C)[C@@H]1O"
+},
+{
+"molecule_chembl_id": "CHEMBL3301669",
+"pref_name": "DALBAVANCIN",
+"canonical_smiles": "CN[C@H]1C(=O)N[C@@H]2Cc3ccc(cc3)Oc3cc4cc(c3O[C@@H]3O[C@H](C(=O)O)[C@@H](O)[C@H](O)[C@H]3NC(=O)CCCCCCCCC(C)C)Oc3ccc(cc3Cl)[C@@H](O)[C@@H]3NC(=O)[C@H](NC(=O)[C@@H]4NC(=O)[C@@H](NC2=O)c2cc(cc(O)c2Cl)Oc2cc1ccc2O)c1ccc(O)c(c1)-c1c(O[C@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]2O)cc(O)cc1[C@@H](C(=O)NCCCN(C)C)NC3=O"
+},
+{
+"molecule_chembl_id": "CHEMBL3317856",
+"pref_name": "GEPOTIDACIN",
+"canonical_smiles": "O=c1ccc2ncc(=O)n3c2n1C[C@H]3CN1CCC(NCc2cc3c(cn2)OCCC3)CC1"
+},
+{
+"molecule_chembl_id": "CHEMBL3351077",
+"pref_name": "CEFSULODIN",
+"canonical_smiles": "NC(=O)c1cc[n+](CC2=C(C(=O)[O-])N3C(=O)[C@@H](NC(=O)[C@@H](c4ccccc4)S(=O)(=O)O)[C@H]3SC2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL3707254",
+"pref_name": "FURAZIDIN",
+"canonical_smiles": "O=C1CN(/N=C/C=C/c2ccc([N+](=O)[O-])o2)C(=O)N1"
+},
+{
+"molecule_chembl_id": "CHEMBL3833378",
+"pref_name": "PENIMEPICYCLINE",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)COc3ccccc3)C(=O)N2[C@H]1C(=O)O.CN(C)[C@@H]1C(O)=C(C(=O)NCN2CCN(CCO)CC2)C(=O)[C@@]2(O)C(O)=C3C(=O)c4c(O)cccc4[C@@](C)(O)[C@H]3C[C@@H]12"
+},
+{
+"molecule_chembl_id": "CHEMBL3989504",
+"pref_name": "SITAFLOXACIN",
+"canonical_smiles": "N[C@@H]1CN(c2c(F)cc3c(=O)c(C(=O)O)cn([C@@H]4C[C@@H]4F)c3c2Cl)CC12CC2.O"
+},
+{
+"molecule_chembl_id": "CHEMBL3989515",
+"pref_name": "PENICILLIN G BENZATHINE",
+"canonical_smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O.CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O.O.O.O.O.c1ccc(CNCCNCc2ccccc2)cc1"
+},
+{
+"molecule_chembl_id": "CHEMBL3989751",
+"pref_name": "NEOMYCIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL3989974",
+"pref_name": "CEFIDEROCOL",
+"canonical_smiles": "CC(C)(O/N=C(\\C(=O)N[C@@H]1C(=O)N2C(C(=O)[O-])=C(C[N+]3(CCNC(=O)c4ccc(O)c(O)c4Cl)CCCC3)CS[C@H]12)c1csc(N)n1)C(=O)O"
+},
+{
+"molecule_chembl_id": "CHEMBL4297166",
+"pref_name": "TEICOPLANIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL5314344",
+"pref_name": "MIKAMYCIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL5314354",
+"pref_name": "POLYMYXIN B",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL5314373",
+"pref_name": "CEFPROZIL, (E)-",
+"canonical_smiles": "C/C=C/C1=C(C(=O)O)N2C(=O)[C@@H](NC(=O)[C@H](N)c3ccc(O)cc3)[C@H]2SC1.O"
+},
+{
+"molecule_chembl_id": "CHEMBL5315124",
+"pref_name": "LEVOFLOXACIN",
+"canonical_smiles": "C[C@H]1COc2c(N3CCN(C)CC3)c(F)cc3c(=O)c(C(=O)O)cn1c23.C[C@H]1COc2c(N3CCN(C)CC3)c(F)cc3c(=O)c(C(=O)O)cn1c23.O"
+},
+{
+"molecule_chembl_id": "CHEMBL6067481",
+"pref_name": "COLISTIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL6067485",
+"pref_name": "GENTAMICIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL6067982",
+"pref_name": "STREPTODUOCIN",
+"canonical_smiles": null
+},
+{
+"molecule_chembl_id": "CHEMBL6068006",
+"pref_name": "LASCUFLOXACIN",
+"canonical_smiles": "COc1c(N2C[C@H](CNC3CC3)[C@H](F)C2)c(F)cc2c(=O)c(C(=O)O)cn(CCF)c12"
+},
+{
+"molecule_chembl_id": "CHEMBL6195749",
+"pref_name": "SPIRAMYCIN",
+"canonical_smiles": null
+}
+]
