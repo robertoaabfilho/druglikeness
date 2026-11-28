@@ -495,6 +495,9 @@ def main(argv: list[str] | None = None) -> int:
 
         # So aqui algum arquivo do usuario e substituido, e todos de uma vez.
         etapa = "publicacao"
+        # Confere TODOS os destinos antes de trocar QUALQUER um: um
+        # travamento no meio do laco deixaria tabela sem manifesto.
+        atomico.conferir_publicavel([d for _, d in pendentes])
         for arquivo, destino in pendentes:
             atomico.publicar(arquivo, destino)
             publicados.append(destino)

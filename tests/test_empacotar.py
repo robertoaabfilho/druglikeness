@@ -46,7 +46,7 @@ def test_o_pacote_declara_o_que_NAO_leva(tmp_path):
     descobrir a falta na outra maquina. O manifesto diz o que ficou fora e
     por que."""
     destino = tmp_path / "p.zip"
-    rel = empacotar.montar(destino, incluir_dados_grandes=False)
+    rel = empacotar.montar(destino, completo=False)
     # A lista pode ser vazia -- noutra maquina (ou no proprio pacote
     # descompactado) nao ha dado grande no disco para ficar de fora. O que nao
     # pode e um item sem motivo: e o motivo que impede o pesquisador de
@@ -64,7 +64,7 @@ def test_o_zip_abre_e_traz_o_manifesto(tmp_path):
     import json
     import zipfile
     destino = tmp_path / "p.zip"
-    empacotar.montar(destino, incluir_dados_grandes=False)
+    empacotar.montar(destino, completo=False)
     with zipfile.ZipFile(destino) as z:
         assert z.testzip() is None
         nomes = z.namelist()
@@ -78,7 +78,7 @@ def test_o_zip_abre_e_traz_o_manifesto(tmp_path):
 def test_o_zip_traz_as_instrucoes_de_instalacao(tmp_path):
     import zipfile
     destino = tmp_path / "p.zip"
-    empacotar.montar(destino, incluir_dados_grandes=False)
+    empacotar.montar(destino, completo=False)
     with zipfile.ZipFile(destino) as z:
         leia = [n for n in z.namelist() if n.endswith("LEIA-ME-PRIMEIRO.md")]
         assert leia
@@ -91,20 +91,18 @@ def test_o_pacote_tem_uma_pasta_raiz_so(tmp_path):
     """Descompactar nao pode espalhar 174 arquivos no diretorio corrente."""
     import zipfile
     destino = tmp_path / "p.zip"
-    empacotar.montar(destino, incluir_dados_grandes=False)
+    empacotar.montar(destino, completo=False)
     with zipfile.ZipFile(destino) as z:
         raizes = {n.split("/")[0] for n in z.namelist()}
     assert len(raizes) == 1, raizes
 
 
-def test_o_acervo_do_openfda_nao_entra_no_pacote():
-    """ACHADO pelo timeout da suite: o empacotador varria `dados/` inteiro, e
-    depois do download o acervo do openFDA sao 3,7 GB ali dentro -- o pacote
-    passaria de 31 MB para mais de 3 GB, e tres testes tentavam comprimir isso.
-
-    O acervo e dado GERADO pela maquina, como `tsv/` e o cache de rede: a outra
-    maquina baixa o seu com um comando. A mesma regra do `.gitignore`."""
-    nomes = {i["destino"] for i in empacotar.conteudo()}
+def test_o_acervo_do_openfda_nao_entra_no_pacote_ENXUTO():
+    """Este teste AFIRMAVA que o acervo nunca entra, e isso deixou de valer: o
+    padrao passou a ser o pacote COMPLETO, porque o pacote existe para rodar e
+    REPRODUZIR na outra maquina. A exclusao sobrevive apenas no `--enxuto`,
+    por pedido explicito."""
+    nomes = {i["destino"] for i in empacotar.conteudo(completo=False)}
     sobraram = [n for n in nomes if n.startswith("dados/openfda/")
                 and not n.endswith("procedencia.json")]
     assert not sobraram, sobraram
@@ -134,7 +132,106 @@ def test_o_pacote_diz_que_o_acervo_ficou_fora():
         a.is_file() and a.name != "procedencia.json" for a in pasta.rglob("*"))
     if not tem_acervo:
         pytest.skip("sem acervo baixado nesta maquina")
-    fora = empacotar.omitidos()
+    # no pacote ENXUTO: e so la que o acervo fica fora
+    fora = empacotar.omitidos(completo=False)
     citados = [o for o in fora if "openfda" in o["arquivo"]]
     assert citados, fora
-    assert all("openfda_massa" in o["motivo"] for o in citados)
+    # o motivo tem de carregar o COMANDO que resolve, qualquer que seja ele --
+    # o teste nao fixa o texto, fixa que ha um comando
+    assert all("python" in o["motivo"] for o in citados), citados
+
+
+# ===========================================================================
+# O padrao e TUDO: o pacote tem de rodar e REPRODUZIR na outra maquina
+# ===========================================================================
+def test_o_padrao_leva_tudo_o_que_existe_nesta_maquina():
+    """A correcao de um erro meu: eu escolhia o que valia a pena levar e
+    AVISAVA do resto. Aviso nao roda o pipeline na outra maquina.
+
+    Se o dado existe aqui, ele vai. Reprodutibilidade nao se negocia por
+    tamanho de arquivo -- e quem quiser um pacote menor pede com `--enxuto`."""
+    from mods import caminhos
+    nomes = {i["destino"] for i in empacotar.conteudo()}
+    for obrigatorio, existe in (
+            ("input/ligantes.tsv", (caminhos.RAIZ / "input/ligantes.tsv").is_file()),
+            ("input/evidencias_chembl.csv",
+             (caminhos.RAIZ / "input/evidencias_chembl.csv").is_file())):
+        if existe:
+            assert obrigatorio in nomes, obrigatorio
+
+
+def test_o_padrao_leva_o_indice_do_openfda_se_existe():
+    """E o que a etapa 2 LE. Sem ele, a outra maquina nao reproduz o criterio
+    que mais reprova -- ela cairia na rede, com outro teto e outra data de
+    carga, e o manifesto registraria outra execucao."""
+    import pytest
+
+    from mods import caminhos
+    indice = caminhos.RAIZ / "dados/openfda/openfda.sqlite"
+    if not indice.is_file():
+        pytest.skip("sem acervo nesta maquina")
+    nomes = {i["destino"] for i in empacotar.conteudo()}
+    assert "dados/openfda/openfda.sqlite" in nomes
+
+
+def test_enxuto_deixa_o_que_e_grande_de_fora_e_diz(tmp_path):
+    """O pacote pequeno continua existindo, por pedido explicito -- e ai o que
+    ficou fora e dito, com o comando que o traz."""
+    nomes = {i["destino"] for i in empacotar.conteudo(completo=False)}
+    assert not any(n.startswith("dados/openfda/openfda.sqlite")
+                   for n in nomes)
+    fora = empacotar.omitidos(completo=False)
+    assert all(o["motivo"] for o in fora)
+
+
+def test_o_cache_de_rede_fica_fora_mesmo_no_completo():
+    """A unica exclusao que sobrevive ao `--completo`, e nao e por tamanho: o
+    cache e indexado por versao de servico, e servir cache velho noutra
+    maquina da resultado de uma versao que nao e a de lá. Correcao, nao
+    economia."""
+    nomes = {i["destino"] for i in empacotar.conteudo()}
+    assert not any(n.startswith("json/cache_rede/") for n in nomes)
+
+
+def test_o_manifesto_do_pacote_diz_se_e_completo(tmp_path):
+    import json
+    import zipfile
+    destino = tmp_path / "p.zip"
+    empacotar.montar(destino, completo=False)
+    with zipfile.ZipFile(destino) as z:
+        m = json.loads(z.read("druglikeness/PACOTE.json"))
+    assert m["completo"] is False
+
+
+def test_o_leia_me_do_completo_nao_manda_baixar_nada():
+    """Num pacote completo, instrucao para baixar o acervo seria ruido -- e,
+    pior, faria o pesquisador baixar 1,7 GB que ele ja tem na mao.
+
+    O texto e conferido pela FUNCAO, nao compactando um pacote completo: sao
+    ~4 GB, e uma suite que compacta isso tres vezes nao roda. O conteudo do
+    completo se verifica pela lista (`conteudo()`), que nao toca em disco."""
+    texto = empacotar._leia_me([], [], com_modelo=True, com_acervo=True)
+    assert "veio no pacote" in texto
+    # a mencao a flag existe, e e para DESACONSELHAR: baixar de novo daria
+    # outra carga do openFDA, e o resultado deixaria de ser o mesmo
+    assert "não** rode" in texto or "nao** rode" in texto
+    assert "acervo do openFDA" in texto
+
+
+def test_o_leia_me_do_enxuto_manda_baixar_o_acervo():
+    texto = empacotar._leia_me(
+        [], [{"arquivo": "dados/openfda/", "motivo": "traga com `python "
+              "main.py --baixar-acervo`", "mb": 3700.0}],
+        com_modelo=True, com_acervo=False)
+    assert "--baixar-acervo" in texto
+
+
+def test_nenhum_teste_compacta_o_pacote_completo():
+    """Guarda: `montar(completo=True)` compacta ~4 GB. Se alguem a chamar num
+    teste, a suite deixa de rodar -- foi o que aconteceu, duas vezes."""
+    import re
+    from pathlib import Path
+    fonte = Path(__file__).read_text(encoding="utf-8")
+    for achado in re.finditer(r"empacotar\.montar\(", fonte):
+        trecho = fonte[achado.end():achado.end() + 120]
+        assert "completo=False" in trecho, trecho.splitlines()[0]

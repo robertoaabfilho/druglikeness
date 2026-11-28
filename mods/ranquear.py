@@ -711,6 +711,10 @@ def main(argv=None) -> int:
                        "nao_ranqueados": len(fora),
                        "linhas_sem_forma_parental": linhas_descartadas,
                        "sem_fingerprint": sem_fingerprint}), encoding="utf-8")
+        # Confere TODOS os destinos antes de trocar QUALQUER um: um
+        # travamento no meio do laco deixaria tabela sem manifesto.
+        atomico.conferir_publicavel(
+            [caminhos[nome] for nome in temporarios])
         for nome, tmp in temporarios.items():
             atomico.publicar(tmp, caminhos[nome])
     except BaseException:

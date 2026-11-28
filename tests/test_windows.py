@@ -207,7 +207,8 @@ def test_toda_leitura_de_texto_declara_encoding():
         for numero, linha in enumerate(texto.splitlines(), start=1):
             if not re.search(r'\bopen\s*\(', linha):
                 continue
-            if re.search(r'["\'](r|w|a)b["\']|encoding\s*=|z\.open|'
+            # modo binario (inclusive 'r+b', 'rb+') nao tem encoding
+            if re.search(r'["\'][rwax]\+?b\+?["\']|encoding\s*=|z\.open|'
                          r'urlopen|os\.open|gzip\.open|\.open\(interno', linha):
                 continue
             # linha de continuacao: o encoding pode estar na proxima
@@ -239,3 +240,127 @@ def test_requirements_nao_fixa_pacote_so_de_linux():
     for linha in texto.splitlines():
         nome = linha.strip().lower()
         assert not nome.startswith(("uvloop", "python-prctl", "pyinotify")), nome
+
+
+# --------------------------------------------------------------------------
+# o caso que o Windows produz e o Linux nao
+# --------------------------------------------------------------------------
+def test_publicar_sobre_arquivo_travado_diz_a_causa(tmp_path, monkeypatch):
+    """No Windows, `os.replace` sobre um arquivo aberto por OUTRO programa
+    levanta `PermissionError` -- e o caso provavel e o pesquisador com o
+    `ranking.tsv` aberto no Excel, rodando o pipeline de novo. No Linux a
+    troca simplesmente funciona, entao este caminho nunca e exercitado aqui.
+
+    O que ele NAO pode fazer e subir um `PermissionError` cru: a mensagem tem
+    de nomear o arquivo e a causa provavel."""
+    from mods.evidencias import atomico
+    destino = tmp_path / "ranking.tsv"
+    destino.write_text("velho", encoding="utf-8")
+    tmp = atomico.temporario(destino)
+    tmp.write_text("novo", encoding="utf-8")
+
+    def travado(origem, alvo):
+        raise PermissionError(13, "O arquivo esta sendo usado por outro processo")
+    monkeypatch.setattr(os, "replace", travado)
+    with pytest.raises(OSError) as erro:
+        atomico.publicar(tmp, destino)
+    mensagem = str(erro.value)
+    assert "ranking.tsv" in mensagem
+    assert "outro programa" in mensagem or "Excel" in mensagem
+    # o arquivo anterior fica intacto: a publicacao e tudo-ou-nada
+    assert destino.read_text(encoding="utf-8") == "velho"
+
+
+def test_conferir_publicavel_pega_o_travamento_ANTES_de_publicar(tmp_path,
+                                                                monkeypatch):
+    """A etapa publica varios arquivos de uma vez. Se o travamento aparecer no
+    MEIO do laco, uns ja foram publicados e outros nao -- e isso deixa tabela
+    sem manifesto, que e exatamente o que a publicacao atomica existe para
+    impedir. Entao se confere TODOS antes de trocar QUALQUER um."""
+    from mods.evidencias import atomico
+    a, b = tmp_path / "tabela.tsv", tmp_path / "manifesto.json"
+    a.write_text("x", encoding="utf-8")
+    b.write_text("y", encoding="utf-8")
+    real = open
+
+    def travando(arquivo, *args, **kwargs):
+        if str(arquivo).endswith("manifesto.json") and "r+b" in args:
+            raise PermissionError(13, "usado por outro processo")
+        return real(arquivo, *args, **kwargs)
+    monkeypatch.setattr("builtins.open", travando)
+    with pytest.raises(OSError, match="manifesto.json"):
+        atomico.conferir_publicavel([a, b])
+
+
+def test_conferir_publicavel_aceita_destino_que_ainda_nao_existe(tmp_path):
+    from mods.evidencias import atomico
+    atomico.conferir_publicavel([tmp_path / "nova.tsv"])  # nao levanta
+
+
+def test_conferir_publicavel_aceita_destino_livre(tmp_path):
+    from mods.evidencias import atomico
+    destino = tmp_path / "livre.tsv"
+    destino.write_text("x", encoding="utf-8")
+    atomico.conferir_publicavel([destino])
+
+
+def test_as_tres_etapas_conferem_antes_de_publicar():
+    """A guarda: se uma etapa publicar sem conferir, o travamento no meio do
+    laco volta a poder deixar tabela sem manifesto."""
+    from pathlib import Path
+    for script in ("coletar_evidencias.py", "aplicar_portao.py",
+                   "ranquear.py"):
+        fonte = Path("mods", script).read_text(encoding="utf-8")
+        assert "conferir_publicavel" in fonte, script
+
+
+def test_nenhum_caminho_do_pacote_estoura_o_MAX_PATH_do_windows():
+    """O Windows limita caminho a 260 caracteres (sem o registro de caminho
+    longo, que nem toda maquina tem ligado). O pacote descompacta em
+    `<raiz>/druglikeness/<caminho>`, e a raiz mais comum --
+    `C:\\Users\\<nome>\\Downloads\\` -- gasta ~30.
+
+    As fixturas de resposta de rede tem nome de 172 caracteres, porque sao a
+    URL da consulta. Este teste reserva 60 para a raiz de descompactacao: se
+    alguem acrescentar uma fixtura mais longa, ele cai aqui e nao na maquina
+    do pesquisador."""
+    from mods import empacotar
+    RESERVA_PARA_A_RAIZ = 60
+    teto = 260 - RESERVA_PARA_A_RAIZ
+    longos = [(len(f"druglikeness/{i['destino']}"), i["destino"])
+              for i in empacotar.conteudo(completo=False)
+              if len(f"druglikeness/{i['destino']}") > teto]
+    assert not longos, sorted(longos, reverse=True)[:3]
+
+
+def test_nenhum_arquivo_tem_caractere_ilegal_no_windows():
+    """`< > : " | ? *` sao proibidos em nome de arquivo no Windows, e uma
+    fixtura com `:` no nome faria a descompactacao falhar -- as respostas de
+    rede guardam a URL no nome, e URL tem `:`."""
+    import re
+    from mods import empacotar
+    proibido = re.compile(r'[<>:"|?*]')
+    ruins = [i["destino"] for i in empacotar.conteudo(completo=False)
+             if proibido.search(i["destino"].split("/")[-1])]
+    assert not ruins, ruins
+
+
+def test_nenhum_nome_reservado_do_windows():
+    """CON, PRN, AUX, NUL, COM1-9, LPT1-9 nao podem ser nome de arquivo no
+    Windows, nem com extensao."""
+    from mods import empacotar
+    reservados = {"CON", "PRN", "AUX", "NUL"} | {
+        f"COM{i}" for i in range(1, 10)} | {f"LPT{i}" for i in range(1, 10)}
+    ruins = [i["destino"] for i in empacotar.conteudo(completo=False)
+             if i["destino"].split("/")[-1].split(".")[0].upper() in reservados]
+    assert not ruins, ruins
+
+
+def test_nenhuma_colisao_por_caixa():
+    """O Windows nao distingue maiuscula de minuscula: dois arquivos que
+    diferem so na caixa viram um ao descompactar, e um deles desaparece."""
+    from collections import Counter
+    from mods import empacotar
+    nomes = [i["destino"].lower() for i in empacotar.conteudo(completo=False)]
+    repetidos = [n for n, c in Counter(nomes).items() if c > 1]
+    assert not repetidos, repetidos

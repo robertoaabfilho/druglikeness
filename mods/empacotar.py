@@ -59,33 +59,33 @@ EXCLUIR = {
                   "noutra maquina e pior que consultar de novo",
 }
 
-# Pastas de dado GERADO que ficam fora do pacote, com o comando que as traz. O
-# acervo do openFDA sao 3,7 GB (1,7 de particoes e 2,0 de indice): levar junto
-# faria o pacote passar de 31 MB para mais de 3 GB, e a outra maquina baixa o
-# seu com um comando. A mesma regra de `tsv/` e do cache.
-GERADO_FORA = {
-    "dados/openfda": "o acervo do openFDA (3,7 GB com o indice); baixe o seu "
-                     "com `python mods/openfda_massa.py --baixar --indexar`",
+# O que fica fora SO no pacote enxuto (`--enxuto`), com o comando que o traz.
+# No pacote completo -- o padrao -- tudo isto VAI: reprodutibilidade nao se
+# negocia por tamanho de arquivo. Sem o acervo, a outra maquina cai na rede,
+# com outro teto e outra data de carga, e o manifesto registra outra execucao.
+SO_NO_COMPLETO = {
+    "dados/openfda": "o acervo do openFDA (~3,7 GB com o indice); traga com "
+                     "`python main.py --baixar-acervo`",
+    "input/ligantes.tsv": "a base de ligantes; traga com `python "
+                          "mods/instantaneo.py --ligantes-origem <arquivo>`",
+    "input/evidencias_chembl.csv": "a bioatividade medida do ChEMBL; traga com "
+                                   "`--evidencias-origem`",
 }
 
-# Dados grandes: ficam fora por padrao, e o manifesto diz como trazer.
-DADOS_GRANDES = {
-    "input/ligantes.tsv":
-        "a base de ligantes; traga com `python mods/instantaneo.py "
-        "--ligantes-origem <arquivo>`",
-    "input/evidencias_chembl.csv":
-        "a bioatividade medida do ChEMBL; traga com `--evidencias-origem`",
-}
+# As particoes brutas do openFDA. O indice e o que a etapa 2 LE; as particoes
+# sao a FONTE para reconstrui-lo. Vao no completo porque sem elas o indice nao
+# e refazivel do zero -- e sem o indice nao ha como auditar de onde ele veio.
+PARTICOES_BRUTAS = "dados/openfda"
 
-
-def _excluido(caminho: Path) -> str | None:
+def _excluido(caminho: Path, *, completo: bool) -> str | None:
     como_texto = caminho.as_posix()
-    for prefixo, motivo in GERADO_FORA.items():
-        if como_texto.startswith(prefixo + "/"):
-            # a procedencia fica: a outra maquina precisa saber de que export
-            # era o acervo desta, como em `input/procedencia.json`
-            if caminho.name != "procedencia.json":
-                return motivo
+    if not completo:
+        for prefixo, motivo in SO_NO_COMPLETO.items():
+            if como_texto == prefixo or como_texto.startswith(prefixo + "/"):
+                # a procedencia fica sempre: a outra maquina precisa saber de
+                # que export era o acervo desta
+                if caminho.name != "procedencia.json":
+                    return motivo
     for parte in caminho.parts:
         if parte in EXCLUIR:
             return EXCLUIR[parte]
@@ -94,8 +94,12 @@ def _excluido(caminho: Path) -> str | None:
     return None
 
 
-def conteudo(*, incluir_dados_grandes: bool = False) -> list[dict]:
-    """Os arquivos do pacote: `{origem, destino, bytes}`."""
+def conteudo(*, completo: bool = True) -> list[dict]:
+    """Os arquivos do pacote: `{origem, destino, bytes}`.
+
+    **O padrao e TUDO.** Se o dado existe nesta maquina, ele vai: o pacote
+    existe para RODAR e REPRODUZIR do outro lado, e aviso sobre o que falta nao
+    roda nada. `completo=False` (`--enxuto`) e a excecao, por pedido."""
     itens: list[dict] = []
     vistos: set[str] = set()
 
@@ -116,7 +120,7 @@ def conteudo(*, incluir_dados_grandes: bool = False) -> list[dict]:
             if not arquivo.is_file():
                 continue
             relativo = arquivo.relative_to(caminhos.RAIZ)
-            if _excluido(relativo):
+            if _excluido(relativo, completo=completo):
                 continue
             juntar(arquivo, relativo.as_posix())
 
@@ -130,21 +134,33 @@ def conteudo(*, incluir_dados_grandes: bool = False) -> list[dict]:
     juntar(caminhos.PROCEDENCIA, "input/procedencia.json")
     for alvo in ("alvos.txt", "sintomas.txt"):
         juntar(caminhos.INPUT / alvo, f"input/{alvo}")
-    if incluir_dados_grandes:
-        for destino in DADOS_GRANDES:
+    if completo:
+        for destino in ("input/ligantes.tsv", "input/evidencias_chembl.csv"):
             juntar(caminhos.RAIZ / destino, destino)
+        acervo = caminhos.RAIZ / "dados/openfda"
+        if acervo.is_dir():
+            for arquivo in sorted(acervo.rglob("*")):
+                if arquivo.is_file():
+                    juntar(arquivo,
+                           arquivo.relative_to(caminhos.RAIZ).as_posix())
     return itens
 
 
-def omitidos(*, incluir_dados_grandes: bool = False) -> list[dict]:
+def omitidos(*, completo: bool = True) -> list[dict]:
     """O que existe nesta maquina e NAO foi para o pacote, com o motivo."""
     fora = []
-    if not incluir_dados_grandes:
-        for destino, motivo in DADOS_GRANDES.items():
+    if not completo:
+        for destino, motivo in SO_NO_COMPLETO.items():
             caminho = caminhos.RAIZ / destino
             if caminho.is_file():
                 fora.append({"arquivo": destino, "motivo": motivo,
                              "mb": round(caminho.stat().st_size / (1 << 20), 1)})
+            elif caminho.is_dir():
+                tamanho = sum(a.stat().st_size for a in caminho.rglob("*")
+                              if a.is_file() and a.name != "procedencia.json")
+                if tamanho:
+                    fora.append({"arquivo": destino + "/", "motivo": motivo,
+                                 "mb": round(tamanho / (1 << 20), 1)})
     if caminhos.TSV.is_dir() and any(caminhos.TSV.iterdir()):
         fora.append({
             "arquivo": "tsv/",
@@ -154,15 +170,6 @@ def omitidos(*, incluir_dados_grandes: bool = False) -> list[dict]:
     if caminhos.CACHE.is_dir() and any(caminhos.CACHE.iterdir()):
         fora.append({"arquivo": "json/cache_rede/",
                      "motivo": EXCLUIR["cache_rede"], "mb": 0.0})
-    for prefixo, motivo in GERADO_FORA.items():
-        pasta = caminhos.RAIZ / prefixo
-        if not pasta.is_dir():
-            continue
-        tamanho = sum(a.stat().st_size for a in pasta.rglob("*")
-                      if a.is_file() and a.name != "procedencia.json")
-        if tamanho:
-            fora.append({"arquivo": f"{prefixo}/", "motivo": motivo,
-                         "mb": round(tamanho / (1 << 20), 1)})
     return fora
 
 
@@ -176,7 +183,8 @@ def _commit() -> str:
     return r.stdout.strip() if r.returncode == 0 else "desconhecido"
 
 
-def _leia_me(itens: list[dict], fora: list[dict], com_modelo: bool) -> str:
+def _leia_me(itens: list[dict], fora: list[dict], com_modelo: bool,
+             com_acervo: bool = False) -> str:
     linhas = [
         "# Pipeline de drogabilidade — pacote para rodar noutra máquina",
         "",
@@ -205,6 +213,14 @@ def _leia_me(itens: list[dict], fora: list[dict], com_modelo: bool) -> str:
     ]
     if com_modelo:
         linhas += ["Os pesos do modelo vieram no pacote, em `modelo/`.", ""]
+    if com_acervo:
+        linhas += [
+            "O **acervo do openFDA** veio no pacote, em `dados/openfda/`: o",
+            "índice que a etapa 2 lê e as partições que o originaram. Aponte",
+            "`portao.acervo_bula` para `dados/openfda/openfda.sqlite` no",
+            "`json/config.json` — e **não** rode `--baixar-acervo`: você já tem",
+            "a mesma carga do openFDA que a máquina de origem usou, e é isso",
+            "que faz o resultado ser o mesmo.", ""]
     else:
         linhas += [
             "**O modelo NÃO veio no pacote.** Sem ele a etapa 1 degrada: roda só",
@@ -231,15 +247,15 @@ def _leia_me(itens: list[dict], fora: list[dict], com_modelo: bool) -> str:
     return "\n".join(linhas)
 
 
-def montar(destino, *, incluir_dados_grandes: bool = False,
+def montar(destino, *, completo: bool = True,
            raiz_no_zip: str = "druglikeness") -> dict:
     """Escreve o zip e devolve o relatorio.
 
     Tudo vai dentro de UMA pasta raiz: descompactar nao pode espalhar
     arquivos no diretorio corrente."""
     destino = Path(destino)
-    itens = conteudo(incluir_dados_grandes=incluir_dados_grandes)
-    fora = omitidos(incluir_dados_grandes=incluir_dados_grandes)
+    itens = conteudo(completo=completo)
+    fora = omitidos(completo=completo)
     com_modelo = any(i["destino"].startswith("modelo/") for i in itens)
     manifesto = {
         "gerado_em": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -247,7 +263,11 @@ def montar(destino, *, incluir_dados_grandes: bool = False,
         "arquivos": len(itens),
         "bytes": sum(i["bytes"] for i in itens),
         "com_modelo": com_modelo,
-        "com_dados_grandes": bool(incluir_dados_grandes),
+        "completo": bool(completo),
+        "com_acervo": any(i["destino"] == "dados/openfda/openfda.sqlite"
+                          for i in itens),
+        "com_ligantes": any(i["destino"] == "input/ligantes.tsv"
+                            for i in itens),
         "omitidos": fora,
     }
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -261,7 +281,8 @@ def montar(destino, *, incluir_dados_grandes: bool = False,
                        json.dumps(manifesto, ensure_ascii=False, indent=2,
                                   default=str) + "\n")
             z.writestr(f"{raiz_no_zip}/LEIA-ME-PRIMEIRO.md",
-                       _leia_me(itens, fora, com_modelo))
+                       _leia_me(itens, fora, com_modelo,
+                                manifesto["com_acervo"]))
         temporario.replace(destino)
     finally:
         temporario.unlink(missing_ok=True)
@@ -273,13 +294,15 @@ def montar(destino, *, incluir_dados_grandes: bool = False,
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--saida", required=True, metavar="ARQUIVO.zip")
-    ap.add_argument("--com-dados", action="store_true",
-                    help="inclui a base de ligantes e a evidencia medida "
-                         "(~135 MB); por padrao ficam fora e o manifesto diz "
-                         "como traze-los")
+    ap.add_argument("--enxuto", action="store_true",
+                    help="deixa de fora o que e grande (o acervo do openFDA, "
+                         "a base de ligantes, a evidencia medida) e registra o "
+                         "comando que traz cada um. O PADRAO e completo: o "
+                         "pacote existe para rodar e REPRODUZIR na outra "
+                         "maquina, e aviso sobre o que falta nao roda nada")
     args = ap.parse_args(argv)
     try:
-        rel = montar(args.saida, incluir_dados_grandes=args.com_dados)
+        rel = montar(args.saida, completo=not args.enxuto)
     except OSError as erro:
         print(f"[erro] {erro}", file=sys.stderr)
         return SAIDA_ERRO

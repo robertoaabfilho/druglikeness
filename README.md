@@ -131,16 +131,34 @@ o que falta, em vez de falhar.
 
 ```bash
 python mods/empacotar.py --saida ../druglikeness-pacote.zip
-python mods/empacotar.py --saida ... --com-dados   # inclui os ~135 MB de dados
+python mods/empacotar.py --saida ... --enxuto   # só o código, sem os dados
 ```
 
-O pacote leva o código, os testes, o modelo e a **procedência** das entradas —
-sem ela o resultado do outro lado não é citável. Não leva as saídas de `tsv/`
-(são o resultado de uma execução *desta* máquina; levá-las faria a outra
-parecer ter rodado o pipeline) nem o cache de rede (indexado por versão de
-serviço). O que ficou fora é **registrado** em `PACOTE.json`, com o comando que
-o traz; e `LEIA-ME-PRIMEIRO.md` diz como instalar. A suíte verde do outro lado
-é o que prova que o pacote chegou inteiro.
+**O padrão é tudo.** Se o dado existe nesta máquina, ele vai no pacote: o
+código, os testes, os pesos do modelo, a base de ligantes, a evidência medida
+do ChEMBL, as suas listas de alvos e sintomas, e o **acervo do openFDA
+inteiro** — o índice que a etapa 2 lê e as partições que o originaram. São
+alguns GB, e é o preço de a outra máquina **reproduzir** o resultado em vez de
+só rodar o pipeline.
+
+Por que o acervo tem de ir: sem ele a outra máquina cai na rede, com outro teto
+de taxa e **outra data de carga** do openFDA. O manifesto registraria outra
+versão de serviço — ou seja, outra execução. Reproduzir exige a mesma carga.
+
+Duas coisas ficam fora, e nenhuma por tamanho:
+
+- **`tsv/`** — as saídas são o resultado de uma execução *desta* máquina;
+  levá-las faria a outra parecer ter rodado o pipeline.
+- **`json/cache_rede/`** — o cache é indexado por versão de serviço, e servir
+  cache velho do outro lado daria resposta de uma versão que não é a de lá. É
+  correção, não economia.
+
+`--enxuto` faz o pacote pequeno, por pedido explícito, e aí o que ficou fora é
+registrado em `PACOTE.json` com o comando que o traz.
+
+Em qualquer dos dois, `LEIA-ME-PRIMEIRO.md` diz como instalar, e **a suíte
+verde do outro lado é o que prova que o pacote chegou inteiro** — é a primeira
+coisa que o arquivo manda rodar.
 
 ---
 
@@ -529,7 +547,9 @@ acervo inteiro), em vez de só um sinalizador.
 
 ## Windows
 
-O pipeline roda em Windows:
+O pipeline roda em Windows. Esta seção separa **o que foi verificado** do que
+não foi — a distinção importa, porque um "é compatível" sem qualificação não
+vale nada.
 
 ```
 python -m venv .venv
@@ -538,20 +558,50 @@ pip install -r requirements.txt
 python -m pytest -q
 ```
 
-**Verificado por teste** (`tests/test_windows.py`, que exercita o caminho do
-Windows): a consulta de vivacidade do processo não usa `os.kill` — no Windows
-`os.kill(pid, 0)` **não consulta, ele chama `TerminateProcess`**, e o painel
-pergunta "está viva?" a cada 2 segundos; o processo é destacado com
-`CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS` em vez de `setsid`; a URI do
-SQLite do acervo vem de `Path.as_uri()`, porque `C:\x\y.sqlite` não é URI
-válida; toda leitura de texto declara `encoding="utf-8"`; e o orquestrador
-chama `sys.executable`, não o `python` do PATH.
+### O defeito grave que a auditoria encontrou
 
-**Não verificado aqui, porque exige um Windows de verdade:** `os.replace` sobre
-arquivo aberto por outro processo, a página de código do console, e a
-instalação do RDKit e do PyTorch pelo pip. Os testes do caminho do Windows
-pegam erro de lógica e de API — foi assim que o problema do `os.kill` apareceu
-—, mas não substituem rodar a suíte lá.
+No Windows, **`os.kill(pid, 0)` não consulta: ele chama `TerminateProcess`.**
+O painel pergunta "esta execução está viva?" a cada 2 segundos, pelo fragmento
+de acompanhamento — no Windows isso **mataria a execução do pipeline**. A
+consulta agora é `OpenProcess` + `GetExitCodeProcess`, e só ela
+(`mods/painel/execucao._vivo_nt`).
+
+### O que foi corrigido, com teste
+
+| risco | o que acontecia | agora |
+|---|---|---|
+| vivacidade do processo | `os.kill` matava a execução | `OpenProcess` + `GetExitCodeProcess` |
+| destacar o processo | `start_new_session` é `setsid`, não existe | `CREATE_NEW_PROCESS_GROUP \| DETACHED_PROCESS` |
+| encerrar | `SIGTERM` virava kill por acidente de portabilidade | `TerminateProcess` pelo caminho explícito |
+| **tabela aberta no Excel** | `os.replace` levanta `PermissionError`, e no meio do laço deixava **tabela sem manifesto** | os destinos são conferidos **todos antes** de trocar qualquer um; nada é publicado, e a mensagem nomeia o arquivo e a causa |
+| URI do SQLite | `C:\x\y.sqlite` não é URI válida | `Path.as_uri()` |
+| nome vindo do openFDA | `drug/label (part 1 of 14)` escapava da pasta | nome vem da URL, higienizado |
+| fim de linha | CRLF deixaria `\r` no último campo | escritor e leitor usam `newline="\n"`; a entrada do usuário é lida com `csv`/`newline=""` e `utf-8-sig`, que come o BOM do Notepad |
+| página de código | `print` sem encoding declarado | toda leitura de texto declara `encoding="utf-8"` |
+| `python` do PATH | podia ser outro ambiente | `sys.executable` |
+
+E quatro guardas sobre os nomes de arquivo, porque o pacote descompacta no
+Windows: nenhum caminho passa de 200 caracteres (260 menos 60 de reserva para
+a raiz de descompactação), nenhum nome tem `< > : " | ? *`, nenhum é nome
+reservado (`CON`, `NUL`, `COM1`…), e nenhum colide por caixa.
+
+### O que NÃO foi verificado, e por quê
+
+Os testes de `tests/test_windows.py` exercitam o **caminho** do Windows nesta
+máquina Linux, por substituição. Eles pegam erro de lógica e de API — foi assim
+que o `os.kill` apareceu — e **não substituem rodar a suíte num Windows de
+verdade**. Fica sem verificação: o comportamento real do sistema de arquivos
+sob travamento, a página de código do console, e a instalação do RDKit e do
+PyTorch pelo pip naquele sistema.
+
+Se você rodar a suíte num Windows e algo falhar, a falha é informação sobre
+esta lista — não sobre o seu ambiente.
+
+### Uma recomendação concreta
+
+Deixe `--workers 0` (o padrão). Ele vai para o `DataLoader` do ADMET-AI, e no
+Windows o início de processo é por `spawn`, que reimporta o módulo — com 0 não
+há processo filho nenhum e a questão não existe.
 
 ---
 
