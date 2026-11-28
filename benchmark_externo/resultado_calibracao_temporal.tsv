@@ -1,0 +1,7 @@
+alvo	nome	estrato	n	ativos	taxa_base	auroc	ef_1	prec_20	ganho_20
+CHEMBL228	Transportador de serotonina (SERT)	tudo	9999	219	0.0219	0.8033	15.524	0.4	18.3
+CHEMBL228	Transportador de serotonina (SERT)	novidade	3166	9	0.00284	0.6621	0.0	0.0	0.0
+CHEMBL222	Transportador de noradrenalina (NET)	tudo	9916	136	0.01372	0.6951	4.419	0.05	3.6
+CHEMBL222	Transportador de noradrenalina (NET)	novidade	3713	8	0.00215	0.4935	12.544	0.0	0.0
+CHEMBL233	Receptor opioide mu	tudo	10273	493	0.04799	0.9351	19.422	1.0	20.8
+CHEMBL233	Receptor opioide mu	novidade	3283	12	0.00366	0.885	49.742	0.2	54.7

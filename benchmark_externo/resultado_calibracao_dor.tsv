@@ -1,0 +1,9 @@
+alvo	nome	estrato	treino_modelo	n	ativos	taxa_base	auroc	ef_1	prec_20	ganho_20
+CHEMBL1919	Canal de calcio alpha-2/delta-1	tudo	562	10022	242	0.02415	1.0	41.413	1.0	41.4
+CHEMBL1919	Canal de calcio alpha-2/delta-1	novidade	562	9394	236	0.02512	1.0	39.805	1.0	39.8
+CHEMBL228	Transportador de serotonina (SERT)	tudo	5057	10810	1030	0.09528	0.9971	10.495	1.0	10.5
+CHEMBL228	Transportador de serotonina (SERT)	novidade	5057	5502	31	0.00563	0.9701	83.901	0.95	168.6
+CHEMBL222	Transportador de noradrenalina (NET)	tudo	3493	10437	657	0.06295	0.997	15.886	1.0	15.9
+CHEMBL222	Transportador de noradrenalina (NET)	novidade	3493	5922	48	0.00811	0.9884	87.826	1.0	123.4
+CHEMBL4794	TRPV1	tudo	3448	10862	1082	0.09961	0.9987	10.039	1.0	10.0
+CHEMBL4794	TRPV1	novidade	3448	5757	8	0.00139	0.9997	99.259	0.4	287.9

@@ -549,3 +549,110 @@ Quatro intervenções medidas sobre o ranqueamento, três negativas:
 
 A única coisa que acrescentou foi **não mudar o modelo, e sim mudar a pergunta
 feita a ele**.
+
+---
+
+# Adendo 5 — calibração nos alvos de dor: o vazamento, e o holdout temporal que o contorna
+
+Medido em 2026-11-28. `calibrar_dor.py`, `calibrar_temporal.py`,
+`resultado_calibracao_dor.tsv`, `resultado_calibracao_temporal.tsv`.
+
+## Primeira tentativa, e o defeito dela
+
+Desenho: ativos = ChEMBL `pchembl >= 6`, ensaio B/F; divisão temporal por ano
+do primeiro documento; decoys = os 10.033 ativos do LIT-PCBA (bioativos,
+drug-like, alvos sem relação com dor) — o controle *actives-as-decoys* de
+Chen et al. 2019.
+
+| alvo | estrato | ativos | taxa-base | AUROC | prec@20 |
+|---|---|---:|---:|---:|---:|
+| α2δ-1 | tudo | 242 | 2,42% | **1,0000** | 100% |
+| α2δ-1 | novidade | 236 | 2,51% | **1,0000** | 100% |
+| SERT | tudo | 1.030 | 9,53% | 0,9971 | 100% |
+| SERT | novidade | 31 | 0,56% | 0,9701 | 95% |
+| NET | tudo | 657 | 6,30% | 0,9970 | 100% |
+| NET | novidade | 48 | 0,81% | 0,9884 | 100% |
+| TRPV1 | novidade | 8 | 0,14% | 0,9997 | 40% |
+
+**AUROC 1,0 não é desempenho, é memorização.** A divisão temporal protege o
+canal de similaridade e **não** o modelo: o PP4CKD treinou em ChEMBL 36 (2025),
+então todo ativo publicado depois de 2015 está dentro do treino dele.
+(Parou em 4 de 9 alvos: a API do ChEMBL derrubou a conexão; nova tentativa
+foi adicionada depois.)
+
+**O contraste mede o vazamento.** Mesmo modelo, mesma estratificação, mesmo
+tipo de decoy:
+
+| origem dos ativos | AUROC no estrato de novidade |
+|---|---:|
+| PubChem HTS (LIT-PCBA, parcialmente fora do ChEMBL) | **0,572** |
+| ChEMBL (dentro do corpus de treino) | **0,97 – 1,00** |
+
+Consequência prática: **qualquer validação do canal predito contra
+bioatividade do ChEMBL é inútil**, inclusive o recall@10 de 0,24 do
+`validar_modelo.py` — que o próprio `validacao.alvos_medidos.md` já declara
+medir memorização e generalização juntas. O 0,572 do LIT-PCBA é o número
+honesto disponível hoje.
+
+## A correção: modelo de era anterior
+
+Modelo `chembl_28_multitask.onnx` (ChEMBL 28, jan/2021, 616 alvos) contra
+ativos cujo **primeiro documento é de 2022 ou depois** — compostos que não
+existiam no treino dele. Referência de similaridade: ativos até 2020. Dos 9
+alvos de dor, 3 estão no painel de 616: SERT, NET e receptor mu.
+
+| alvo | estrato | n | ativos | taxa-base | AUROC | EF1% | prec@20 | ganho |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| SERT | tudo | 9.999 | 219 | 2,19% | 0,803 | 15,52 | 40% | 18× |
+| SERT | novidade | 3.166 | 9 | 0,28% | 0,662 | 0,00 | 0% | 0× |
+| NET | tudo | 9.916 | 136 | 1,37% | 0,695 | 4,42 | 5% | 4× |
+| NET | novidade | 3.713 | 8 | 0,22% | 0,494 | 12,54 | 0% | 0× |
+| MOR | tudo | 10.273 | 493 | 4,80% | 0,935 | 19,42 | 100% | 21× |
+| MOR | novidade | 3.283 | 12 | 0,37% | 0,885 | 49,74 | 20% | 55× |
+
+Agregado do estrato de novidade (posto percentual dentro de cada alvo):
+
+```
+n = 10.162   ativos = 29   taxa-base = 0,285%
+AUROC = 0,7077   EP 0,0544   IC 95% [0,6010 – 0,8144]   z = 3,82
+p (uma cauda) = 6,8 x 10^-5
+precisao@20  = 3/20  = 15,00%  (ganho 53x)
+precisao@50  = 4/50  =  8,00%  (ganho 28x)
+precisao@100 = 7/100 =  7,00%  (ganho 25x)
+```
+
+## Como ler isso, com a ressalva do mesmo tamanho do resultado
+
+O sinal é real: p = 6,8 × 10⁻⁵ contra o acaso, em holdout temporal sem
+vazamento, com o controle de decoy mais severo que existe.
+
+Mas o estrato de novidade tem **29 ativos** em três alvos, e o agregado é
+puxado pelo receptor mu. Por alvo, a precisão@20 é 0%, 0% e 20%. O intervalo
+de confiança da AUROC vai de 0,60 a 0,81. **15% é estimativa de ponto com
+incerteza grande, não número para fechar orçamento.** A faixa defensável é
+"entre 0 e 20%, provavelmente na casa dos 10%", e isso é consistente com as
+campanhas prospectivas publicadas (CACHE #1: 3,7%; equipe vencedora: 8,5%) —
+sem permitir afirmar que seja melhor.
+
+## Dois achados laterais que valem mais que o número principal
+
+**1. A hipótese do limiar de potência se confirmou.** O Adendo 4 atribuiu o
+fracasso do painel oficial do ChEMBL no LIT-PCBA a desencontro de limiar: ele
+define ativo em ≤ 30 nM a ≤ 1 µM, e os ativos do LIT-PCBA são confirmações de
+HTS em faixa de µM. Aqui os ativos são `pchembl >= 6` (≤ 1 µM), dentro do
+regime dele — e **o mesmo modelo que ficou no azar no LIT-PCBA chega a AUROC
+0,935 no receptor mu**. A previsão se sustentou.
+
+Isso reabre a questão do modelo com uma resposta mais precisa que "não troque":
+**o modelo certo depende do regime de potência que se tria.** Para alvo maduro
+e candidato na casa de nM–µM, o painel oficial funciona e traz procedência
+melhor, ONNX e nenhuma dependência de torch. Para produto natural em faixa de
+µM, o limiar frouxo do PP4CKD é o adequado. É parâmetro de desenho, não
+disputa de qualidade.
+
+**2. Novidade química em alvo maduro é rara.** Dos 848 ativos medidos pela
+primeira vez a partir de 2022 nesses três alvos, só **29 (3,4%)** são
+estruturalmente distantes do que já se conhecia em 2020. O campo publica
+majoritariamente análogos. Isso limita por cima quanto reposicionamento há
+para achar em alvo bem estudado — e é argumento a favor de apontar o pipeline
+a alvos menos explorados, onde a fração nova é maior.
