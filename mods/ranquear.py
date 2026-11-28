@@ -48,9 +48,10 @@ from mods.evidencias import atomico, procedencia
 from mods.evidencias.manifesto import (hashes_de_entrada_ausentes,
                                        ler_manifesto, texto_do_manifesto,
                                        verificar_manifesto)
+from mods.evidencias.esquema import TIPO_PREDITO
 from mods.evidencias.resumo import MINIMO_TREINO
 from mods.portao.esquema import EscritorTSV, ler_tsv
-from mods.ranque import esquema, negativo
+from mods.ranque import dominio, esquema, negativo
 from mods.ranque.faixa import (ORIGENS_DO_USUARIO, chave, classificar,
                                ORIGENS_DE_ENRIQUECIMENTO)
 
@@ -171,6 +172,15 @@ def analisar(argv=None):
                          "muda a saida diferirem do registrado. O manifesto "
                          f"novo sai como {NOME_MANIFESTO_REPETICAO} e nunca "
                          "sobrescreve o original")
+    ap.add_argument("--referencias-de-alvo", metavar="TSV",
+                    help="TSV com os ativos ja conhecidos de cada alvo "
+                         "(dados/referencias_alvo.tsv). Habilita a zona de "
+                         "confiabilidade: na faixa prevista, previsao longe "
+                         "do conhecido ordena abaixo de previsao perto, "
+                         "porque foi la que o modelo mediu habilidade "
+                         "(AUROC 0,682 contra 0,499). Sem isto a zona fica "
+                         "'indeterminado' e a ordem nao muda -- nunca "
+                         "'confiavel' por omissao")
     ap.add_argument("--sem-canal-negativo", action="store_true",
                     help="desliga o canal negativo; a faixa prevista ordena "
                          "pelo p sozinho. Medido, o canal leva a AUC de 0,750 "
@@ -331,13 +341,18 @@ def _erro_de_largura(saidas_do_checkpoint: int, n_rotulos: int) -> str | None:
 def _parametros(args, canal_negativo, dispositivo) -> dict:
     """Os parametros que mudam o CONTEUDO da saida. Caminhos de saida nao
     entram: repetir para outra pasta e repetir."""
-    return {"canal_negativo": canal_negativo,
-            "dispositivo": dispositivo,
-            "alvos": bool(args.alvos),
-            "minimo_treino": args.minimo_treino,
-            "lote": args.lote,
-            "limite": args.limite,
-            "portao": bool(args.portao)}
+    p = {"canal_negativo": canal_negativo,
+         "dispositivo": dispositivo,
+         "alvos": bool(args.alvos),
+         "minimo_treino": args.minimo_treino,
+         "lote": args.lote,
+         "limite": args.limite,
+         "portao": bool(args.portao),
+         "zona_dominio": bool(args.referencias_de_alvo)}
+    if args.referencias_de_alvo:
+        # Os limites entram no manifesto porque MUDAM a ordem da saida.
+        p["dominio"] = dominio.parametros()
+    return p
 
 
 def _motivo_do_portao(aprovado: str, motivos: str) -> list[str]:
@@ -499,6 +514,36 @@ def _canal_por_composto(modelo, compostos, smiles_por_composto,
     return resultado, sem_fingerprint
 
 
+def _zonas_por_composto(compostos, smiles_por_composto, referencias):
+    """{inchikey: {alvo_chembl_id: zona}}.
+
+    So para composto que TEM linha prevista: a faixa medida nao olha o
+    dominio, e calcular a similaridade dela seria trabalho jogado fora --
+    sao 18 mil referencias por composto.
+
+    SMILES ilegivel nao vira zona nenhuma, logo o composto sai como
+    `indeterminado` em `classificar`. Nunca `fora`: nao ler a molecula nao e
+    afirmar que ela esta longe do conhecido.
+    """
+    from mods.ranque import dominio as dom
+
+    gen = dom.gerador()
+    zonas = {}
+    sem_fingerprint = 0
+    for inchikey, (_nome, linhas) in compostos.items():
+        if not any((l.get("tipo_evidencia") or "").strip() == TIPO_PREDITO
+                   for l in linhas):
+            continue
+        smiles = smiles_por_composto.get(inchikey, "")
+        fp = dom.fingerprint(smiles, gen)
+        if fp is None:
+            sem_fingerprint += 1
+            continue
+        zonas[inchikey] = dom.zonas_do_composto(
+            fp, dom.tamanho_de(smiles), referencias)
+    return zonas, sem_fingerprint
+
+
 def _veredito(portao, inchikey) -> tuple[str, str]:
     if portao is None:
         return esquema.PORTAO_NAO_CONSULTADO, ""
@@ -603,7 +648,16 @@ def main(argv=None) -> int:
                       "prometida entre dispositivos", file=sys.stderr)
         ligantes_de_entrada = _ligantes_de_entrada(args.ligantes)
         canal = {}
+        zonas = {}
         sem_fingerprint = 0
+        sem_fingerprint_dominio = 0
+        if args.referencias_de_alvo:
+            referencias = dominio.preparar_referencias(
+                dominio.carregar_referencias(args.referencias_de_alvo))
+            zonas, sem_fingerprint_dominio = _zonas_por_composto(
+                compostos,
+                {k: smiles for k, (_, smiles) in ligantes_de_entrada.items()},
+                referencias)
         if modelo is not None:
             ids, nomes = _alvos_afirmativos(args)
             canal, sem_fingerprint = _canal_por_composto(
@@ -637,7 +691,8 @@ def main(argv=None) -> int:
 
     for inchikey, (nome, linhas) in compostos.items():
         p_negativo, alvo_negativo = canal.get(inchikey, (None, ""))
-        resultado = classificar(linhas, p_negativo=p_negativo)
+        resultado = classificar(linhas, p_negativo=p_negativo,
+                                zona_por_alvo=zonas.get(inchikey))
         aprovado, motivos = _veredito(portao, inchikey)
         motivos_de_fora = _motivo_do_portao(aprovado, motivos)
         if resultado["faixa"] == "3":
@@ -690,6 +745,7 @@ def main(argv=None) -> int:
                                    else _texto(p_negativo)),
                     "alvo_negativo": alvo_negativo,
                     "medida_sem_pchembl": resultado["medida_sem_pchembl"],
+                    "zona_dominio": resultado["zona_dominio"],
                     "portao_aprovado": aprovado, "portao_motivos": motivos,
                     "observacao": resultado["observacao"],
                     "procedencia": procedencia_do_ranking()})

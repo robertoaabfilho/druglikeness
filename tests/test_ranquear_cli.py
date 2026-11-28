@@ -768,3 +768,156 @@ def test_valor_pequeno_nao_e_impresso_como_zero(tmp_path):
     valores = [l["valor"] for l in _ler(destino / NOME_RANKING)]
     assert valores[0] != "0" and valores[1] != "0"
     assert float(valores[0]) > float(valores[1])
+
+
+# --------------------------------------------------------------------------
+# Zona de confiabilidade da previsao (--referencias-de-alvo)
+# --------------------------------------------------------------------------
+# Morfina e um ativo conhecido do receptor mu: sim_top5 0,9377 contra as 5.790
+# referencias de CHEMBL233, logo `analogo`. Cafeina esta longe delas.
+_MORFINA = "CN1CC[C@]23c4c5ccc(O)c4O[C@H]2[C@@H](O)C=C[C@H]3[C@H]1C5"
+_CAFEINA = "Cn1cnc2c1c(=O)n(C)c(=O)n2C"
+_DECANO = "CCCCCCCCCC"
+
+# Um conjunto de referencia com DISPERSAO de tamanho: 250 moleculas de 21
+# atomos pesados e 250 de 10, o que da a faixa p1-p99 = (10, 21). A cafeina
+# tem 14 e cai DENTRO dela, logo a zona dela e decidida pela similaridade
+# (0,078 -> `fora`) e nao pelo tamanho. Com referencia toda do mesmo tamanho
+# a faixa seria degenerada e a cafeina sairia `extrapolado` -- que e outro
+# caso, testado adiante.
+_REFS_COM_DISPERSAO = [("CHEMBL233", _MORFINA)] * 250 + \
+                      [("CHEMBL233", _DECANO)] * 250
+
+
+def _referencias(tmp_path, pares) -> str:
+    caminho = tmp_path / "referencias_alvo.tsv"
+    texto = ["#alvo_chembl_id\tmolecula_chembl_id\tsmiles"]
+    for i, (alvo, smiles) in enumerate(pares):
+        texto.append(f"{alvo}\tCHEMBL_M{i}\t{smiles}")
+    caminho.write_text("\n".join(texto) + "\n", encoding="utf-8")
+    return str(caminho)
+
+
+def _ligantes_dom(tmp_path, pares) -> str:
+    caminho = tmp_path / "ligantes.tsv"
+    texto = ["#nome\tsmiles\tinchikey_parental"]
+    for nome, inchikey, smiles in pares:
+        texto.append(f"{nome}\t{smiles}\t{inchikey}")
+    caminho.write_text("\n".join(texto) + "\n", encoding="utf-8")
+    return str(caminho)
+
+
+def _prev_dom(nome, inchikey, valor):
+    return _ev(nome, inchikey, tipo_evidencia="predito", valor=str(valor),
+               pchembl="", alvo_chembl_id="CHEMBL233", alvo="OPRM1")
+
+
+def test_previsao_longe_do_conhecido_ordena_abaixo_da_previsao_perto(tmp_path):
+    """O ganho do adendo 8, ponta a ponta.
+
+    `p = 0,99` num composto longe das referencias do alvo tem de sair ABAIXO
+    de `p = 0,55` num composto perto delas -- porque foi perto que o modelo
+    mediu habilidade (AUROC 0,682 contra 0,499).
+    """
+    refs = _referencias(tmp_path, _REFS_COM_DISPERSAO)
+    evid = _evidencias(tmp_path, [_prev_dom("longe", "AAA", 0.99),
+                                  _prev_dom("perto", "BBB", 0.55)])
+    lig = _ligantes_dom(tmp_path, [("longe", "AAA", _CAFEINA),
+                               ("perto", "BBB", _MORFINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    linhas = _ler(destino / NOME_RANKING)
+    assert [l["ligante"] for l in linhas] == ["perto", "longe"]
+    assert [l["zona_dominio"] for l in linhas] == ["analogo", "fora"]
+
+
+def test_sem_referencias_a_ordem_segue_a_probabilidade(tmp_path):
+    """A guarda do caso que o teste acima tem de pegar: sem a medida de
+    dominio, a ordem volta a ser pela probabilidade."""
+    evid = _evidencias(tmp_path, [_prev_dom("longe", "AAA", 0.99),
+                                  _prev_dom("perto", "BBB", 0.55)])
+    lig = _ligantes_dom(tmp_path, [("longe", "AAA", _CAFEINA),
+                               ("perto", "BBB", _MORFINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig]) == 0
+    linhas = _ler(destino / NOME_RANKING)
+    assert [l["ligante"] for l in linhas] == ["longe", "perto"]
+    assert {l["zona_dominio"] for l in linhas} == {"indeterminado"}
+
+
+def test_fora_da_faixa_de_tamanho_vira_extrapolado(tmp_path):
+    """O caso que o adendo 7 pegou: similaridade de molecula fora da faixa de
+    tamanho das referencias nao mede o que se quer que meca.
+
+    Aqui todas as 500 referencias tem 21 atomos pesados, logo a faixa e
+    (21, 21). A cafeina tem 14 e sai `extrapolado`, nao `fora`.
+    """
+    refs = _referencias(tmp_path, [("CHEMBL233", _MORFINA)] * 500)
+    evid = _evidencias(tmp_path, [_prev_dom("pequena", "AAA", 0.99)])
+    lig = _ligantes_dom(tmp_path, [("pequena", "AAA", _CAFEINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    assert _ler(destino / NOME_RANKING)[0]["zona_dominio"] == "extrapolado"
+
+
+def test_extrapolado_ordena_junto_do_azar_nao_antes(tmp_path):
+    refs = _referencias(tmp_path, [("CHEMBL233", _MORFINA)] * 500)
+    evid = _evidencias(tmp_path, [_prev_dom("extrapolada", "AAA", 0.99),
+                                  _prev_dom("na_faixa", "BBB", 0.30)])
+    lig = _ligantes_dom(tmp_path, [("extrapolada", "AAA", _CAFEINA),
+                                   ("na_faixa", "BBB", _MORFINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    linhas = _ler(destino / NOME_RANKING)
+    assert [l["ligante"] for l in linhas] == ["na_faixa", "extrapolada"]
+
+
+def test_alvo_com_pouca_referencia_vira_indeterminado_nao_fora(tmp_path):
+    """CHEMBL3896 tem 19 referencias publicadas. Rebaixar por isso puniria o
+    alvo por falta de bibliografia."""
+    refs = _referencias(tmp_path, [("CHEMBL233", _MORFINA)] * 19)
+    evid = _evidencias(tmp_path, [_prev_dom("qualquer", "AAA", 0.9)])
+    lig = _ligantes_dom(tmp_path, [("qualquer", "AAA", _CAFEINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    assert _ler(destino / NOME_RANKING)[0]["zona_dominio"] == "indeterminado"
+
+
+def test_evidencia_medida_nao_recebe_zona(tmp_path):
+    refs = _referencias(tmp_path, [("CHEMBL228", _MORFINA)] * 500)
+    evid = _evidencias(tmp_path, [_ev("medido", "AAA")])
+    lig = _ligantes_dom(tmp_path, [("medido", "AAA", _CAFEINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    linha = _ler(destino / NOME_RANKING)[0]
+    assert linha["faixa"] == "1a" and linha["zona_dominio"] == ""
+
+
+def test_os_limites_do_dominio_entram_no_manifesto(tmp_path):
+    import json
+    refs = _referencias(tmp_path, [("CHEMBL233", _MORFINA)] * 500)
+    evid = _evidencias(tmp_path, [_prev_dom("x", "AAA", 0.9)])
+    lig = _ligantes_dom(tmp_path, [("x", "AAA", _MORFINA)])
+    destino = _saida(tmp_path)
+    assert main(["--evidencias", evid, "--saida", str(destino),
+                 "--ligantes", lig, "--referencias-de-alvo", refs]) == 0
+    manifesto = json.loads((destino / NOME_MANIFESTO).read_text())
+    texto = json.dumps(manifesto)
+    assert "limite_banda" in texto and "0.2" in texto
+    assert "minimo_referencias" in texto
+
+
+def test_referencias_inexistentes_falham_em_vez_de_virar_indeterminado(tmp_path):
+    evid = _evidencias(tmp_path, [_prev_dom("x", "AAA", 0.9)])
+    lig = _ligantes_dom(tmp_path, [("x", "AAA", _MORFINA)])
+    destino = _saida(tmp_path)
+    codigo = main(["--evidencias", evid, "--saida", str(destino),
+                   "--ligantes", lig,
+                   "--referencias-de-alvo", str(tmp_path / "nao_existe.tsv")])
+    assert codigo != 0

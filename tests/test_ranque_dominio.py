@@ -16,12 +16,14 @@ from mods.ranque.faixa import chave, classificar
 
 def _prev(valor, origem="usuario", alvo="Receptor opioide mu"):
     return {"tipo_evidencia": TIPO_PREDITO, "origem_alvo": origem,
-            "valor": str(valor), "alvo_pref_name": alvo, "alvo": alvo}
+            "valor": str(valor), "alvo_pref_name": alvo, "alvo": alvo,
+            "alvo_chembl_id": "CHEMBL233"}
 
 
 def _med(pchembl, origem="usuario", alvo="Receptor opioide mu"):
     return {"tipo_evidencia": TIPO_MEDIDO, "origem_alvo": origem,
-            "pchembl": str(pchembl), "alvo_pref_name": alvo, "alvo": alvo}
+            "pchembl": str(pchembl), "alvo_pref_name": alvo, "alvo": alvo,
+            "alvo_chembl_id": "CHEMBL233"}
 
 
 # ---------------------------------------------------------------- zona
@@ -96,8 +98,8 @@ def test_banda_vence_probabilidade_maior_fora_do_dominio():
     p = 0,99 na zona onde o modelo ficou em AUROC 0,4987 nao deve ordenar
     acima de p = 0,55 na zona onde ele deu 0,6819.
     """
-    zonas_fora = {"Receptor opioide mu": dominio.FORA}
-    zonas_banda = {"Receptor opioide mu": dominio.BANDA}
+    zonas_fora = {"CHEMBL233": dominio.FORA}
+    zonas_banda = {"CHEMBL233": dominio.BANDA}
     forte_sem_dominio = chave(
         classificar([_prev(0.99)], p_negativo=None,
                     zona_por_alvo=zonas_fora), "AAA")
@@ -108,7 +110,7 @@ def test_banda_vence_probabilidade_maior_fora_do_dominio():
 
 
 def test_dentro_da_mesma_zona_a_probabilidade_manda():
-    z = {"Receptor opioide mu": dominio.BANDA}
+    z = {"CHEMBL233": dominio.BANDA}
     forte = chave(classificar([_prev(0.9)], p_negativo=None,
                               zona_por_alvo=z), "AAA")
     fraca = chave(classificar([_prev(0.5)], p_negativo=None,
@@ -119,10 +121,10 @@ def test_dentro_da_mesma_zona_a_probabilidade_manda():
 def test_evidencia_medida_nao_depende_do_dominio_do_modelo():
     """`pchembl` e medido; a zona e propriedade do modelo. Nao se cruzam."""
     fora = chave(classificar([_med(8.0)], p_negativo=None,
-                             zona_por_alvo={"Receptor opioide mu":
+                             zona_por_alvo={"CHEMBL233":
                                             dominio.FORA}), "AAA")
     banda = chave(classificar([_med(8.0)], p_negativo=None,
-                              zona_por_alvo={"Receptor opioide mu":
+                              zona_por_alvo={"CHEMBL233":
                                              dominio.BANDA}), "AAA")
     assert fora == banda
     assert classificar([_med(8.0)], p_negativo=None)["zona_dominio"] == ""
@@ -137,7 +139,7 @@ def test_sem_medida_de_dominio_o_ranking_nao_muda():
 
 def test_faixa_prevista_registra_a_zona():
     r = classificar([_prev(0.7)], p_negativo=None,
-                    zona_por_alvo={"Receptor opioide mu": dominio.ANALOGO})
+                    zona_por_alvo={"CHEMBL233": dominio.ANALOGO})
     assert r["faixa"] == "2a" and r["zona_dominio"] == dominio.ANALOGO
 
 

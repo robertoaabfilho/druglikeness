@@ -111,8 +111,10 @@ def classificar(linhas: list[dict], *, p_negativo: float | None,
     None NAO e zero: zero afirmaria "nenhuma atividade indesejada", e ausencia
     de dado nao e afirmacao. Sem canal, a faixa prevista ordena pelo `p` so.
 
-    `zona_por_alvo` mapeia nome de alvo -> zona de confiabilidade do
-    `mods.ranque.dominio`, para a previsao ESCOLHIDA. Sem ele, a zona fica
+    `zona_por_alvo` mapeia `alvo_chembl_id` -> zona de confiabilidade do
+    `mods.ranque.dominio`, para a previsao ESCOLHIDA. A chave e o ID e nao o
+    nome porque o nome do alvo nao e identificador: dois rotulos podem
+    compartilhar `pref_name`, e e por ID que a referencia foi coletada. Sem ele, a zona fica
     `indeterminado` e o ranking nao muda: a ausencia de medida de dominio nao
     pode virar punicao. Ver `dominio.py` para o que foi medido.
     """
@@ -150,9 +152,10 @@ def classificar(linhas: list[dict], *, p_negativo: float | None,
         # Multiplicar o `p` por um fator de confiabilidade exigiria uma
         # constante que o dado nao calibra -- o mesmo motivo pelo qual a
         # procedencia e sub-faixa e nao peso.
+        id_alvo = (linha.get("alvo_chembl_id") or "").strip()
         resultado.update(faixa=faixa, valor=valor, p_afirmativo=p, alvo=nome,
                          zona_dominio=(zona_por_alvo or {}).get(
-                             nome, dominio.INDETERMINADO))
+                             id_alvo, dominio.INDETERMINADO))
         if p_negativo is None:
             resultado["observacao"] = "sem canal negativo"
         return resultado
