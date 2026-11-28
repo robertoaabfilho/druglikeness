@@ -47,6 +47,7 @@ import math
 
 from mods.evidencias.entrada import ORIGENS_DE_ENRIQUECIMENTO
 from mods.evidencias.esquema import TIPO_MEDIDO, TIPO_PREDITO
+from mods.ranque import dominio
 
 FAIXAS = ("1a", "1b", "2a", "2b", "3")
 ORIGENS_DO_USUARIO = ("usuario",)
@@ -101,13 +102,19 @@ def _nome_do_alvo(linha) -> str:
     return f"{id_alvo} {nome}".strip() if id_alvo else nome
 
 
-def classificar(linhas: list[dict], *, p_negativo: float | None) -> dict:
+def classificar(linhas: list[dict], *, p_negativo: float | None,
+                zona_por_alvo: dict | None = None) -> dict:
     """Faixa e valor de UM composto, a partir das linhas de evidencia dele.
 
     `p_negativo` e o agregado do canal negativo, ou None quando a execucao nao
     tem canal (sem pesos do PP4CKD, SMILES ilegivel, ou `--sem-canal-negativo`).
     None NAO e zero: zero afirmaria "nenhuma atividade indesejada", e ausencia
     de dado nao e afirmacao. Sem canal, a faixa prevista ordena pelo `p` so.
+
+    `zona_por_alvo` mapeia nome de alvo -> zona de confiabilidade do
+    `mods.ranque.dominio`, para a previsao ESCOLHIDA. Sem ele, a zona fica
+    `indeterminado` e o ranking nao muda: a ausencia de medida de dominio nao
+    pode virar punicao. Ver `dominio.py` para o que foi medido.
     """
     por_faixa = {}
     for faixa, tipo, origens in (("1a", MEDIDO, ORIGENS_DO_USUARIO),
@@ -124,7 +131,7 @@ def classificar(linhas: list[dict], *, p_negativo: float | None) -> dict:
 
     resultado = {"faixa": "3", "valor": None, "alvo": "", "p_afirmativo": "",
                  "pchembl": "", "medida_sem_pchembl": "sim" if sem_pchembl else "",
-                 "observacao": ""}
+                 "zona_dominio": "", "observacao": ""}
 
     for faixa in ("1a", "1b"):
         pchembl, linha = _melhor(por_faixa[faixa], "pchembl")
@@ -138,8 +145,14 @@ def classificar(linhas: list[dict], *, p_negativo: float | None) -> dict:
         if p is None:
             continue
         valor = p if p_negativo is None else p * (1.0 - p_negativo)
-        resultado.update(faixa=faixa, valor=valor, p_afirmativo=p,
-                         alvo=_nome_do_alvo(linha))
+        nome = _nome_do_alvo(linha)
+        # A zona NAO entra no valor: ela desempata depois, em `chave`.
+        # Multiplicar o `p` por um fator de confiabilidade exigiria uma
+        # constante que o dado nao calibra -- o mesmo motivo pelo qual a
+        # procedencia e sub-faixa e nao peso.
+        resultado.update(faixa=faixa, valor=valor, p_afirmativo=p, alvo=nome,
+                         zona_dominio=(zona_por_alvo or {}).get(
+                             nome, dominio.INDETERMINADO))
         if p_negativo is None:
             resultado["observacao"] = "sem canal negativo"
         return resultado
@@ -152,15 +165,25 @@ def classificar(linhas: list[dict], *, p_negativo: float | None) -> dict:
 def chave(resultado: dict, inchikey: str) -> tuple:
     """Chave ASCENDENTE de ordenacao: `sorted(..., key=...)` sem `reverse`.
 
-    `(indice da faixa, -valor, inchikey)`. O `inchikey` entra para que o
-    empate seja estavel: sem ele, duas execucoes sobre a mesma entrada podem
-    dar arquivos diferentes, e a repeticao byte a byte deixa de valer.
+    `(indice da faixa, ordem do dominio, -valor, inchikey)`. O `inchikey`
+    entra para que o empate seja estavel: sem ele, duas execucoes sobre a
+    mesma entrada podem dar arquivos diferentes, e a repeticao byte a byte
+    deixa de valer.
+
+    A ordem do dominio vem DEPOIS da faixa e ANTES do valor: dentro da mesma
+    faixa prevista, uma previsao na zona onde o modelo foi medido com
+    habilidade (AUROC 0,682) ordena acima de uma na zona onde ele ficou no
+    azar (0,499), por maior que seja o `p` desta. Fora das faixas previstas a
+    ordem e constante, logo nao altera nada: evidencia medida nao depende do
+    dominio do modelo.
 
     Ascendente, e nao descendente com o `inchikey` invertido, porque inverter
     a string caractere a caractere para manter o desempate crescente seria
     codigo sem leitor.
     """
     valor = resultado.get("valor")
+    prevista = resultado["faixa"] in ("2a", "2b")
     return (FAIXAS.index(resultado["faixa"]),
+            dominio.ordem(resultado.get("zona_dominio")) if prevista else 0,
             float("inf") if valor is None else -float(valor),
             inchikey or "")
