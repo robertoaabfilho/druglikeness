@@ -875,3 +875,172 @@ apareceram por causa desta pergunta:
 
 Arquivos: `sondar_antibioticos.py`, `lista_j01.json`,
 `resultado_antibioticos.tsv` (821 linhas).
+
+---
+
+# Adendo 8 — as três correções: uma funcionou, uma me refutou, uma achou regra prospectiva
+
+O Adendo 7 terminou com duas correções propostas e o Adendo 6 com uma pergunta
+aberta. Este adendo mede as três no mesmo dado (`corrigir.py`, 145 alvos do
+cache do Adendo 6, 36.439 moléculas pontuadas uma vez). **Duas das três deram o
+oposto do que eu havia proposto**, e são justamente as que mudam o desenho.
+
+## Correção 1 — o proxy de domínio: funcionou, e o vencedor não era o proposto
+
+Um proxy de domínio de aplicabilidade não deve prever atividade; deve prever
+**confiança**. Logo o critério certo não é a AUROC do proxy, é: parte as
+moléculas do estrato de novidade na mediana do proxy e compara a AUROC **do
+modelo** nas duas metades. Proxy que serve tem AUROC maior na metade alta.
+
+| proxy | AUROC metade alta | metade baixa | delta | z |
+|---|---|---|---|---|
+| **média das 5 maiores similaridades** | **0,6819** | **0,4987** | **+0,1832** | **+12,12** |
+| similaridade máxima | 0,6763 | 0,5326 | +0,1437 | +9,62 |
+| nº de bits do ECFP4 | 0,6402 | 0,5137 | +0,1265 | +7,14 |
+| `p_max` (o atual) | 0,6545 | 0,5898 | +0,0647 | +4,20 |
+| nº de cabeças > 0,9 | 0,6345 | 0,5847 | +0,0497 | +2,90 |
+| `p_max` corrigido por tamanho | 0,6387 | 0,6228 | +0,0159 | +1,10 |
+
+**Substituto: a média das 5 maiores similaridades ECFP4 aos ativos de
+referência do alvo.** Separa quase três vezes melhor que `p_max`, e a metade de
+baixo fica **no azar exato (0,4987)** — metade do estrato de novidade não tem
+informação nenhuma, e dá para identificá-la antes de ensaiar.
+
+Ressalva declarada: o estrato foi *selecionado* por similaridade máxima < 0,25,
+então a similaridade é variável truncada dentro dele. O achado não é circular, e
+a leitura operacional é que **o corte de 0,25 é generoso demais**.
+
+### Onde o sinal morre, por decil
+
+| decil | sim_top5 média | AUROC | EP | ativos |
+|---|---|---|---|---|
+| 1 | 0,1445 | 0,4399 | 0,0304 | 82 |
+| 2 | 0,1713 | 0,4565 | 0,0341 | 67 |
+| 3 | 0,1777 | 0,5228 | 0,0299 | 96 |
+| 4 | 0,1835 | 0,4898 | 0,0248 | 134 |
+| 5 | 0,1950 | 0,5458 | 0,0241 | 152 |
+| 6 | 0,2016 | 0,6451 | 0,0238 | 159 |
+| 7 | 0,2073 | **0,7050** | 0,0214 | 189 |
+| 8 | 0,2130 | 0,6934 | 0,0201 | 217 |
+| 9 | 0,2198 | 0,6931 | 0,0183 | 261 |
+| 10 | 0,2298 | 0,6556 | 0,0148 | 412 |
+
+A transição é abrupta entre o 5º e o 7º decil. Abaixo de **sim_top5 ≈ 0,20** o
+modelo está no azar: quatro dos cinco primeiros decis têm AUROC indistinguível
+de 0,5 e dois estão abaixo. Acima, 0,65–0,71.
+
+**A janela produtiva de novidade é estreita: `0,20 <= sim_top5 < 0,25`, com
+similaridade máxima < 0,25.** Fora dela, para cima é análogo; para baixo é
+ruído. O `sim_T` deixa de ser filtro binário e passa a ser **banda**, com os
+dois limites registrados no manifesto.
+
+## Correção 2 — descontar o viés de tamanho: não funciona, e me refuta
+
+O viés existe e é grande. Medindo a inclinação de cada uma das 616 cabeças
+contra o número de bits ligados do ECFP4:
+
+- **440 de 616 cabeças** com ρ > +0,3; **274** com ρ > +0,5
+- mediana de ρ: **+0,471**
+- o tamanho explica **18,8%** da variância do logit na cabeça mediana (p90: 37,7%)
+
+Mas descontá-lo (resíduo do logit após regressão sobre o número de bits)
+**piora**:
+
+| escore | AUROC | IC95% |
+|---|---|---|
+| cru | **0,6322** | [0,6182, 0,6462] |
+| corrigido | **0,5637** | [0,5498, 0,5776] |
+
+Melhorou em só **23 de 88** alvos. Por classe, mediana por alvo: enzima 0,650 →
+0,599; membrana 0,625 → 0,577; **epigenética 0,698 → 0,390**.
+
+**Por que eu estava errado.** Tamanho não é artefato puro de contagem de bits.
+Ligante maior faz mais contatos e tende genuinamente a ser mais potente — o
+tamanho está **confundido com atividade real**, e removê-lo remove sinal
+verdadeiro. O "defeito 2" do Adendo 7 estava meio errado.
+
+O que está errado no caso dos antibióticos é outra coisa: **extrapolação**. Um
+glicopeptídeo de 770 Da está fora da faixa de tamanho em que a relação
+tamanho–atividade foi aprendida. E note a ironia: `n_bits` funciona como proxy
+de confiança (delta +0,1265, z +7,14) na direção *mais bits, mais confiável* —
+que é exatamente por que os antibióticos não foram sinalizados por ele.
+
+**Correção certa: não descontar tamanho, e marcar tamanho FORA DE FAIXA como
+fora do domínio** — verificação de dois lados contra a faixa de tamanho dos
+ativos de treino do alvo, não desconto monotônico.
+
+## Correção 3 — quem são os 19 alvos que acertam
+
+Primeiro, uma invalidação própria: os preditores óbvios — AUROC, EF1% e BEDROC
+no estrato análogo — **são retrospectivos**. Medem-se no mesmo conjunto de teste
+pós-2022, então a correlação alta deles com a AUROC da novidade (ρ +0,482 para a
+AUROC análoga) não serve de regra de decisão. Ficaram fora.
+
+Entre os prospectivos, nulos: nº de referências ≤ 2020 (ρ +0,002 com acertar),
+diversidade das referências (+0,031), tamanho do estrato (+0,015).
+
+O que funciona é a **forma da distribuição de escore do modelo sobre a própria
+biblioteca**, disponível antes de qualquer ensaio:
+
+| preditor | ρ vs acertar@20 | ρ vs AUROC |
+|---|---|---|
+| razão p90/p50 da coluna | **+0,264** | +0,199 |
+| mediana da coluna | **−0,204** | −0,233 |
+| p90 da coluna | −0,154 | −0,216 |
+| máximo da coluna | −0,032 | −0,140 |
+
+Escore alto em tudo é ruim — assinatura de saturação. Opinião concentrada é bom.
+Regra composta nos dois, cortes na mediana:
+
+| | alvos | acertam top-20 | prec@20 | ativos novos (mediana) |
+|---|---|---|---|---|
+| **regra satisfeita** | 38 | **13 (34%)** | 3,9% | 10 |
+| só razão alta | 6 | 0 (0%) | 0,0% | 12 |
+| regra falha | 44 | 6 (14%) | 2,3% | 10 |
+
+**Fisher exato, uma cauda: p = 0,0295.** E a mediana de ativos novos é 10 nos
+dois grupos — não é o efeito de oportunidade, é seleção de alvo.
+
+Por classe de proteína (n pequeno, registrado como indício):
+
+| classe | alvos | acertam | AUROC mediana |
+|---|---|---|---|
+| enzyme | 48 | 11 (23%) | 0,650 |
+| membrane | 21 | 4 (19%) | 0,625 |
+| epigenetic | 7 | 3 (43%) | 0,698 |
+| transcription | 6 | **0 (0%)** | **0,454** |
+| transporter | 3 | 1 (33%) | 0,612 |
+
+Fator de transcrição no azar é mecanisticamente coerente: sem bolsão definido.
+
+### Correção à leitura do Adendo 6
+
+O Adendo 6 disse "o retorno está concentrado em ~1/5 dos alvos", o que sugere
+modelo errático. Estratificando pelo número de ativos novos **disponíveis** no
+alvo:
+
+| ativos novos | alvos | acertam top-20 | AUROC mediana |
+|---|---|---|---|
+| 3–4 | 11 | 1 (9%) | 0,642 |
+| 5–9 | 32 | 3 (9%) | 0,576 |
+| 10–19 | 23 | 7 (30%) | 0,676 |
+| 20+ | 22 | 8 (36%) | 0,678 |
+
+O "19 de 88" é em boa parte **oportunidade, não habilidade**: com 3 ativos num
+universo de ~5.500, não acertar no top-20 é o esperado mesmo para um modelo bom.
+No agregado, 6,4 acertos esperados por azar contra 50 observados — **7,8×**.
+
+## O que entra no pipeline
+
+1. **Trocar `p_max` pela média das 5 maiores similaridades** como proxy de
+   domínio, e transformar a novidade em **banda `0,20 <= sim_top5 < 0,25`**, com
+   os dois limites no manifesto.
+2. **Não descontar tamanho.** Adicionar verificação de faixa de tamanho em dois
+   lados contra os ativos de treino do alvo; fora da faixa, sai do ranque.
+3. **Selecionar alvo antes de ensaiar** pela razão p90/p50 e pela mediana da
+   coluna, e excluir fator de transcrição.
+
+Arquivos: `corrigir.py`, `resultado_proxy_dominio.tsv`,
+`resultado_vies_tamanho.tsv` (as 616 inclinações por cabeça),
+`resultado_decis_similaridade.tsv`, `resultado_preditores_alvo.tsv`,
+`classes_alvo.json`.
