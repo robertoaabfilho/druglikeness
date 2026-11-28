@@ -146,13 +146,15 @@ def test_input_versiona_a_procedencia_e_nao_os_dados():
                        capture_output=True, text=True)
     if r.returncode != 0:
         # Fora de um checkout (o pacote para outra maquina) nao ha indice do
-        # git a consultar. A propriedade equivalente ali e: a pasta `input/`
-        # que veio no pacote nao traz os dados grandes.
-        import pathlib
-        grandes = [p.name for p in (pathlib.Path(RAIZ) / "input").glob("*")
-                   if p.is_file() and p.stat().st_size > 5 * 1024 * 1024]
-        assert not grandes, grandes
-        return
+        # git a consultar, e nao ha propriedade equivalente: esta regra e
+        # sobre o REPOSITORIO.
+        #
+        # Eu tinha inventado uma substituta -- "a pasta input/ nao traz dados
+        # grandes" -- e ela ficou FALSA quando o pacote passou a levar tudo
+        # para garantir reprodutibilidade. Uma propriedade substituta que nao
+        # e a mesma propriedade mente duas vezes: aqui, e sobre o pacote.
+        import pytest
+        pytest.skip("fora de um checkout de git: esta regra e do repositorio")
     assert r.stdout.split() == ["input/procedencia.json"], r.stdout
 
 
