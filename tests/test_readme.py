@@ -185,3 +185,19 @@ def test_o_readme_mantem_as_medicoes():
 
 def test_o_readme_declara_as_licencas():
     assert "## Licenças" in README or "## Licencas" in README
+
+
+def test_o_readme_distingue_o_teto_de_taxa_do_teto_de_COBERTURA():
+    """MEDIDO com o acervo real, 60 ligantes de `exemplos/`: 58 saem
+    `indeterminado` por **nao ter bula nenhuma** no openFDA, e 2 passam. O
+    acervo remove o teto de TAXA; o teto de COBERTURA fica, e para uma base de
+    produto natural ele e o que manda -- openFDA e rotulagem de farmaco dos
+    EUA.
+
+    Dizer so "o acervo remove o teto" prometeria ao pesquisador um criterio
+    atuante que ele nao vai ter. `indeterminado` por falta de DOCUMENTO e a
+    resposta certa, e tem de estar escrito."""
+    assert "sem bula no openFDA" in README or "cobertura" in README.lower()
+    i = README.lower().index("cobertura")
+    trecho = README[max(0, i - 600):i + 900].lower()
+    assert "indeterminado" in trecho

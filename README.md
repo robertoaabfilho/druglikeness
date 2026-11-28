@@ -476,6 +476,33 @@ acervo (a data da carga do openFDA) entra no manifesto e nas chaves da
 repetição — duas execuções com acervos de datas diferentes não são a mesma
 execução.
 
+### O acervo remove o teto de taxa — não o de cobertura
+
+**Medido com o acervo real** (export de 2026-11-27, 265.130 bulas), sobre os
+60 ligantes de `exemplos/ligantes.exemplo.tsv`:
+
+| veredito de `alerta_bula` | ligantes |
+|---|---|
+| `indeterminado` — **sem bula nenhuma no openFDA** | 58 |
+| `passa` — tem bula, nenhum termo | 2 |
+| `marca` / `reprova` | 0 |
+
+Só *Schisandrin B* e *Baicalin* têm rotulagem. Os outros 58 são produtos
+naturais, e o openFDA é **rotulagem de fármaco dos EUA**: o documento não
+existe.
+
+Então o acervo entrega o que prometia — o critério pode rodar sobre os 107.123
+ligantes, sem taxa — e **não** faz `alerta_bula` passar a agir sobre uma base
+de produto natural, porque ali o limite não é quantas consultas cabem, é
+quantos compostos têm bula. `indeterminado` por falta de documento é a resposta
+**certa**: ausência de documento não é ausência de risco.
+
+Onde o acervo muda o resultado é na parte da base que **tem** rotulagem — e a
+validação contra a API confirma que ali ele responde igual: `ciprofloxacin`
+118 de 166 bulas em seção forte, `capsaicin` 211 bulas com a indicação
+descontando o alerta, `duloxetine` 126 ocorrências fortes e ainda assim
+`passa`, porque é indicada para a condição.
+
 **O que o acervo NÃO resolve:** a negação em texto livre. Uma bula que diga
 "não há relatos de neuropatia" ainda casa o termo. É por isso que a etapa 2
 expõe o **trecho literal**, com a seção e as duas contagens (a da janela e a do
@@ -560,12 +587,16 @@ apontar para a pasta de outro projeto.
   "não há relatos de neuropatia" ainda casa o termo. É por isso que a etapa 2
   expõe o **trecho literal** em vez de só um sinalizador: o trecho sinalizado
   precisa de revisão humana.
-- **A checagem de bula só cobre a base inteira com o acervo local.** Pela
-  rede, o teto é `--limite-bula` (padrão 500), porque o openFDA é serviço
-  público com limite de taxa: com 500 de 108.935, o critério que mais reprova
-  sai `indeterminado` para 99,5% da base. Com `--acervo-bula` o teto deixa de
-  existir (veja *O acervo do openFDA*), e a limitação que **permanece** é
-  outra: a negação em texto livre.
+- **A checagem de bula tem dois tetos, e o acervo só remove um.** Pela rede, o
+  teto é de **taxa**: `--limite-bula` (padrão 500) sobre 108.935 ligantes faz
+  o critério que mais reprova sair `indeterminado` para 99,5% da base. Com
+  `--acervo-bula` esse teto deixa de existir. O que **fica** é o teto de
+  **cobertura**: medido com o acervo real, 58 dos 60 ligantes de exemplo não
+  têm bula nenhuma no openFDA — são produtos naturais, e o openFDA é rotulagem
+  de fármaco dos EUA. Para uma base assim, `alerta_bula` continua
+  majoritariamente `indeterminado`, e isso é **correto**: ausência de documento
+  não é ausência de risco. Veja *O acervo remove o teto de taxa — não o de
+  cobertura*.
 - **O percentil de toxicidade não está validado neste conjunto** — é por isso
   que `toxicidade` só marca, nunca reprova, por padrão.
 - **A direção farmacológica do alvo (silenciar vs modular) não entra em nada**,
