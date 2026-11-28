@@ -476,3 +476,76 @@ o resultado.
 Pendência honesta: a fusão de canais e o filtro de domínio foram medidos no
 agregado (Adendo 2) e não no estrato de novidade, onde a linha de base é
 outra. Remedir ali é barato e ainda não foi feito.
+
+---
+
+# Adendo 4 — descritor QSAR/físico-químico no estrato de novidade
+
+Medido em 2026-11-28. Proposta avaliada: usar parâmetros QSAR/ADMET também na
+previsão de similaridade. `benchmark_descritor.py`,
+`resultado_descritor.tsv`.
+
+`sim_desc` = proximidade ao ativo de treino mais próximo no espaço de 12
+descritores do RDKit (MW, logP, TPSA, HBD, HBA, ligações rotáveis, anéis
+aromáticos, fração Csp3, átomos pesados, QED, MolMR, anéis), padronizados por
+z-score sobre o conjunto de triagem. O Deep-PK não entra: é API externa e
+rejeita 30–35% das moléculas.
+
+Avaliado **dentro** do estrato de novidade (`sim_T < 0,25` em ECFP4), nos 10
+alvos. n = 175.877, 241 ativos, taxa-base 0,137%.
+
+| canal | AUROC | EF 0,1% | prec@20 |
+|---|---:|---:|---:|
+| `p_alvo` (PP4CKD) | **0,5722** | **12,44×** | **5,00%** |
+| `sim_desc` (descritor) | 0,4953 | 0,00 | 0,00% |
+| fusão média de postos | 0,5509 | 0,00 | 0,00% |
+| fusão produto de postos | 0,5410 | 0,00 | 0,00% |
+
+**O canal de descritor está exatamente no acaso (0,4953) e a fusão PIORA o
+modelo** — AUROC cai de 0,5722 para 0,5509 e a precisão@20 cai de 5,00% para
+0,00%. Isso também fecha a pendência do Adendo 2: a fusão não ajuda nem no
+estrato onde a linha de base é outra.
+
+## O uso que sobrevive: definir novidade, não pontuar
+
+| | n | % |
+|---|---:|---:|
+| ECFP4-distante **e** descritor-perto | 73.388 | **41,7%** |
+| ECFP4-distante **e** descritor-distante | 102.489 | 58,3% |
+
+Dos compostos que o ECFP4 chama de novos, **41,7% são vizinhos em perfil
+físico-químico** — a definição de novidade por fingerprint sozinho é grosseira
+e admite como novo quase metade de algo que é, em propriedade, mais do mesmo.
+
+E a consequência é precisa: como `sim_desc` tem AUROC 0,4953, ele **não tem
+viés de atividade**. Filtrar por ele não melhora nem piora a taxa de acerto —
+encolhe o conjunto sem custo de precisão e torna a afirmação de novidade mais
+forte. É de graça como refinamento de novidade, e inútil como escore.
+
+## Veredito sobre a proposta
+
+Três usos distintos, com evidências opostas:
+
+1. **Prever eficácia / pontuar atividade** — não sustentado, e agora duas
+   vezes: o QED deu 0,384 (abaixo do acaso) nos 222 compostos externos do
+   projeto, e aqui o `sim_desc` dá 0,4953 com a fusão degradando o modelo.
+2. **Definir o conjunto candidato (novidade)** — sustentado e barato. 41,7%
+   do estrato muda de classificação, sem custo de precisão.
+3. **Desempate por desenvolvibilidade a evidência de alvo fixa** — defensável,
+   não medido aqui. A literatura diz que desejabilidade empata com
+   "similaridade ao que já é bom" ([DOI](https://doi.org/10.1039/D5DD00387C)),
+   isto é, não ganha do trivial mas não atrapalha como ordenação secundária.
+
+## Onde a sessão chegou
+
+Quatro intervenções medidas sobre o ranqueamento, três negativas:
+
+| intervenção | resultado |
+|---|---|
+| trocar o PP4CKD pelo painel oficial do ChEMBL | pior em 13 de 14 alvos |
+| fundir canais (similaridade + alvo) | ruído no agregado, **degrada** no estrato de novidade |
+| filtro de domínio de aplicabilidade | +0,010 em prec@20 (ruído) |
+| **restringir o canal predito ao estrato de novidade** | **AUROC 0,5722, p = 8,7×10⁻⁵, prec@20 36× a taxa-base** |
+
+A única coisa que acrescentou foi **não mudar o modelo, e sim mudar a pergunta
+feita a ele**.
