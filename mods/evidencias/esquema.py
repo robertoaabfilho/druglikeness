@@ -118,3 +118,10 @@ def ler_evidencias(caminho):
                     f"linha {numero} de {caminho}: {len(campos)} campos "
                     f"encontrados, {len(colunas)} esperados")
             yield {c: desescapar(v) for c, v in zip(colunas, campos)}
+
+
+def acrescentar_observacao(atual, texto: str) -> str:
+    """Acrescenta sem apagar o que ja estava: a observacao e acumulativa, e e
+    nela que o rastro de cada decisao sobre o alvo fica."""
+    atual = (atual or "").strip()
+    return f"{atual}; {texto}" if atual else texto

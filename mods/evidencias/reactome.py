@@ -28,6 +28,7 @@ Regras
 
 from typing import Callable
 
+from mods.evidencias.esquema import acrescentar_observacao
 from mods.evidencias.chembl import (
     ListaTruncada, RespostaInesperada, alvos_por_uniprot, erro_de_item)
 
@@ -220,9 +221,3 @@ def alvos_expandidos_no_modelo(expandidos: list[dict], rotulos: list[dict], *,
         por_id[chembl_id] = saida[-1]
     return saida
 
-
-def acrescentar_observacao(atual, texto: str) -> str:
-    """Acrescenta sem apagar o que ja estava: a observacao e acumulativa, e e
-    nela que o rastro de cada decisao sobre o alvo fica."""
-    atual = (atual or "").strip()
-    return f"{atual}; {texto}" if atual else texto

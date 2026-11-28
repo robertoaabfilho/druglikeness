@@ -28,8 +28,8 @@ from mods.evidencias.chembl import (
     AlvoAmbiguo, ListaTruncada, RespostaInesperada, erro_de_item)
 from mods.evidencias.open_targets import (
     alvos_associados, alvos_do_chembl, colapsar_familia)
-from mods.evidencias.reactome import (
-    acrescentar_observacao, alvos_expandidos_no_modelo, expandir_vias)
+from mods.evidencias.esquema import acrescentar_observacao
+from mods.evidencias.reactome import alvos_expandidos_no_modelo, expandir_vias
 
 _ERROS_POR_ITEM = (ListaTruncada, RespostaInesperada, AlvoAmbiguo, LookupError,
                    OSError)

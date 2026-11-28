@@ -620,6 +620,29 @@ apontar para a pasta de outro projeto.
   É esse número — medido na sua execução, não citado de uma execução antiga —
   que diz se retreinar compra alguma coisa. Sem ele, retreinar é opinião.
 
+  **Medido em 2026-11-27** (Open Targets 26.09, ChEMBL 37, Reactome 98), para
+  `neuropathic pain` = `EFO_0005762` com os 10 alvos de
+  `exemplos/alvos.dor_neuropatica.txt`:
+
+  | | alvos | no modelo | fora do modelo |
+  |---|---|---|---|
+  | você declarou | 9 | 9 | 0 |
+  | Open Targets acrescentou | 22 | 20 | 2 |
+  | Reactome acrescentou | 423 | 243 | **180** |
+  | **total** | **454** | **272** | **182** |
+
+  Os **180 alvos do Reactome fora do modelo** são exatamente os que o fluxo
+  anterior **descartava** — 40% do que o Reactome traz. Eles entram marcados,
+  recebem evidência medida e não recebem prevista; a perda de pares previstos
+  é 182 × (nº de ligantes).
+
+  **Os números antigos (259 proteínas, 61 fora do modelo) não se reproduzem, e
+  não é defeito:** foram medidos contra Open Targets 24.09 e ChEMBL 35. Open
+  Targets, ChEMBL e Reactome são atualizados, e os escores de associação e as
+  vias mudam com eles. É precisamente por isso que o teto virou **instrumento**
+  em vez de número citado — e por que a versão de cada serviço vai no
+  manifesto.
+
 ## Licenças
 
 Código sob MIT (`LICENSE`). Dado derivado do ChEMBL é **share-alike** e tem

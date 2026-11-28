@@ -95,3 +95,40 @@ def test_o_pacote_tem_uma_pasta_raiz_so(tmp_path):
     with zipfile.ZipFile(destino) as z:
         raizes = {n.split("/")[0] for n in z.namelist()}
     assert len(raizes) == 1, raizes
+
+
+def test_o_acervo_do_openfda_nao_entra_no_pacote():
+    """ACHADO pelo timeout da suite: o empacotador varria `dados/` inteiro, e
+    depois do download o acervo do openFDA sao 3,7 GB ali dentro -- o pacote
+    passaria de 31 MB para mais de 3 GB, e tres testes tentavam comprimir isso.
+
+    O acervo e dado GERADO pela maquina, como `tsv/` e o cache de rede: a outra
+    maquina baixa o seu com um comando. A mesma regra do `.gitignore`."""
+    nomes = {i["destino"] for i in empacotar.conteudo()}
+    sobraram = [n for n in nomes if n.startswith("dados/openfda/")
+                and not n.endswith("procedencia.json")]
+    assert not sobraram, sobraram
+
+
+def test_mas_a_procedencia_do_acervo_entra():
+    """Se o acervo existe nesta maquina, a outra precisa saber de que export
+    ele era -- a mesma regra de `input/procedencia.json`."""
+    import pytest
+
+    from mods import caminhos
+    if not (caminhos.RAIZ / "dados/openfda/procedencia.json").is_file():
+        pytest.skip("sem acervo baixado nesta maquina")
+    nomes = {i["destino"] for i in empacotar.conteudo()}
+    assert "dados/openfda/procedencia.json" in nomes
+
+
+def test_o_pacote_diz_que_o_acervo_ficou_fora():
+    import pytest
+
+    from mods import caminhos
+    if not (caminhos.RAIZ / "dados/openfda").is_dir():
+        pytest.skip("sem acervo baixado nesta maquina")
+    fora = empacotar.omitidos()
+    citados = [o for o in fora if "openfda" in o["arquivo"]]
+    assert citados, fora
+    assert all("openfda_massa" in o["motivo"] for o in citados)

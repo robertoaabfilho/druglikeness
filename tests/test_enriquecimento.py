@@ -551,3 +551,26 @@ def test_alvo_dobrado_nao_fica_barrado_de_voltar_pelo_reactome():
     ]
     colapsar_familia(alvos, relatorio=rel)
     assert "CHEMBL_OUT" in rel["dobrados_fora_do_modelo"]
+
+
+def test_alvo_do_open_targets_fora_do_modelo_tambem_diz_que_nao_recebe_previsao():
+    """ACHADO na remedicao com rede: dos 182 alvos fora do modelo na lista,
+    180 (os do Reactome) carregavam a explicacao e **2 nao** -- os do Open
+    Targets, que vem por outro caminho (`alvos_do_chembl`).
+
+    O alvo fora do modelo nao recebe evidencia prevista, venha de onde vier. Se
+    a linha nao diz isso, zero previsoes para ele continua parecendo "sem
+    atividade" -- exatamente o que a marca existe para evitar."""
+    from mods.evidencias.open_targets import alvos_do_chembl
+    alvo = {"target_chembl_id": "CHEMBL9", "pref_name": "TRPA1",
+            "organism": "Homo sapiens", "target_type": "SINGLE PROTEIN"}
+
+    def obter(url):
+        return {"targets": [alvo], "page_meta": {"total_count": 1}}
+
+    saida = alvos_do_chembl(
+        [{"uniprot": "P9", "efo_id": "EFO_1", "sintoma": "dor", "score": 0.9,
+          "gene": "TRPA1", "ensembl": "ENSG1", "escore_rna_expression": ""}],
+        rotulos=[], obter_json_chembl=obter)
+    assert saida and saida[0]["no_modelo"] is False
+    assert "prevista" in saida[0]["observacao"], saida[0]["observacao"]

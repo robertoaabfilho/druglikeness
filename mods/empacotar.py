@@ -59,6 +59,15 @@ EXCLUIR = {
                   "noutra maquina e pior que consultar de novo",
 }
 
+# Pastas de dado GERADO que ficam fora do pacote, com o comando que as traz. O
+# acervo do openFDA sao 3,7 GB (1,7 de particoes e 2,0 de indice): levar junto
+# faria o pacote passar de 31 MB para mais de 3 GB, e a outra maquina baixa o
+# seu com um comando. A mesma regra de `tsv/` e do cache.
+GERADO_FORA = {
+    "dados/openfda": "o acervo do openFDA (3,7 GB com o indice); baixe o seu "
+                     "com `python mods/openfda_massa.py --baixar --indexar`",
+}
+
 # Dados grandes: ficam fora por padrao, e o manifesto diz como trazer.
 DADOS_GRANDES = {
     "input/ligantes.tsv":
@@ -70,6 +79,13 @@ DADOS_GRANDES = {
 
 
 def _excluido(caminho: Path) -> str | None:
+    como_texto = caminho.as_posix()
+    for prefixo, motivo in GERADO_FORA.items():
+        if como_texto.startswith(prefixo + "/"):
+            # a procedencia fica: a outra maquina precisa saber de que export
+            # era o acervo desta, como em `input/procedencia.json`
+            if caminho.name != "procedencia.json":
+                return motivo
     for parte in caminho.parts:
         if parte in EXCLUIR:
             return EXCLUIR[parte]
@@ -138,6 +154,15 @@ def omitidos(*, incluir_dados_grandes: bool = False) -> list[dict]:
     if caminhos.CACHE.is_dir() and any(caminhos.CACHE.iterdir()):
         fora.append({"arquivo": "json/cache_rede/",
                      "motivo": EXCLUIR["cache_rede"], "mb": 0.0})
+    for prefixo, motivo in GERADO_FORA.items():
+        pasta = caminhos.RAIZ / prefixo
+        if not pasta.is_dir():
+            continue
+        tamanho = sum(a.stat().st_size for a in pasta.rglob("*")
+                      if a.is_file() and a.name != "procedencia.json")
+        if tamanho:
+            fora.append({"arquivo": f"{prefixo}/", "motivo": motivo,
+                         "mb": round(tamanho / (1 << 20), 1)})
     return fora
 
 

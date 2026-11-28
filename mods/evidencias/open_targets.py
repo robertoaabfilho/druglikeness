@@ -28,7 +28,7 @@ from typing import Callable
 from mods.evidencias.atomico import escrever_texto
 from mods.evidencias.chembl import (
     ListaTruncada, RespostaInesperada, alvos_por_uniprot, erro_de_item)
-from mods.evidencias.esquema import escapar
+from mods.evidencias.esquema import acrescentar_observacao, escapar
 
 URL = "https://api.platform.opentargets.org/api/v4/graphql"
 ORGANISMO = "Homo sapiens"
@@ -161,12 +161,24 @@ def alvos_do_chembl(candidatos: list[dict], rotulos: list[dict], *,
                      alvo=alvo.get("pref_name") or "",
                      tipo_alvo=alvo.get("target_type") or "")
         if alvo.get("target_type") != "SINGLE PROTEIN":
-            linha["observacao"] = (f"{c['uniprot']} sem alvo SINGLE PROTEIN; "
-                                   f"usado {alvo.get('target_type')}")
+            linha["observacao"] = acrescentar_observacao(
+                linha.get("observacao"),
+                f"{c['uniprot']} sem alvo SINGLE PROTEIN; "
+                f"usado {alvo.get('target_type')}")
         modelo = no_modelo.get(linha["alvo_chembl_id"])
         if modelo:
             linha["no_modelo"] = True
             linha["n_moleculas_treino"] = modelo["n_ativos"]
+        else:
+            # Alvo fora do espaco do modelo nao recebe evidencia prevista,
+            # venha do Reactome ou de aqui. Sem isto escrito na linha, zero
+            # previsoes para ele continua parecendo "sem atividade" -- que e
+            # exatamente o que a marca existe para evitar.
+            linha["observacao"] = acrescentar_observacao(
+                linha.get("observacao"),
+                "fora do espaco do modelo: NAO recebe evidencia prevista; "
+                "recebe evidencia medida (ChEMBL), que ranqueia acima de "
+                "qualquer previsao")
     return saida
 
 
