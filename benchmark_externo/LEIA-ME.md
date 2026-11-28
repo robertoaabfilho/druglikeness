@@ -374,3 +374,105 @@ O que a evidência acumulada sustenta, em ordem:
 O que a evidência **não** sustenta: acrescentar preditor esperando
 ranqueamento melhor (o painel oficial do ChEMBL ficou no azar; fusão deu
 ruído), e finetuning antes de existir instrumento de medição.
+
+---
+
+# Adendo 3 — onde o canal predito vale: o estrato de novidade
+
+Medido em 2026-11-28. Pergunta levantada corretamente pelo autor do projeto:
+a novidade de um reposicionamento está nas **previsões**, não na evidência
+medida — evidência medida contra o alvo da doença é, por definição,
+não-novidade. Preencher o top-k com ela otimizaria precisão gastando
+exactamente o que se quer descobrir.
+
+Isso torna a pergunta decisiva: **o canal predito enriquece em compostos
+estruturalmente distantes dos ativos conhecidos?** Se os acertos estiverem
+todos na vizinhança química do que já se conhece, o 1-NN pega os mesmos e o
+modelo não reposiciona nada.
+
+## Desenho
+
+LIT-PCBA AVE-unbiased, 10 alvos. Para cada molécula do conjunto V,
+`sim_T` = maior Tanimoto aos ativos de **treino**. Estratifica por `sim_T` e,
+**dentro** de cada estrato — comparando ativos e inativos igualmente distantes
+do treino — mede se `p_alvo` ainda separa. Estratificar assim é o controle de
+viés de analogia no espírito de Chen et al. 2019: um modelo que só memoriza
+vizinhança cai para AUROC 0,5 no estrato distante.
+`benchmark_novidade.py`, `resultado_novidade.tsv`.
+
+## O canal predito sobrevive ao controle; o de similaridade não
+
+| faixa `sim_T` | n | ativos | taxa-base | AUROC `p_alvo` | AUROC `sim_T` |
+|---|---:|---:|---:|---:|---:|
+| 0,00–0,25 | 175.877 | 241 | 0,137% | **0,552** | 0,402 |
+| 0,25–0,35 | 189.770 | 540 | 0,285% | 0,637 | 0,250 |
+| 0,35–0,45 | 41.979 | 547 | 1,303% | 0,645 | 0,195 |
+| 0,45–0,60 | 12.379 | 424 | 3,425% | 0,631 | 0,321 |
+| 0,60–1,01 | 2.246 | 214 | 9,528% | 0,719 | 0,409 |
+
+O `p_alvo` fica acima do acaso em **todos** os estratos, inclusive o mais
+distante. O `sim_T` fica **abaixo** de 0,5 dentro de cada faixa — era de
+esperar: controlada a vizinhança, a similaridade não carrega mais informação.
+
+## O estrato de novidade, quantificado
+
+Ranqueando **dentro** do estrato `sim_T < 0,25` (que é o uso operacional:
+restringir aos compostos novos e ordená-los entre si), por posto percentual
+dentro de cada alvo:
+
+```
+n = 175.877   ativos = 241   taxa-base = 0,137%
+AUROC = 0,5722   EP 0,0192   IC 95% [0,5345 – 0,6100]   z = 3,76
+p (uma cauda, H0: AUROC = 0,5) = 8,7 x 10^-5
+```
+
+| medida | valor | ganho sobre a taxa-base |
+|---|---:|---:|
+| EF 0,1% | 12,44× | — |
+| EF 0,5% | 4,15× | — |
+| precisão@20 | 1/20 = 5,00% | **36×** |
+| precisão@50 | 2/50 = 4,00% | 29× |
+| precisão@100 | 3/100 = 3,00% | 22× |
+| precisão@200 | 4/200 = 2,00% | 15× |
+
+**Tradução para bancada:** no regime de novidade, ensaiar 20 compostos
+escolhidos pelo pipeline rende ~1 acerto, contra 0,027 de escolha aleatória.
+É a diferença entre testar 20 compostos e testar ~730 para achar o primeiro.
+E 5% está dentro da faixa das campanhas prospectivas publicadas (CACHE #1:
+3,7%; equipe vencedora: 8,5%).
+
+## Isso reformula a conclusão do Adendo 1
+
+O Adendo 1 concluiu que o 1-NN ganha do PP4CKD em 13 de 15 alvos e que o
+modelo não bate a linha de base trivial. **A medida estava certa e respondia à
+pergunta errada** para este projeto. A explicação das duas coisas juntas:
+
+* os ativos do LIT-PCBA são majoritariamente análogos de ativos conhecidos,
+  então no agregado o 1-NN ganha;
+* no estrato distante, o 1-NN está no acaso ou abaixo, e o `p_alvo` está em
+  0,572 com p < 10⁻⁴.
+
+Ou seja: **o valor do modelo é precisamente a fração não-análoga**, que é a
+única que interessa a reposicionamento. Julgar o canal predito por EF1%
+agregado subestima exatamente o uso pretendido.
+
+## Consequência de desenho
+
+Não misturar os dois regimes num ranking só. Duas listas, pela mesma lógica
+de sub-faixa `a`/`b` que o projeto já usa para procedência de alvo, estendida
+à novidade **química**:
+
+1. **Lista de confirmação** — evidência medida. Alta precisão, novidade zero.
+   Serve para calibrar o canal predito nos alvos da doença e como controle
+   positivo de um ensaio.
+2. **Lista de reposicionamento** — predita, restrita a `sim_T` baixo contra os
+   ativos conhecidos do alvo. É onde está a novidade, com ~5% de acerto
+   esperado no top-20 e 36× sobre o acaso.
+
+O limiar de `sim_T` passa a ser parâmetro de primeira classe do ranqueamento,
+ao lado do corte de probabilidade — e tem de ir para o manifesto, porque muda
+o resultado.
+
+Pendência honesta: a fusão de canais e o filtro de domínio foram medidos no
+agregado (Adendo 2) e não no estrato de novidade, onde a linha de base é
+outra. Remedir ali é barato e ainda não foi feito.
