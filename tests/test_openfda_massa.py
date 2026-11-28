@@ -370,7 +370,16 @@ def test_o_acervo_baixado_nao_entra_no_git():
     e `tsv/` existem para evitar: dado gerado pela maquina nao vai para o
     historico, o REGISTRO dele vai."""
     import subprocess
+
+    import pytest
+
     from mods import caminhos
+    if subprocess.run(["git", "rev-parse", "--git-dir"], cwd=str(caminhos.RAIZ),
+                      capture_output=True).returncode != 0:
+        # Fora de um checkout (o pacote para outra maquina) nao ha .gitignore a
+        # consultar. A propriedade equivalente ali -- o acervo nao vem no
+        # pacote -- esta em tests/test_empacotar.py.
+        pytest.skip("fora de um checkout de git")
     r = subprocess.run(["git", "check-ignore", "-q",
                         "dados/openfda/drug-label-0001-of-0014.json.zip"],
                        cwd=str(caminhos.RAIZ))
@@ -380,7 +389,16 @@ def test_o_acervo_baixado_nao_entra_no_git():
 def test_a_procedencia_do_acervo_CONTINUA_versionada():
     """Como em `input/`: os dados saem do git, o registro deles fica."""
     import subprocess
+
+    import pytest
+
     from mods import caminhos
+    if subprocess.run(["git", "rev-parse", "--git-dir"], cwd=str(caminhos.RAIZ),
+                      capture_output=True).returncode != 0:
+        # Fora de um checkout (o pacote para outra maquina) nao ha .gitignore a
+        # consultar. A propriedade equivalente ali -- o acervo nao vem no
+        # pacote -- esta em tests/test_empacotar.py.
+        pytest.skip("fora de um checkout de git")
     r = subprocess.run(["git", "check-ignore", "-q",
                         "dados/openfda/procedencia.json"],
                        cwd=str(caminhos.RAIZ))

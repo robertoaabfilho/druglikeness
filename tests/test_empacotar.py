@@ -126,7 +126,13 @@ def test_o_pacote_diz_que_o_acervo_ficou_fora():
     import pytest
 
     from mods import caminhos
-    if not (caminhos.RAIZ / "dados/openfda").is_dir():
+    pasta = caminhos.RAIZ / "dados/openfda"
+    # No PACOTE essa pasta existe com a procedencia e NADA mais: nao ha acervo
+    # para ficar de fora, e exigir a citacao ali faria a suite do pacote
+    # falhar -- e e a suite verde do pacote que prova que ele chegou inteiro.
+    tem_acervo = pasta.is_dir() and any(
+        a.is_file() and a.name != "procedencia.json" for a in pasta.rglob("*"))
+    if not tem_acervo:
         pytest.skip("sem acervo baixado nesta maquina")
     fora = empacotar.omitidos()
     citados = [o for o in fora if "openfda" in o["arquivo"]]
